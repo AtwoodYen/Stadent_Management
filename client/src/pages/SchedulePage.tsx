@@ -1,65 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Paper, 
-  Grid, 
-  IconButton, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions,
+/* ---------------------------  
+   SchedulePage 家教排課系統  
+   ---------------------------
+   主要功能：
+   1. 月／週／日檢視
+   2. 點擊日期開啟對話框新增課程
+   3. 課程資料保存在本地 state
+-------------------------------- */
+
+import React, { useState, useCallback } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  Button,
+  IconButton,
   TextField,
-  MenuItem,
-  Select,
   FormControl,
   InputLabel,
-  SelectChangeEvent
+  Select,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  ToggleButton,
+  ToggleButtonGroup,
+  Grid,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { addDays, format, startOfWeek, addWeeks, subWeeks, isSameDay } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
-import AddIcon from '@mui/icons-material/Add';
-import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import TodayIcon from '@mui/icons-material/Today';
 
-// 模擬數據類型
-type Student = {
+/* date-fns 工具 */
+import {
+  format,
+  isSameDay,
+  isToday,
+  addDays,
+  addWeeks,
+  addMonths,
+  subMonths,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  isSameMonth,
+  parse,
+  addMinutes
+} from 'date-fns';
+import { zhTW } from 'date-fns/locale/zh-TW';
+
+/* ---------- 型別定義 ---------- */
+type ViewType = 'month' | 'week' | 'day';
+
+interface Student {
   id: number;
   name: string;
   level: string;
-};
+}
 
-type Lesson = {
+interface Lesson {
   id: number;
   studentId: number;
   date: Date;
   startTime: string;
   endTime: string;
   topic: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
-};
+  status?: 'scheduled' | 'completed' | 'cancelled';
+}
 
-const SchedulePage: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [weekStart, setWeekStart] = useState<Date>(startOfWeek(new Date()));
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<number>('');
-  const [topic, setTopic] = useState('');
-  
-  // 模擬數據
-  const [students, setStudents] = useState<Student[]>([
+/* ---------- 主元件 ---------- */
+export default function SchedulePage() {
+  /* ---------------- 學生清單 ---------------- */
+  const [students] = useState<Student[]>([
     { id: 1, name: '張小明', level: '初級' },
     { id: 2, name: '王大同', level: '中級' },
     { id: 3, name: '李小花', level: '高級' },
+    { id: 4, name: '林小華', level: '初級' },
+    { id: 5, name: '陳大明', level: '中級' }
   ]);
-  
+
+  /* ---------------- 課程清單 ---------------- */
   const [lessons, setLessons] = useState<Lesson[]>([
     {
       id: 1,
@@ -68,42 +90,51 @@ const SchedulePage: React.FC = () => {
       startTime: '14:00',
       endTime: '15:30',
       topic: 'React 基礎教學',
-      status: 'scheduled',
+      status: 'scheduled'
     },
     {
       id: 2,
       studentId: 2,
       date: addDays(new Date(), 2),
-      startTime: '16:00',
-      endTime: '17:30',
-      topic: 'TypeScript 進階',
-      status: 'scheduled',
-    },
+      startTime: '10:00',
+      endTime: '11:30',
+      topic: '進階 React',
+      status: 'scheduled'
+    }
   ]);
 
-  // 生成一週的日期
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  
-  // 可選的時間段
-  const timeSlots = [
-    '09:00', '10:30', '14:00', '16:00', '19:00', '20:30'
-  ];
+  /* ---------------- UI 狀態 ---------------- */
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [view, setView] = useState<ViewType>('day');
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<number | ''>('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [topic, setTopic] = useState('');
 
-  const handlePrevWeek = () => {
-    setWeekStart(subWeeks(weekStart, 1));
-  };
+  /* ---------- 時段表：08:00 ~ 21:30, 每 30 分 ---------- */
+  const timeSlots = React.useMemo(() => {
+    const base = new Date();          // 只取時間部分
+    base.setHours(8, 0, 0, 0);
+    return Array.from({ length: 28 }, (_, i) =>
+      format(addMinutes(base, i * 30), 'HH:mm')
+    );
+  }, []);
 
-  const handleNextWeek = () => {
-    setWeekStart(addWeeks(weekStart, 1));
-  };
+  /* ---------- 工具函式 ---------- */
+  const getLessonsForDate = (date: Date) =>
+    lessons.filter(l => isSameDay(l.date, date));
 
-  const handleToday = () => {
-    const today = new Date();
-    setWeekStart(startOfWeek(today));
-    setCurrentDate(today);
-  };
+  const getLessonsForTimeSlot = (date: Date, time: string) =>
+    lessons.filter(
+      l => isSameDay(l.date, date) && l.startTime === time
+    );
 
-  const handleOpenDialog = (date: Date) => {
+  const getStudentName = (id: number) =>
+    students.find(s => s.id === id)?.name ?? '未知學生';
+
+  /* ---------- 對話框開關 ---------- */
+  const handleDateClick = (date: Date) => {
     setSelectedDate(date);
     setOpenDialog(true);
   };
@@ -111,206 +142,257 @@ const SchedulePage: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedDate(null);
-    setSelectedTime('');
     setSelectedStudent('');
+    setSelectedTime('');
     setTopic('');
   };
 
+  /* ---------- 新增課程 ---------- */
   const handleAddLesson = () => {
-    if (!selectedDate || !selectedTime || !selectedStudent || !topic) return;
-    
+    if (!selectedDate || !selectedStudent || !selectedTime) return;
+
     const newLesson: Lesson = {
       id: lessons.length + 1,
-      studentId: selectedStudent,
+      studentId: Number(selectedStudent),
       date: selectedDate,
       startTime: selectedTime,
-      endTime: `${String(Number(selectedTime.split(':')[0]) + 1).padStart(2, '0')}:30`,
+      endTime: format(
+        addMinutes(parse(selectedTime, 'HH:mm', selectedDate), 90),
+        'HH:mm'
+      ),
       topic,
-      status: 'scheduled',
+      status: 'scheduled'
     };
-    
-    setLessons([...lessons, newLesson]);
+
+    setLessons(prev => [...prev, newLesson]);
     handleCloseDialog();
   };
 
-  const getLessonsForDay = (day: Date) => {
-    return lessons.filter(lesson => 
-      isSameDay(new Date(lesson.date), day)
-    ).sort((a, b) => a.startTime.localeCompare(b.startTime));
+  /* ---------- 檢視切換 ---------- */
+  const handleViewChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    newView: ViewType
+  ) => {
+    if (newView) setView(newView);
   };
 
-  const getStudentName = (studentId: number) => {
-    const student = students.find(s => s.id === studentId);
-    return student ? student.name : '未知學生';
+  /* ---------- 日期移動 ---------- */
+  const handlePrevious = () => {
+    setCurrentDate(prev =>
+      view === 'week'
+        ? addWeeks(prev, -1)
+        : view === 'month'
+        ? subMonths(prev, 1)
+        : addDays(prev, -1)
+    );
   };
 
+  const handleNext = () => {
+    setCurrentDate(prev =>
+      view === 'week'
+        ? addWeeks(prev, 1)
+        : view === 'month'
+        ? addMonths(prev, 1)
+        : addDays(prev, 1)
+    );
+  };
+
+  const handleToday = () => setCurrentDate(new Date());
+
+  /* ---------- 月視圖 ---------- */
+  const renderMonthView = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+
+    const days: JSX.Element[] = [];
+    let day = startDate;
+    while (day <= endDate) {
+      days.push(
+        <div
+          key={day.toISOString()}
+          className={`day ${!isSameMonth(day, monthStart) ? 'disabled' : ''} ${
+            isToday(day) ? 'today' : ''
+          }`}
+          onClick={() => handleDateClick(day)}
+        >
+          <span className='date'>{format(day, 'd')}</span>
+          {getLessonsForDate(day).map(lesson => (
+            <div key={lesson.id} className='lesson'>
+              {lesson.topic}
+            </div>
+          ))}
+        </div>
+      );
+      day = addDays(day, 1);
+    }
+
+    return (
+      <div className='month-view'>
+        {['一', '二', '三', '四', '五', '六', '日'].map(d => (
+          <div key={d} className='day-header'>
+            {d}
+          </div>
+        ))}
+        {days}
+      </div>
+    );
+  };
+
+  /* ---------- 週視圖 ---------- */
+  const renderWeekView = () => {
+    const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+    return (
+      <div className='week-view'>
+        {Array.from({ length: 7 }, (_, i) => {
+          const currentDay = addDays(startDate, i);
+          return (
+            <div key={i} className='day'>
+              <div className='day-header'>
+                {format(currentDay, 'M/d (E)', { locale: zhTW })}
+              </div>
+              <div className='time-slots'>
+                {timeSlots.map(time => (
+                  <div key={time} className='time-slot'>
+                    <div className='time'>{time}</div>
+                    <div className='lessons'>
+                      {getLessonsForTimeSlot(currentDay, time).map(l => (
+                        <div key={l.id} className='lesson'>
+                          {getStudentName(l.studentId)}：{l.topic}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  /* ---------- 日視圖 ---------- */
+  const renderDayView = () => (
+    <div className='day-view'>
+      <div className='time-slots'>
+        {timeSlots.map(time => (
+          <div key={time} className='time-slot'>
+            <div className='time'>{time}</div>
+            <div className='lessons'>
+              {getLessonsForTimeSlot(currentDate, time).map(l => (
+                <div key={l.id} className='lesson'>
+                  <div className='student-name'>{getStudentName(l.studentId)}</div>
+                  <div className='lesson-topic'>{l.topic}</div>
+                  <div className='lesson-time'>
+                    {l.startTime} - {l.endTime}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  /* ---------- 畫面 ---------- */
   return (
-    <Box>
-      {/* 日曆標題和導航 */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">課表管理</Typography>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Button
-            variant="outlined"
-            startIcon={<TodayIcon />}
-            onClick={handleToday}
-          >
-            今天
-          </Button>
-          <IconButton onClick={handlePrevWeek}>
-            <ArrowBackIosIcon />
+    <Box sx={{ p: 3 }}>
+      {/* -------------- 工具列 -------------- */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3
+        }}
+      >
+        <ToggleButtonGroup
+          color='primary'
+          value={view}
+          exclusive
+          onChange={handleViewChange}
+          aria-label='schedule view'
+        >
+          <ToggleButton value='month'>月</ToggleButton>
+          <ToggleButton value='week'>週</ToggleButton>
+          <ToggleButton value='day'>日</ToggleButton>
+        </ToggleButtonGroup>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <IconButton aria-label='previous' size='small' onClick={handlePrevious}>
+            ‹
           </IconButton>
-          <Typography variant="h6">
-            {format(weekStart, 'yyyy年MM月dd日')} - {format(addDays(weekStart, 6), 'yyyy年MM月dd日')}
+          <Typography variant='h6'>
+            {format(currentDate, 'yyyy年M月d日 (E)', { locale: zhTW })}
           </Typography>
-          <IconButton onClick={handleNextWeek}>
-            <ArrowForwardIosIcon />
+          <IconButton aria-label='next' size='small' onClick={handleNext}>
+            ›
           </IconButton>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog(new Date())}
-          >
-            新增課程
+          <Button variant='outlined' onClick={handleToday} startIcon={<TodayIcon />}>
+            今天
           </Button>
         </Box>
       </Box>
 
-      {/* 週視圖 */}
-      <Grid container spacing={1}>
-        {/* 表頭 - 星期 */}
-        {weekDays.map((day) => (
-          <Grid item xs key={day.toString()}>
-            <Paper elevation={1} sx={{ p: 1, textAlign: 'center' }}>
-              <Typography variant="subtitle2">
-                {format(day, 'EEEE', { locale: zhTW })}
-              </Typography>
-              <Typography
-                variant={isSameDay(day, new Date()) ? 'h6' : 'body1'}
-                color={isSameDay(day, new Date()) ? 'primary' : 'inherit'}
-                sx={{
-                  width: 30,
-                  height: 30,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: '50%',
-                  bgcolor: isSameDay(day, new Date()) ? 'primary.light' : 'transparent',
-                  color: isSameDay(day, new Date()) ? 'primary.contrastText' : 'inherit',
-                }}
-              >
-                {format(day, 'd')}
-              </Typography>
-            </Paper>
-            
-            {/* 當天課程 */}
-            <Box mt={1}>
-              {getLessonsForDay(day).map((lesson) => (
-                <Paper 
-                  key={lesson.id} 
-                  elevation={2} 
-                  sx={{ 
-                    p: 1, 
-                    mb: 1,
-                    borderLeft: '4px solid',
-                    borderColor: lesson.status === 'completed' ? 'success.main' : 
-                                  lesson.status === 'cancelled' ? 'error.main' : 'primary.main',
-                  }}
-                >
-                  <Typography variant="caption" color="textSecondary">
-                    {lesson.startTime}-{lesson.endTime}
-                  </Typography>
-                  <Typography variant="subtitle2">
-                    {getStudentName(lesson.studentId)}
-                  </Typography>
-                  <Typography variant="body2" noWrap>
-                    {lesson.topic}
-                  </Typography>
-                </Paper>
-              ))}
-              
-              <Button 
-                fullWidth 
-                size="small"
-                startIcon={<AddIcon />} 
-                onClick={() => handleOpenDialog(day)}
-                sx={{ mt: 1 }}
-              >
-                新增
-              </Button>
-            </Box>
-          </Grid>
-        ))}
-      </Grid>
+      {/* -------------- 主體 -------------- */}
+      <Paper sx={{ p: 2, minHeight: '70vh' }}>
+        {view === 'month' && renderMonthView()}
+        {view === 'week' && renderWeekView()}
+        {view === 'day' && renderDayView()}
+      </Paper>
 
-      {/* 新增課程對話框 */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      {/* -------------- 新增課程 Dialog -------------- */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth='sm' fullWidth>
         <DialogTitle>新增課程</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
-              <DatePicker
-                label="上課日期"
-                value={selectedDate}
-                onChange={(newValue) => setSelectedDate(newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth />}
-              />
-            </LocalizationProvider>
-            
-            <FormControl fullWidth>
-              <InputLabel id="time-select-label">上課時間</InputLabel>
-              <Select
-                labelId="time-select-label"
-                value={selectedTime}
-                label="上課時間"
-                onChange={(e: SelectChangeEvent) => setSelectedTime(e.target.value as string)}
-              >
-                {timeSlots.map((time) => (
-                  <MenuItem key={time} value={time}>
-                    {time}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth>
-              <InputLabel id="student-select-label">學生</InputLabel>
-              <Select
-                labelId="student-select-label"
-                value={selectedStudent}
-                label="學生"
-                onChange={(e: SelectChangeEvent<number>) => setSelectedStudent(e.target.value as number)}
-              >
-                {students.map((student) => (
-                  <MenuItem key={student.id} value={student.id}>
-                    {student.name} ({student.level})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
+          <Box sx={{ mt: 2 }}>
             <TextField
-              label="課程主題"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              autoFocus
+              margin='normal'
+              label='主題'
               fullWidth
-              margin="normal"
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+            />
+            <FormControl fullWidth margin='normal'>
+              <InputLabel>學生</InputLabel>
+              <Select
+                value={selectedStudent}
+                label='學生'
+                onChange={e => setSelectedStudent(e.target.value as number)}
+              >
+                {students.map(s => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.name}（{s.level}）
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              margin='normal'
+              label='時間'
+              type='time'
+              fullWidth
+              value={selectedTime}
+              onChange={e => setSelectedTime(e.target.value)}
+              InputLabelProps={{ shrink: true }}
             />
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button onClick={handleCloseDialog}>取消</Button>
-          <Button 
-            onClick={handleAddLesson} 
-            variant="contained"
-            disabled={!selectedDate || !selectedTime || !selectedStudent || !topic}
+          <Button
+            variant='contained'
+            onClick={handleAddLesson}
+            disabled={!topic || !selectedStudent || !selectedTime}
           >
-            儲存
+            新增課程
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
-};
-
-export default SchedulePage;
+}

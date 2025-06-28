@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,7 +20,9 @@ import {
   Select,
   MenuItem,
   Chip,
-  IconButton
+  IconButton,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -31,60 +33,68 @@ interface Course {
   name: string;
   category: string;
   level: string;
-  duration: number; // 分鐘
+  duration_minutes: number;
   price: number;
   description: string;
-  prerequisites: string[];
+  prerequisites: string;
 }
 
 const CoursesPage: React.FC = () => {
-  const [courses, setCourses] = useState<Course[]>([
-    {
-      id: 1,
-      name: 'Python 基礎程式設計',
-      category: 'Python',
-      level: '初級',
-      duration: 90,
-      price: 1200,
-      description: '學習 Python 基本語法、變數、迴圈等概念',
-      prerequisites: []
-    },
-    {
-      id: 2,
-      name: 'React 前端開發',
-      category: 'Web開發',
-      level: '中級',
-      duration: 120,
-      price: 1500,
-      description: '學習 React 元件開發、狀態管理、路由等',
-      prerequisites: ['JavaScript 基礎', 'HTML/CSS']
-    },
-    {
-      id: 3,
-      name: '資料結構與演算法',
-      category: '演算法',
-      level: '高級',
-      duration: 90,
-      price: 1800,
-      description: '深入學習各種資料結構與演算法設計',
-      prerequisites: ['Python 基礎程式設計']
-    }
-  ]);
-
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
     level: '',
-    duration: 90,
+    duration_minutes: 90,
     price: 0,
     description: '',
     prerequisites: ''
   });
 
-  const categories = ['Python', 'JavaScript', 'Web開發', '演算法', '資料科學', '機器學習'];
   const levels = ['初級', '中級', '高級'];
+
+  // 載入課程資料
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/courses');
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses');
+      }
+      const data = await response.json();
+      setCourses(data);
+      setError(null);
+    } catch (err) {
+      setError('無法載入課程資料，請稍後再試');
+      console.error('Error fetching courses:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 載入課程分類
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/courses/categories');
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+      const data = await response.json();
+      setCategories(data);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCourses();
+    fetchCategories();
+  }, []);
 
   const handleOpenDialog = (course?: Course) => {
     if (course) {
@@ -93,10 +103,10 @@ const CoursesPage: React.FC = () => {
         name: course.name,
         category: course.category,
         level: course.level,
-        duration: course.duration,
+        duration_minutes: course.duration_minutes,
         price: course.price,
         description: course.description,
-        prerequisites: course.prerequisites.join(', ')
+        prerequisites: course.prerequisites
       });
     } else {
       setEditingCourse(null);
@@ -104,7 +114,7 @@ const CoursesPage: React.FC = () => {
         name: '',
         category: '',
         level: '',
-        duration: 90,
+        duration_minutes: 90,
         price: 0,
         description: '',
         prerequisites: ''
@@ -118,36 +128,52 @@ const CoursesPage: React.FC = () => {
     setEditingCourse(null);
   };
 
-  const handleSave = () => {
-    const courseData = {
-      ...formData,
-      prerequisites: formData.prerequisites
-        .split(',')
-        .map(p => p.trim())
-        .filter(p => p.length > 0)
-    };
+  const handleSave = async () => {
+    try {
+      const url = editingCourse ? `/api/courses/${editingCourse.id}` : '/api/courses';
+      const method = editingCourse ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-    if (editingCourse) {
-      // 編輯現有課程
-      setCourses(prev => prev.map(course =>
-        course.id === editingCourse.id
-          ? { ...course, ...courseData }
-          : course
-      ));
-    } else {
-      // 新增課程
-      const newCourse: Course = {
-        id: Math.max(...courses.map(c => c.id)) + 1,
-        ...courseData
-      };
-      setCourses(prev => [...prev, newCourse]);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save course');
+      }
+
+      await fetchCourses(); // 重新載入資料
+      handleCloseDialog();
+      setError(null);
+    } catch (err) {
+      setError('儲存課程時發生錯誤，請稍後再試');
+      console.error('Error saving course:', err);
     }
-    handleCloseDialog();
   };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm('確定要刪除此課程嗎？')) {
-      setCourses(prev => prev.filter(course => course.id !== id));
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('確定要刪除此課程嗎？')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/courses/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete course');
+      }
+
+      await fetchCourses(); // 重新載入資料
+      setError(null);
+    } catch (err) {
+      setError('刪除課程時發生錯誤，請稍後再試');
+      console.error('Error deleting course:', err);
     }
   };
 
@@ -160,20 +186,45 @@ const CoursesPage: React.FC = () => {
     }
   };
 
+  // 解析先修課程字串為陣列
+  const parsePrerequisites = (prerequisites: string): string[] => {
+    if (!prerequisites || prerequisites.trim() === '') return [];
+    return prerequisites.split(',').map(p => p.trim()).filter(p => p.length > 0);
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
           課程管理
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          新增課程
-        </Button>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="body1" sx={{ color: 'white' }}>
+            目前課程數量：{courses.length}
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            新增課程
+          </Button>
+        </Box>
       </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       <TableContainer component={Paper}>
         <Table>
@@ -207,10 +258,10 @@ const CoursesPage: React.FC = () => {
                     size="small"
                   />
                 </TableCell>
-                <TableCell>{course.duration}</TableCell>
+                <TableCell>{course.duration_minutes}</TableCell>
                 <TableCell>NT$ {course.price}</TableCell>
                 <TableCell>
-                  {course.prerequisites.map((prereq, index) => (
+                  {parsePrerequisites(course.prerequisites).map((prereq, index) => (
                     <Chip
                       key={index}
                       label={prereq}
@@ -253,6 +304,7 @@ const CoursesPage: React.FC = () => {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               margin="normal"
+              required
             />
             
             <Box display="flex" gap={2}>
@@ -266,6 +318,22 @@ const CoursesPage: React.FC = () => {
                   {categories.map((cat) => (
                     <MenuItem key={cat} value={cat}>{cat}</MenuItem>
                   ))}
+                  {/* 允許手動輸入新分類 */}
+                  <MenuItem value="">
+                    <TextField
+                      size="small"
+                      placeholder="輸入新分類"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const value = (e.target as HTMLInputElement).value;
+                          if (value) {
+                            setFormData({ ...formData, category: value });
+                          }
+                        }
+                      }}
+                    />
+                  </MenuItem>
                 </Select>
               </FormControl>
               
@@ -288,9 +356,10 @@ const CoursesPage: React.FC = () => {
                 fullWidth
                 label="課程時長 (分鐘)"
                 type="number"
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
+                value={formData.duration_minutes}
+                onChange={(e) => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
                 margin="normal"
+                inputProps={{ min: 1 }}
               />
               
               <TextField
@@ -300,6 +369,7 @@ const CoursesPage: React.FC = () => {
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                 margin="normal"
+                inputProps={{ min: 0, step: 0.01 }}
               />
             </Box>
 

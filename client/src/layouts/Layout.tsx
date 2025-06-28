@@ -4,17 +4,21 @@ import { Link as RouterLink, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ScheduleIcon from '@mui/icons-material/CalendarToday';
 import PeopleIcon from '@mui/icons-material/People';
+import SchoolIcon from '@mui/icons-material/AccountBalance';
 import BookIcon from '@mui/icons-material/MenuBook';
 import TeacherIcon from '@mui/icons-material/School';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 
 const drawerWidth = 160;  // 最左側側邊欄寬度
 
 const menuItems = [  
   { text: '課表管理', icon: <ScheduleIcon />, path: '/schedule' },
   { text: '學生管理', icon: <PeopleIcon />, path: '/students' },
+  { text: '學校管理', icon: <SchoolIcon />, path: '/schools' },
   { text: '課程管理', icon: <BookIcon />, path: '/courses' },
   { text: '師資管理', icon: <TeacherIcon />, path: '/teachers' },
   { text: '統計報表', icon: <DashboardIcon />, path: '/' },
+  { text: '用戶管理', icon: <ManageAccountsIcon />, path: '/users' },
 ];
 
 interface LayoutProps 

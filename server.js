@@ -79,13 +79,93 @@ app.get('/', (req, res) => {
     res.send('後端伺服器已啟動！');
 });
 
+// --- 學生管理 API 端點 ---
+
 // [READ] 取得所有學生資料
 app.get('/api/students', async (req, res, next) => {
     try {
-        const result = await pool.request().query('SELECT * FROM students ORDER BY name ASC');
+        const { school, grade, level_type, gender, class_type } = req.query;
+        let query = 'SELECT * FROM students WHERE is_active = 1';
+        const request = pool.request();
+        
+        if (school) {
+            query += ' AND school = @school';
+            request.input('school', sql.NVarChar, school);
+        }
+        if (grade) {
+            query += ' AND grade = @grade';
+            request.input('grade', sql.NVarChar, grade);
+        }
+        if (level_type) {
+            query += ' AND level_type = @level_type';
+            request.input('level_type', sql.NVarChar, level_type);
+        }
+        if (gender) {
+            query += ' AND gender = @gender';
+            request.input('gender', sql.NVarChar, gender);
+        }
+        if (class_type) {
+            query += ' AND class_type = @class_type';
+            request.input('class_type', sql.NVarChar, class_type);
+        }
+        
+        query += ' ORDER BY school, grade, class_type, chinese_name';
+        
+        const result = await request.query(query);
         res.json(result.recordset);
     } catch (err) {
-        next(err); // 將錯誤傳遞給集中錯誤處理器
+        next(err);
+    }
+});
+
+// [GET] 取得學生統計資訊
+app.get('/api/students/stats', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                COUNT(*) as total_students,
+                SUM(CASE WHEN gender = N'男' THEN 1 ELSE 0 END) as male_students,
+                SUM(CASE WHEN gender = N'女' THEN 1 ELSE 0 END) as female_students,
+                school,
+                COUNT(*) as school_count,
+                grade,
+                COUNT(*) as grade_count,
+                level_type,
+                COUNT(*) as level_count
+            FROM students 
+            WHERE is_active = 1
+            GROUP BY ROLLUP(school), ROLLUP(grade), ROLLUP(level_type)
+            ORDER BY school, grade, level_type
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得學校列表
+app.get('/api/students/schools', async (req, res, next) => {
+    try {
+        const result = await pool.request().query('SELECT DISTINCT school FROM students WHERE is_active = 1 ORDER BY school');
+        res.json(result.recordset.map(row => row.school));
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得單一學生
+app.get('/api/students/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT * FROM students WHERE id = @id AND is_active = 1');
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
     }
 });
 
@@ -93,8 +173,16 @@ app.get('/api/students', async (req, res, next) => {
 app.post(
     '/api/students',
     // --- 驗證規則 ---
-    body('name').trim().notEmpty().withMessage('學生姓名不得為空'),
-    body('email').optional({ values: 'falsy' }).isEmail().withMessage('請輸入有效的 Email 地址'),
+    body('chinese_name').notEmpty().withMessage('中文姓名為必填'),
+    body('english_name').notEmpty().withMessage('英文姓名為必填'),
+    body('school').notEmpty().withMessage('學校為必填'),
+    body('grade').notEmpty().withMessage('年級為必填'),
+    body('gender').isIn(['男', '女']).withMessage('無效的性別'),
+    body('level_type').isIn(['初級', '中級', '進階']).withMessage('無效的程度'),
+    body('class_type').notEmpty().withMessage('班別為必填'),
+    body('student_email').optional().isEmail().withMessage('無效的學生電子信箱格式'),
+    body('father_email').optional().isEmail().withMessage('無效的父親電子信箱格式'),
+    body('mother_email').optional().isEmail().withMessage('無效的母親電子信箱格式'),
     // --- 路由處理器 ---
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -104,16 +192,46 @@ app.post(
         }
 
         try {
-            const { name, email, phone, location, platform, notes } = req.body;
+            const { 
+                chinese_name, english_name, student_phone, student_email, student_line,
+                father_name, father_phone, father_line,
+                mother_name, mother_phone, mother_line,
+                school, grade, gender, level_type, class_type, notes
+            } = req.body;
+            
             const result = await pool.request()
-                .input('name', sql.NVarChar, name)
-                .input('email', sql.NVarChar, email)
-                .input('phone', sql.NVarChar, phone)
-                .input('location', sql.NVarChar, location)
-                .input('platform', sql.NVarChar, platform)
-                .input('notes', sql.NText, notes) // 使用 NText 對應 NVARCHAR(MAX)
-                .input('status', sql.NVarChar, 'active')
-                .query('INSERT INTO students (name, email, phone, location, platform, notes, status) OUTPUT inserted.* VALUES (@name, @email, @phone, @location, @platform, @notes, @status)');
+                .input('chinese_name', sql.NVarChar, chinese_name)
+                .input('english_name', sql.NVarChar, english_name)
+                .input('student_phone', sql.NVarChar, student_phone || null)
+                .input('student_email', sql.NVarChar, student_email || null)
+                .input('student_line', sql.NVarChar, student_line || null)
+                .input('father_name', sql.NVarChar, father_name || null)
+                .input('father_phone', sql.NVarChar, father_phone || null)
+                .input('father_line', sql.NVarChar, father_line || null)
+                .input('mother_name', sql.NVarChar, mother_name || null)
+                .input('mother_phone', sql.NVarChar, mother_phone || null)
+                .input('mother_line', sql.NVarChar, mother_line || null)
+                .input('school', sql.NVarChar, school)
+                .input('grade', sql.NVarChar, grade)
+                .input('gender', sql.NVarChar, gender)
+                .input('level_type', sql.NVarChar, level_type)
+                .input('class_type', sql.NVarChar, class_type)
+                .input('notes', sql.NVarChar, notes || null)
+                .query(`
+                    INSERT INTO students (
+                        chinese_name, english_name, student_phone, student_email, student_line,
+                        father_name, father_phone, father_line,
+                        mother_name, mother_phone, mother_line,
+                        school, grade, gender, level_type, class_type, notes
+                    ) 
+                    OUTPUT inserted.* 
+                    VALUES (
+                        @chinese_name, @english_name, @student_phone, @student_email, @student_line,
+                        @father_name, @father_phone, @father_line,
+                        @mother_name, @mother_phone, @mother_line,
+                        @school, @grade, @gender, @level_type, @class_type, @notes
+                    )
+                `);
             res.status(201).json(result.recordset[0]);
         } catch (err) {
             next(err);
@@ -125,9 +243,14 @@ app.post(
 app.put(
     '/api/students/:id',
     // --- 驗證規則 ---
-    body('name').trim().notEmpty().withMessage('學生姓名不得為空'),
-    body('email').optional({ values: 'falsy' }).isEmail().withMessage('請輸入有效的 Email 地址'),
-    body('status').isIn(['active', 'graduated']).withMessage('無效的學生狀態'),
+    body('chinese_name').notEmpty().withMessage('中文姓名為必填'),
+    body('english_name').notEmpty().withMessage('英文姓名為必填'),
+    body('school').notEmpty().withMessage('學校為必填'),
+    body('grade').notEmpty().withMessage('年級為必填'),
+    body('gender').isIn(['男', '女']).withMessage('無效的性別'),
+    body('level_type').isIn(['初級', '中級', '進階']).withMessage('無效的程度'),
+    body('class_type').notEmpty().withMessage('班別為必填'),
+    body('student_email').optional().isEmail().withMessage('無效的學生電子信箱格式'),
     // --- 路由處理器 ---
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -138,17 +261,43 @@ app.put(
 
         try {
             const { id } = req.params;
-            const { name, email, phone, location, platform, notes, status } = req.body;
+            const { 
+                chinese_name, english_name, student_phone, student_email, student_line,
+                father_name, father_phone, father_line,
+                mother_name, mother_phone, mother_line,
+                school, grade, gender, level_type, class_type, notes
+            } = req.body;
+            
             const result = await pool.request()
                 .input('id', sql.Int, id)
-                .input('name', sql.NVarChar, name)
-                .input('email', sql.NVarChar, email)
-                .input('phone', sql.NVarChar, phone)
-                .input('location', sql.NVarChar, location)
-                .input('platform', sql.NVarChar, platform)
-                .input('notes', sql.NText, notes)
-                .input('status', sql.NVarChar, status)
-                .query('UPDATE students SET name = @name, email = @email, phone = @phone, location = @location, platform = @platform, notes = @notes, status = @status WHERE id = @id; SELECT * FROM students WHERE id = @id;');
+                .input('chinese_name', sql.NVarChar, chinese_name)
+                .input('english_name', sql.NVarChar, english_name)
+                .input('student_phone', sql.NVarChar, student_phone || null)
+                .input('student_email', sql.NVarChar, student_email || null)
+                .input('student_line', sql.NVarChar, student_line || null)
+                .input('father_name', sql.NVarChar, father_name || null)
+                .input('father_phone', sql.NVarChar, father_phone || null)
+                .input('father_line', sql.NVarChar, father_line || null)
+                .input('mother_name', sql.NVarChar, mother_name || null)
+                .input('mother_phone', sql.NVarChar, mother_phone || null)
+                .input('mother_line', sql.NVarChar, mother_line || null)
+                .input('school', sql.NVarChar, school)
+                .input('grade', sql.NVarChar, grade)
+                .input('gender', sql.NVarChar, gender)
+                .input('level_type', sql.NVarChar, level_type)
+                .input('class_type', sql.NVarChar, class_type)
+                .input('notes', sql.NVarChar, notes || null)
+                .query(`
+                    UPDATE students 
+                    SET chinese_name = @chinese_name, english_name = @english_name, 
+                        student_phone = @student_phone, student_email = @student_email, student_line = @student_line,
+                        father_name = @father_name, father_phone = @father_phone, father_line = @father_line,
+                        mother_name = @mother_name, mother_phone = @mother_phone, mother_line = @mother_line,
+                        school = @school, grade = @grade, gender = @gender, 
+                        level_type = @level_type, class_type = @class_type, notes = @notes, updated_at = GETDATE()
+                    WHERE id = @id AND is_active = 1;
+                    SELECT * FROM students WHERE id = @id AND is_active = 1;
+                `);
             if (result.recordset.length === 0) {
                 return res.status(404).json({ error: 'Student not found' });
             }
@@ -159,20 +308,20 @@ app.put(
     }
 );
 
-// [UPDATE] 更新學生狀態 (例如：標記為畢業)
-app.patch('/api/students/:id/status', async (req, res) => {
+// [UPDATE] 更新學生狀態 (啟用/停用)
+app.patch('/api/students/:id/status', async (req, res, next) => {
     try {
-        const { id } = req.params; // 'active' (在校生) 或 'graduated' (畢業生)
-        const { status } = req.body; // 'active' or 'graduated'
+        const { id } = req.params;
+        const { is_active } = req.body;
 
-        if (!status || !['active', 'graduated'].includes(status)) {
+        if (typeof is_active !== 'boolean') {
             return res.status(400).json({ error: 'Invalid status provided' });
         }
 
         const result = await pool.request()
             .input('id', sql.Int, id)
-            .input('status', sql.NVarChar, status)
-            .query('UPDATE students SET status = @status WHERE id = @id; SELECT * FROM students WHERE id = @id;');
+            .input('is_active', sql.Bit, is_active)
+            .query('UPDATE students SET is_active = @is_active, updated_at = GETDATE() WHERE id = @id; SELECT * FROM students WHERE id = @id;');
 
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: 'Student not found' });
@@ -183,44 +332,260 @@ app.patch('/api/students/:id/status', async (req, res) => {
     }
 });
 
-// [DELETE] 永久刪除一位學生
-app.delete('/api/students/:id', async (req, res) => {
+// [DELETE] 刪除一位學生 (軟刪除)
+app.delete('/api/students/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
         const result = await pool.request()
             .input('id', sql.Int, id)
-            .query('DELETE FROM students WHERE id = @id');
+            .query('UPDATE students SET is_active = 0, updated_at = GETDATE() WHERE id = @id AND is_active = 1');
 
         if (result.rowsAffected[0] === 0) {
             return res.status(404).json({ error: 'Student not found' });
         }
-        res.status(204).send(); // 204 No Content: 成功刪除，沒有內容返回
+        res.status(204).send();
     } catch (err) {
         next(err);
     }
 });
 
-// [CREATE/UPDATE] 上傳學生大頭貼
-app.post('/api/students/:id/upload-avatar', upload.single('avatar'), async (req, res, next) => {
+// --- 學生課表管理 API 端點 ---
+
+// [READ] 取得所有課表
+app.get('/api/schedules', async (req, res, next) => {
+    try {
+        const { student_id, day_of_week, date_range } = req.query;
+        let query = `
+            SELECT 
+                ss.*,
+                s.chinese_name as student_name,
+                s.english_name as student_english_name,
+                s.school,
+                s.grade,
+                s.level_type
+            FROM student_schedules ss
+            INNER JOIN students s ON ss.student_id = s.id
+            WHERE ss.is_active = 1 AND s.is_active = 1
+        `;
+        const request = pool.request();
+        
+        if (student_id) {
+            query += ' AND ss.student_id = @student_id';
+            request.input('student_id', sql.Int, student_id);
+        }
+        
+        if (day_of_week) {
+            query += ' AND ss.day_of_week = @day_of_week';
+            request.input('day_of_week', sql.NVarChar, day_of_week);
+        }
+        
+        query += ' ORDER BY ss.day_of_week, ss.start_time, s.chinese_name';
+        
+        const result = await request.query(query);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得特定日期範圍的課表（用於月曆顯示）
+app.get('/api/schedules/calendar', async (req, res, next) => {
+    try {
+        const { start_date, end_date, view_type } = req.query;
+        
+                 // 基本課表查詢，包含學生資訊
+         let query = `
+             SELECT 
+                 ss.id,
+                 ss.student_id,
+                 ss.day_of_week,
+                                 ss.start_time,
+                 ss.end_time,
+                 ss.subject as course_name,
+                 null as teacher_name,
+                 s.chinese_name as student_name,
+                 s.english_name as student_english_name,
+                 s.school,
+                 s.grade,
+                 s.level_type,
+                 s.class_type
+             FROM student_schedules ss
+             INNER JOIN students s ON ss.student_id = s.id
+             WHERE ss.is_active = 1 AND s.is_active = 1
+         `;
+        
+        const request = pool.request();
+        
+        // 根據視圖類型添加過濾條件
+        if (view_type === 'day' && start_date) {
+            // 日視圖：查詢特定日期對應的星期幾
+            const date = new Date(start_date);
+            const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const dayOfWeek = dayNames[date.getDay()];
+            
+            query += ' AND ss.day_of_week = @day_of_week';
+            request.input('day_of_week', sql.NVarChar, dayOfWeek);
+        }
+        
+        query += ' ORDER BY ss.day_of_week, ss.start_time, s.chinese_name';
+        
+        const result = await request.query(query);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得課表統計資訊
+app.get('/api/schedules/stats', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                COUNT(*) as total_schedules,
+                COUNT(DISTINCT student_id) as students_with_schedules,
+                day_of_week,
+                COUNT(*) as schedules_per_day
+            FROM student_schedules ss
+            INNER JOIN students s ON ss.student_id = s.id
+            WHERE ss.is_active = 1 AND s.is_active = 1
+            GROUP BY ROLLUP(day_of_week)
+            ORDER BY 
+                CASE day_of_week 
+                    WHEN '星期一' THEN 1 WHEN '星期二' THEN 2 WHEN '星期三' THEN 3 
+                    WHEN '星期四' THEN 4 WHEN '星期五' THEN 5 WHEN '星期六' THEN 6 
+                    WHEN '星期日' THEN 7 ELSE 8 
+                END
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得單一課表
+app.get('/api/schedules/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
-        if (!req.file) {
-            return res.status(400).json({ error: '沒有上傳檔案。' });
-        }
-
-        // 存在資料庫中的檔案路徑，例如：/uploads/avatar-162...jpg
-        const avatarUrl = `/uploads/${req.file.filename}`;
-
         const result = await pool.request()
             .input('id', sql.Int, id)
-            .input('avatar_url', sql.NVarChar, avatarUrl)
-            .query('UPDATE students SET avatar_url = @avatar_url WHERE id = @id; SELECT * FROM students WHERE id = @id;');
-
+            .query(`
+                SELECT 
+                    ss.*,
+                    s.chinese_name as student_name,
+                    s.english_name as student_english_name
+                FROM student_schedules ss
+                INNER JOIN students s ON ss.student_id = s.id
+                WHERE ss.id = @id AND ss.is_active = 1
+            `);
         if (result.recordset.length === 0) {
-            return res.status(404).json({ error: '找不到學生' });
+            return res.status(404).json({ error: 'Schedule not found' });
+        }
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [CREATE] 新增課表
+app.post(
+    '/api/schedules',
+    // --- 驗證規則 ---
+    body('student_id').isInt({ gt: 0 }).withMessage('必須選擇一位學生'),
+    body('day_of_week').isIn(['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']).withMessage('無效的星期'),
+    body('start_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('無效的開始時間格式'),
+    body('end_time').optional().matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('無效的結束時間格式'),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for POST /api/schedules: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        res.json(result.recordset[0]);
+        try {
+            const { student_id, day_of_week, start_time, end_time, course_name, teacher_name } = req.body;
+            
+            const result = await pool.request()
+                .input('student_id', sql.Int, student_id)
+                .input('day_of_week', sql.NVarChar, day_of_week)
+                .input('start_time', sql.Time, start_time)
+                .input('end_time', sql.Time, end_time || null)
+                .input('course_name', sql.NVarChar, course_name || null)
+                .input('teacher_name', sql.NVarChar, teacher_name || null)
+                .query(`
+                    INSERT INTO student_schedules (
+                        student_id, day_of_week, start_time, end_time, course_name, teacher_name
+                    ) 
+                    OUTPUT inserted.* 
+                    VALUES (
+                        @student_id, @day_of_week, @start_time, @end_time, @course_name, @teacher_name
+                    )
+                `);
+            res.status(201).json(result.recordset[0]);
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 更新課表
+app.put(
+    '/api/schedules/:id',
+    // --- 驗證規則 ---
+    body('student_id').isInt({ gt: 0 }).withMessage('必須選擇一位學生'),
+    body('day_of_week').isIn(['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']).withMessage('無效的星期'),
+    body('start_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('無效的開始時間格式'),
+    body('end_time').optional().matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('無效的結束時間格式'),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for PUT /api/schedules/${req.params.id}: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { id } = req.params;
+            const { student_id, day_of_week, start_time, end_time, course_name, teacher_name } = req.body;
+            
+            const result = await pool.request()
+                .input('id', sql.Int, id)
+                .input('student_id', sql.Int, student_id)
+                .input('day_of_week', sql.NVarChar, day_of_week)
+                .input('start_time', sql.Time, start_time)
+                .input('end_time', sql.Time, end_time || null)
+                .input('course_name', sql.NVarChar, course_name || null)
+                .input('teacher_name', sql.NVarChar, teacher_name || null)
+                .query(`
+                    UPDATE student_schedules 
+                    SET student_id = @student_id, day_of_week = @day_of_week, 
+                        start_time = @start_time, end_time = @end_time, 
+                        course_name = @course_name, teacher_name = @teacher_name, updated_at = GETDATE()
+                    WHERE id = @id AND is_active = 1;
+                    SELECT * FROM student_schedules WHERE id = @id AND is_active = 1;
+                `);
+            if (result.recordset.length === 0) {
+                return res.status(404).json({ error: 'Schedule not found' });
+            }
+            res.json(result.recordset[0]);
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// [DELETE] 刪除課表 (軟刪除)
+app.delete('/api/schedules/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('UPDATE student_schedules SET is_active = 0, updated_at = GETDATE() WHERE id = @id AND is_active = 1');
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Schedule not found' });
+        }
+        res.status(204).send();
     } catch (err) {
         next(err);
     }
@@ -392,6 +757,343 @@ app.delete('/api/lessons/:id', async (req, res, next) => {
             .query('DELETE FROM lessons WHERE id = @id');
         if (result.rowsAffected[0] === 0) {
             return res.status(404).json({ error: 'Lesson not found' });
+        }
+        res.status(204).send();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// --- 課程管理 API 端點 ---
+
+// [READ] 取得所有課程
+app.get('/api/courses', async (req, res, next) => {
+    try {
+        const result = await pool.request().query('SELECT * FROM courses WHERE is_active = 1 ORDER BY category, level, name');
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得課程分類列表 (必須放在 /api/courses/:id 之前)
+app.get('/api/courses/categories', async (req, res, next) => {
+    try {
+        const result = await pool.request().query('SELECT DISTINCT category FROM courses WHERE is_active = 1 ORDER BY category');
+        res.json(result.recordset.map(row => row.category));
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得單一課程
+app.get('/api/courses/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT * FROM courses WHERE id = @id AND is_active = 1');
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [CREATE] 新增一筆課程
+app.post(
+    '/api/courses',
+    // --- 驗證規則 ---
+    body('name').notEmpty().withMessage('課程名稱為必填'),
+    body('category').notEmpty().withMessage('課程分類為必填'),
+    body('level').isIn(['初級', '中級', '高級']).withMessage('無效的難度等級'),
+    body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
+    body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
+    body('description').optional(),
+    body('prerequisites').optional(),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for POST /api/courses: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+        try {
+            const { name, category, level, duration_minutes, price, description, prerequisites } = req.body;
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name)
+                .input('category', sql.NVarChar, category)
+                .input('level', sql.NVarChar, level)
+                .input('duration_minutes', sql.Int, duration_minutes)
+                .input('price', sql.Decimal, price)
+                .input('description', sql.NVarChar, description || '')
+                .input('prerequisites', sql.NVarChar, prerequisites || '')
+                .query(`
+                    INSERT INTO courses (name, category, level, duration_minutes, price, description, prerequisites) 
+                    OUTPUT inserted.* 
+                    VALUES (@name, @category, @level, @duration_minutes, @price, @description, @prerequisites)
+                `);
+            res.status(201).json(result.recordset[0]);
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 更新一筆現有課程
+app.put(
+    '/api/courses/:id',
+    // --- 驗證規則 ---
+    body('name').notEmpty().withMessage('課程名稱為必填'),
+    body('category').notEmpty().withMessage('課程分類為必填'),
+    body('level').isIn(['初級', '中級', '高級']).withMessage('無效的難度等級'),
+    body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
+    body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
+    body('description').optional(),
+    body('prerequisites').optional(),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for PUT /api/courses/${req.params.id}: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+        try {
+            const { id } = req.params;
+            const { name, category, level, duration_minutes, price, description, prerequisites } = req.body;
+            const result = await pool.request()
+                .input('id', sql.Int, id)
+                .input('name', sql.NVarChar, name)
+                .input('category', sql.NVarChar, category)
+                .input('level', sql.NVarChar, level)
+                .input('duration_minutes', sql.Int, duration_minutes)
+                .input('price', sql.Decimal, price)
+                .input('description', sql.NVarChar, description || '')
+                .input('prerequisites', sql.NVarChar, prerequisites || '')
+                .query(`
+                    UPDATE courses 
+                    SET name = @name, category = @category, level = @level, duration_minutes = @duration_minutes, 
+                        price = @price, description = @description, prerequisites = @prerequisites, updated_at = GETDATE()
+                    WHERE id = @id AND is_active = 1;
+                    SELECT * FROM courses WHERE id = @id AND is_active = 1;
+                `);
+            if (result.recordset.length === 0) {
+                return res.status(404).json({ error: 'Course not found' });
+            }
+            res.json(result.recordset[0]);
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// [DELETE] 刪除一筆課程 (軟刪除)
+app.delete('/api/courses/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('UPDATE courses SET is_active = 0, updated_at = GETDATE() WHERE id = @id AND is_active = 1');
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+        res.status(204).send();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// --- 學校管理 API 端點 ---
+
+// [READ] 取得所有學校
+app.get('/api/schools', async (req, res, next) => {
+    try {
+        const { type, district, education_level } = req.query;
+        let query = 'SELECT * FROM schools WHERE is_active = 1';
+        const request = pool.request();
+        
+        if (type) {
+            query += ' AND school_type = @type';
+            request.input('type', sql.NVarChar, type);
+        }
+        if (district) {
+            query += ' AND district = @district';
+            request.input('district', sql.NVarChar, district);
+        }
+        if (education_level) {
+            query += ' AND education_level = @education_level';
+            request.input('education_level', sql.NVarChar, education_level);
+        }
+        
+        query += ' ORDER BY district, school_type, short_name';
+        
+        const result = await request.query(query);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得學校統計資訊
+app.get('/api/schools/stats', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                COUNT(*) as total_schools,
+                SUM(CASE WHEN school_type = N'公立' THEN 1 ELSE 0 END) as public_schools,
+                SUM(CASE WHEN school_type = N'國立' THEN 1 ELSE 0 END) as national_schools,
+                SUM(CASE WHEN school_type = N'私立' THEN 1 ELSE 0 END) as private_schools,
+                SUM(our_student_count) as total_our_students,
+                district,
+                COUNT(*) as district_count
+            FROM schools 
+            WHERE is_active = 1
+            GROUP BY ROLLUP(district)
+            ORDER BY district
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得學校行政區列表
+app.get('/api/schools/districts', async (req, res, next) => {
+    try {
+        const result = await pool.request().query('SELECT DISTINCT district FROM schools WHERE is_active = 1 ORDER BY district');
+        res.json(result.recordset.map(row => row.district));
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得單一學校
+app.get('/api/schools/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT * FROM schools WHERE id = @id AND is_active = 1');
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'School not found' });
+        }
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [CREATE] 新增一所學校
+app.post(
+    '/api/schools',
+    // --- 驗證規則 ---
+    body('school_name').notEmpty().withMessage('學校全名為必填'),
+    body('short_name').notEmpty().withMessage('學校簡稱為必填'),
+    body('school_type').isIn(['公立', '國立', '私立']).withMessage('無效的學校性質'),
+    body('district').notEmpty().withMessage('行政區為必填'),
+    body('education_level').isIn(['國小', '國中', '高中', '高職', '大學']).withMessage('無效的學制'),
+    body('phone').optional(),
+    body('address').optional(),
+    body('website').optional(),
+    body('email').optional().isEmail().withMessage('無效的電子信箱格式'),
+    body('notes').optional(),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for POST /api/schools: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+        try {
+            const { school_name, short_name, school_type, district, education_level, phone, address, website, email, notes } = req.body;
+            const result = await pool.request()
+                .input('school_name', sql.NVarChar, school_name)
+                .input('short_name', sql.NVarChar, short_name)
+                .input('school_type', sql.NVarChar, school_type)
+                .input('district', sql.NVarChar, district)
+                .input('education_level', sql.NVarChar, education_level)
+                .input('phone', sql.NVarChar, phone || null)
+                .input('address', sql.NVarChar, address || null)
+                .input('website', sql.NVarChar, website || null)
+                .input('email', sql.NVarChar, email || null)
+                .input('notes', sql.NVarChar, notes || null)
+                .query(`
+                    INSERT INTO schools (school_name, short_name, school_type, district, education_level, phone, address, website, email, notes) 
+                    OUTPUT inserted.* 
+                    VALUES (@school_name, @short_name, @school_type, @district, @education_level, @phone, @address, @website, @email, @notes)
+                `);
+            res.status(201).json(result.recordset[0]);
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 更新一所學校
+app.put(
+    '/api/schools/:id',
+    // --- 驗證規則 ---
+    body('school_name').notEmpty().withMessage('學校全名為必填'),
+    body('short_name').notEmpty().withMessage('學校簡稱為必填'),
+    body('school_type').isIn(['公立', '國立', '私立']).withMessage('無效的學校性質'),
+    body('district').notEmpty().withMessage('行政區為必填'),
+    body('education_level').isIn(['國小', '國中', '高中', '高職', '大學']).withMessage('無效的學制'),
+    body('phone').optional(),
+    body('address').optional(),
+    body('website').optional(),
+    body('email').optional().isEmail().withMessage('無效的電子信箱格式'),
+    body('notes').optional(),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for PUT /api/schools/${req.params.id}: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+        try {
+            const { id } = req.params;
+            const { school_name, short_name, school_type, district, education_level, phone, address, website, email, notes } = req.body;
+            const result = await pool.request()
+                .input('id', sql.Int, id)
+                .input('school_name', sql.NVarChar, school_name)
+                .input('short_name', sql.NVarChar, short_name)
+                .input('school_type', sql.NVarChar, school_type)
+                .input('district', sql.NVarChar, district)
+                .input('education_level', sql.NVarChar, education_level)
+                .input('phone', sql.NVarChar, phone || null)
+                .input('address', sql.NVarChar, address || null)
+                .input('website', sql.NVarChar, website || null)
+                .input('email', sql.NVarChar, email || null)
+                .input('notes', sql.NVarChar, notes || null)
+                .query(`
+                    UPDATE schools 
+                    SET school_name = @school_name, short_name = @short_name, school_type = @school_type, 
+                        district = @district, education_level = @education_level, phone = @phone, 
+                        address = @address, website = @website, email = @email, notes = @notes, updated_at = GETDATE()
+                    WHERE id = @id AND is_active = 1;
+                    SELECT * FROM schools WHERE id = @id AND is_active = 1;
+                `);
+            if (result.recordset.length === 0) {
+                return res.status(404).json({ error: 'School not found' });
+            }
+            res.json(result.recordset[0]);
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// [DELETE] 刪除一所學校 (軟刪除)
+app.delete('/api/schools/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('UPDATE schools SET is_active = 0, updated_at = GETDATE() WHERE id = @id AND is_active = 1');
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'School not found' });
         }
         res.status(204).send();
     } catch (err) {

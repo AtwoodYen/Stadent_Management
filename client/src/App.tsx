@@ -7,9 +7,12 @@ import { zhTW } from 'date-fns/locale/zh-TW';
 import Layout from './layouts/Layout';
 import DashboardPage from './pages/DashboardPage';
 import SchedulePage from './pages/SchedulePage';
+import StudentsPage from './pages/StudentsPage';
+import SchoolsPage from './pages/SchoolsPage';
 import TutorManagerPage from './pages/TutorManagerPage';
 import CoursesPage from './pages/CoursesPage';
 import TeachersPage from './pages/TeachersPage';
+import UsersPage from './pages/UsersPage';
 import './App.css';
 
 // 創建主題
@@ -40,9 +43,11 @@ function App() {
             <Routes>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/schedule" element={<TutorManagerPage />} />
-              <Route path="/students" element={<SchedulePage />} />
+              <Route path="/students" element={<StudentsPage />} />
+              <Route path="/schools" element={<SchoolsPage />} />
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/teachers" element={<TeachersPage />} />
+              <Route path="/users" element={<UsersPage />} />
             </Routes>
           </Layout>
         </Router>

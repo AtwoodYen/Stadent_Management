@@ -7,6 +7,9 @@ import { zhTW } from 'date-fns/locale/zh-TW';
 import Layout from './layouts/Layout';
 import DashboardPage from './pages/DashboardPage';
 import SchedulePage from './pages/SchedulePage';
+import TutorManagerPage from './pages/TutorManagerPage';
+import CoursesPage from './pages/CoursesPage';
+import TeachersPage from './pages/TeachersPage';
 import './App.css';
 
 // 創建主題
@@ -36,8 +39,10 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/schedule" element={<SchedulePage />} />
-              {/* 添加更多路由 */}
+              <Route path="/schedule" element={<TutorManagerPage />} />
+              <Route path="/students" element={<SchedulePage />} />
+              <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/teachers" element={<TeachersPage />} />
             </Routes>
           </Layout>
         </Router>

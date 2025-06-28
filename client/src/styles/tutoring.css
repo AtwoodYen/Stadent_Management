@@ -1,0 +1,276 @@
+/* Tutoring Schedule Manager Inspired Styles */
+/* 基本 Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+/* 容器與排版 */
+.container {
+  box-sizing: border-box;   /* 讓 padding 進計算 */
+  width: 100%;
+  max-width: none; /* 滿版，留內距即可 */
+  margin: 0 auto;
+  padding: 16px 16px 16px 0; /* 上 右 下 左 - 左側不要 padding */
+}
+
+.main-content {
+  display: flex;
+  column-gap: 24px;
+}
+
+.sidebar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 16px;
+  overflow-y: auto;
+  grid-column: 1;
+  flex: 0 0 160px;
+}
+
+.calendar-section {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 16px;
+  overflow: hidden;
+  grid-column: 2;
+  flex:1 1 0;
+  min-width: 0;
+  width: 100%;/* 日曆預設在第二欄 */  
+}
+
+/* 移除滿版相關樣式，因為已不需要 */
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px; /* 按鈕與標題之間的間距 */
+}
+
+.calendar-title {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #2d3748;
+  min-width: 150px; /* 確保標題有足夠空間 */
+  text-align: center;
+}
+
+/* Buttons */
+.btn {
+  background: linear-gradient(45deg, #4299e1, #3182ce);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(45deg, #48bb78, #38a169);
+}
+
+.btn-active {
+  background: linear-gradient(45deg, #2b6cb0, #2c5282) !important;
+  box-shadow: 0 2px 10px rgba(43, 108, 176, 0.3);
+  transform: translateY(-1px);
+}
+
+/* 按鈕群組樣式 - 增加按鈕間距 */
+.btn-group {
+  display: flex;
+  gap: 8px; /* 按鈕之間的間距 */
+}
+
+.btn-group .btn {
+  margin: 0; /* 移除可能的預設 margin */
+}
+
+/* Stats */
+.stats-bar {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 15px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: #4299e1;
+}
+
+.stat-label {
+  font-size: 0.9em;
+  color: #718096;
+}
+
+/* Student list */
+.student-list h3 {
+  margin-bottom: 10px;
+  color: #4a5568;
+}
+
+.student-item {
+  background: #f7fafc;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border-left: 4px solid #4299e1;
+  cursor: pointer;
+}
+
+.student-item.selected {
+  background: #bee3f8;
+  border-left-color: #2b6cb0;
+}
+
+.student-name {
+  font-weight: bold;
+  color: #2d3748;
+}
+
+.student-info {
+  font-size: 0.9em;
+  color: #718096;
+}
+
+/* Calendar grid 基本樣式對應現有 month-view/week-view/day-view */
+.month-view, .week-view, .day-view {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.day {
+  background: #fff;
+  min-height: 120px;
+  padding: 6px;
+  position: relative;
+  cursor: pointer;
+}
+
+.day.today {
+  background: #fff5f5;
+  border: 2px solid #f56565;
+}
+
+.day.disabled {
+  background: #f7fafc;
+  color: #a0aec0;
+}
+
+.day-header {
+  background: #4a5568;
+  color: #fff;
+  text-align: center;
+  padding: 4px 0;
+  font-weight: bold;
+}
+
+.lesson {
+  background: linear-gradient(45deg, #4299e1, #3182ce);
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    order: 2;
+  }
+  .calendar-section {
+    order: 1;
+  }
+}
+
+.month-view {
+  grid-auto-rows: 110px; /* 每格固定高度，避免高低不一 */
+}
+
+/* 月檢視：星期標題列 */
+.month-view > .day-header {
+  background: #374151; /* 深灰藍色 */
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  font-weight: 600;
+}
+
+/* 月檢視：日期格線 */
+.month-view > .day,
+.month-view > .day-header {
+  border: 1px solid #d1d5db;
+}
+
+.day .date {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* 對齊 header 與 cell 內容 */
+.month-view > .day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* 週檢視 */
+.week-view {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* Overlay for load error */
+.app-overlay {
+  display: none; /* hidden by default */
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  z-index: 9998;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 1.5em;
+  backdrop-filter: blur(5px);
+}
+.app-overlay.active {
+  display: flex;
+} 

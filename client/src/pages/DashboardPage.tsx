@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Grid, Paper } from '@mui/material';
+import { Box, Typography, Paper } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // 範例數據，之後可以從 API 獲取
@@ -29,47 +29,48 @@ const DashboardPage: React.FC = () => {
       </Typography>
       
       {/* 統計卡片 */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Box
+        display="grid"
+        gridTemplateColumns="repeat(auto-fit, minmax(250px, 1fr))"
+        gap={3}
+        mb={4}
+      >
         {dashboardData.stats.map((stat) => (
-          <Grid item xs={12} sm={6} md={3} key={stat.title}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Typography color="textSecondary" gutterBottom>
-                {stat.title}
+          <Paper key={stat.title} sx={{ p: 3 }}>
+            <Typography color="textSecondary" gutterBottom>
+              {stat.title}
+            </Typography>
+            <Box display="flex" alignItems="flex-end">
+              <Typography component="span" variant="h4">
+                {stat.value}
               </Typography>
-              <Box display="flex" alignItems="flex-end">
-                <Typography component="span" variant="h4">
-                  {stat.value}
-                </Typography>
-                <Typography color="success.main" sx={{ ml: 1, mb: 0.5 }}>
-                  {stat.change}
-                </Typography>
-              </Box>
-            </Paper>
-          </Grid>
+              <Typography color="success.main" sx={{ ml: 1, mb: 0.5 }}>
+                {stat.change}
+              </Typography>
+            </Box>
+          </Paper>
         ))}
-      </Grid>
+      </Box>
 
       {/* 圖表 */}
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" gutterBottom>
-              每週課程統計
-            </Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart data={dashboardData.weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="課程數" fill="#667eea" name="課程數" />
-                <Bar dataKey="學生數" fill="#764ba2" name="學生數" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
-        </Grid>
-      </Grid>
+      <Box>
+        <Paper sx={{ p: 3, height: 400 }}>
+          <Typography variant="h6" gutterBottom>
+            每週課程統計
+          </Typography>
+          <ResponsiveContainer width="100%" height="90%">
+            <BarChart data={dashboardData.weeklyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="課程數" fill="#667eea" name="課程數" />
+              <Bar dataKey="學生數" fill="#764ba2" name="學生數" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Paper>
+      </Box>
     </Box>
   );
 };

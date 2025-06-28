@@ -7,13 +7,11 @@
    3. 課程資料保存在本地 state
 -------------------------------- */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
+import '../styles/tutoring.css';          // 內含 .calendar-section 與 .full-width
 import {
   Box,
-  Typography,
-  Paper,
   Button,
-  IconButton,
   TextField,
   FormControl,
   InputLabel,
@@ -24,13 +22,8 @@ import {
   DialogContent,
   DialogActions,
   ToggleButton,
-  ToggleButtonGroup,
-  Grid,
-  List,
-  ListItem,
-  ListItemText
+  ToggleButtonGroup
 } from '@mui/material';
-import TodayIcon from '@mui/icons-material/Today';
 
 /* date-fns 工具 */
 import {
@@ -46,10 +39,8 @@ import {
   startOfMonth,
   endOfMonth,
   isSameMonth,
-  parse,
   addMinutes
 } from 'date-fns';
-import { zhTW } from 'date-fns/locale/zh-TW';
 
 /* ---------- 型別定義 ---------- */
 type ViewType = 'month' | 'week' | 'day';
@@ -121,6 +112,13 @@ export default function SchedulePage() {
     );
   }, []);
 
+  /* ---------- 統計計算 ---------- */
+  const lessonsThisWeek = lessons.filter(l => {
+    const start = startOfWeek(new Date());
+    const end = endOfWeek(new Date());
+    return l.date >= start && l.date <= end;
+  }).length;
+
   /* ---------- 工具函式 ---------- */
   const getLessonsForDate = (date: Date) =>
     lessons.filter(l => isSameDay(l.date, date));
@@ -156,10 +154,12 @@ export default function SchedulePage() {
       studentId: Number(selectedStudent),
       date: selectedDate,
       startTime: selectedTime,
-      endTime: format(
-        addMinutes(parse(selectedTime, 'HH:mm', selectedDate), 90),
-        'HH:mm'
-      ),
+      endTime: (() => {
+        const [hh, mm] = selectedTime.split(':').map(Number);
+        const dateObj = new Date(selectedDate);
+        dateObj.setHours(hh, mm, 0, 0);
+        return format(addMinutes(dateObj, 90), 'HH:mm');
+      })(),
       topic,
       status: 'scheduled'
     };
@@ -199,14 +199,15 @@ export default function SchedulePage() {
 
   const handleToday = () => setCurrentDate(new Date());
 
+  
   /* ---------- 月視圖 ---------- */
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
 
-    const days: JSX.Element[] = [];
+    const days: React.ReactElement[] = [];
     let day = startDate;
     while (day <= endDate) {
       days.push(
@@ -242,7 +243,7 @@ export default function SchedulePage() {
 
   /* ---------- 週視圖 ---------- */
   const renderWeekView = () => {
-    const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const startDate = startOfWeek(currentDate);
     return (
       <div className='week-view'>
         {Array.from({ length: 7 }, (_, i) => {
@@ -250,7 +251,7 @@ export default function SchedulePage() {
           return (
             <div key={i} className='day'>
               <div className='day-header'>
-                {format(currentDay, 'M/d (E)', { locale: zhTW })}
+                {format(currentDay, 'M/d (E)')}
               </div>
               <div className='time-slots'>
                 {timeSlots.map(time => (
@@ -299,50 +300,72 @@ export default function SchedulePage() {
 
   /* ---------- 畫面 ---------- */
   return (
-    <Box sx={{ p: 3 }}>
-      {/* -------------- 工具列 -------------- */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 3
-        }}
-      >
-        <ToggleButtonGroup
-          color='primary'
-          value={view}
-          exclusive
-          onChange={handleViewChange}
-          aria-label='schedule view'
-        >
-          <ToggleButton value='month'>月</ToggleButton>
-          <ToggleButton value='week'>週</ToggleButton>
-          <ToggleButton value='day'>日</ToggleButton>
-        </ToggleButtonGroup>
+    <div className='schedule-container'>
+      <div className='main-content'>
+        {/* ------------------ 側邊欄 ------------------ */}
+        <div className='sidebar'>
+          <div className='stats-bar'>
+            <div className='stat-item'>
+              <div className='stat-number'>{students.length}</div>
+              <div className='stat-label'>學生</div>
+            </div>
+            <div className='stat-item'>
+              <div className='stat-number'>0</div>
+              <div className='stat-label'>畢業生</div>
+            </div>
+            <div className='stat-item'>
+              <div className='stat-number'>{lessonsThisWeek}</div>
+              <div className='stat-label'>本週課程</div>
+            </div>
+          </div>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton aria-label='previous' size='small' onClick={handlePrevious}>
-            ‹
-          </IconButton>
-          <Typography variant='h6'>
-            {format(currentDate, 'yyyy年M月d日 (E)', { locale: zhTW })}
-          </Typography>
-          <IconButton aria-label='next' size='small' onClick={handleNext}>
-            ›
-          </IconButton>
-          <Button variant='outlined' onClick={handleToday} startIcon={<TodayIcon />}>
-            今天
-          </Button>
-        </Box>
-      </Box>
+          <div className='student-list'>
+            <h3>📋 學生管理</h3>
+            {students.map(s => (
+              <div key={s.id} className='student-item'>
+                <div className='student-item-details'>
+                  <div className='student-name'>{s.name}</div>
+                  <div className='student-info'>{s.level}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {/* -------------- 主體 -------------- */}
-      <Paper sx={{ p: 2, minHeight: '70vh' }}>
-        {view === 'month' && renderMonthView()}
-        {view === 'week' && renderWeekView()}
-        {view === 'day' && renderDayView()}
-      </Paper>
+        {/* ------------------ 主日曆區 ------------------ */}
+        <div className='calendar-section'>
+          <div className='calendar-header'>
+            <div className='calendar-nav'>
+              <button className='btn' onClick={handlePrevious}>‹ 上一頁</button>
+              <div style={{ margin: '0 10px', fontWeight: 'bold' }}>
+                {format(currentDate, view === 'month' ? 'yyyy 年 M 月' : 'yyyy 年 M 月 d 日')}
+              </div>
+              <button className='btn' onClick={handleNext}>下一頁 ›</button>
+            </div>
+            <div className='calendar-controls'>
+              <ToggleButtonGroup
+                color='primary'
+                value={view}
+                exclusive
+                onChange={handleViewChange}
+                aria-label='schedule view'
+              >
+                <ToggleButton value='month'>月</ToggleButton>
+                <ToggleButton value='week'>週</ToggleButton>
+                <ToggleButton value='day'>日</ToggleButton>
+              </ToggleButtonGroup>
+              <button className='btn btn-secondary' style={{ marginLeft: 10 }} onClick={handleToday}>今天</button>
+            </div>
+          </div>
+
+          {/* 日曆 */}
+          <div>
+            {view === 'month' && renderMonthView()}
+            {view === 'week' && renderWeekView()}
+            {view === 'day' && renderDayView()}
+          </div>
+        </div>
+      </div>
 
       {/* -------------- 新增課程 Dialog -------------- */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth='sm' fullWidth>
@@ -393,6 +416,6 @@ export default function SchedulePage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 }

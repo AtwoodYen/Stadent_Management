@@ -335,6 +335,7 @@ export default function SchedulePage() {
         {/* ------------------ 主日曆區 ------------------ */}
         <div className='calendar-section'>
           <div className='calendar-header'>
+            
             <div className='calendar-nav'>
               <button className='btn' onClick={handlePrevious}>‹ 上一頁</button>
               <div style={{ margin: '0 10px', fontWeight: 'bold' }}>
@@ -342,6 +343,7 @@ export default function SchedulePage() {
               </div>
               <button className='btn' onClick={handleNext}>下一頁 ›</button>
             </div>
+
             <div className='calendar-controls'>
               <ToggleButtonGroup
                 color='primary'
@@ -356,6 +358,7 @@ export default function SchedulePage() {
               </ToggleButtonGroup>
               <button className='btn btn-secondary' style={{ marginLeft: 10 }} onClick={handleToday}>今天</button>
             </div>
+            
           </div>
 
           {/* 日曆 */}

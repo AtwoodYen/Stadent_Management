@@ -52,21 +52,81 @@ body {
 
 .calendar-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* 左右分佈：導航在左，控制項在右 */
   align-items: center;
   margin-bottom: 20px;
+  min-height: 40px; /* 確保有足夠的高度 */
+  flex-wrap: nowrap; /* 防止換行 */
 }
 
 .calendar-nav {
   display: flex;
   align-items: center;
   gap: 16px; /* 按鈕與標題之間的間距 */
+  flex-shrink: 0; /* 防止壓縮 */
 }
 
-/* 視圖切換按鈕組 - 在導航右側 */
-.view-switcher {
-  margin-left: 50px; /* 與下個月按鈕間隔50px */
+.calendar-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important; /* 控制項之間的間距 */
+  flex-shrink: 0 !important; /* 防止壓縮 */
 }
+
+/* Material-UI ToggleButtonGroup 樣式調整 - 加強優先級 */
+.calendar-controls .MuiToggleButtonGroup-root {
+  height: 36px !important; /* 與其他按鈕保持一致的高度 */
+  width: 120px !important; /* 固定寬度，防止因按鈕內容變化而移動 */
+  min-width: 120px !important; /* 確保最小寬度 */
+  max-width: 120px !important; /* 確保最大寬度 */
+}
+
+.calendar-controls .MuiToggleButton-root {
+  padding: 6px 8px !important; /* 減少內邊距以適應固定寬度 */
+  border-color: #4299e1 !important;
+  color: #4299e1 !important;
+  font-size: 14px !important;
+  flex: 1 !important; /* 均等分配寬度 */
+  min-width: 0 !important; /* 允許縮小 */
+  width: 40px !important; /* 每個按鈕固定寬度 */
+}
+
+.calendar-controls .MuiToggleButton-root.Mui-selected {
+  background-color: #4299e1 !important;
+  color: white !important;
+}
+
+/* 今日按鈕樣式 */
+.calendar-controls .btn {
+  min-width: 60px !important; /* 固定最小寬度 */
+  white-space: nowrap !important; /* 防止文字換行 */
+  margin-left: 10px !important; /* 與按鈕組保持間距 */
+}
+
+/* 強制修復 Material-UI 按鈕組樣式 - 確保在同一水平線 */
+.schedule-container .calendar-section .calendar-header .calendar-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-shrink: 0 !important;
+}
+
+.schedule-container .calendar-section .calendar-header .calendar-controls .MuiToggleButtonGroup-root {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
+  flex-shrink: 0 !important;
+}
+
+.schedule-container .calendar-section .calendar-header .calendar-controls .MuiToggleButton-root {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  flex: none !important;
+  padding: 6px 4px !important;
+}
+
+/* 移除不使用的 view-switcher 樣式 */
 
 .calendar-title {
   font-size: 1.5em;
@@ -295,12 +355,37 @@ body {
 @media (max-width: 768px) {
   .main-content {
     grid-template-columns: 1fr;
+    flex-direction: column;
   }
   .sidebar {
     order: 2;
   }
   .calendar-section {
     order: 1;
+  }
+  
+  /* 小屏幕下的日曆標題調整 */
+  .calendar-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+    position: static; /* 取消相對定位 */
+  }
+  
+  .calendar-nav {
+    justify-content: center;
+  }
+  
+  .calendar-controls {
+    position: static; /* 取消絕對定位 */
+    transform: none; /* 取消變換 */
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  /* 小屏幕下的按鈕組調整 */
+  .calendar-controls .MuiToggleButtonGroup-root {
+    width: auto; /* 自動寬度 */
   }
 }
 

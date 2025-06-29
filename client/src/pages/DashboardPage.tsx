@@ -24,7 +24,7 @@ const dashboardData = {
 const DashboardPage: React.FC = () => {
   return (
     <Box>
-      <Typography variant="h4" gutterBottom sx={{ color: '#2d3748', fontWeight: 'bold' }}>
+      <Typography variant="h4" gutterBottom sx={{ color: 'white', fontWeight: 'bold' }}>
         報表統計
       </Typography>
       

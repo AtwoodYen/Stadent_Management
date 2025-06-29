@@ -79,7 +79,24 @@ const TutorManagerPage: React.FC = () => {
 
   // 根據星期幾取得課表
   const getSchedulesForDay = (dayOfWeek: string) => {
-    return schedules.filter(schedule => schedule.day_of_week === dayOfWeek);
+    return schedules
+      .filter(schedule => schedule.day_of_week === dayOfWeek)
+      .sort((a, b) => {
+        // 取得課程的開始時間
+        const getStartTime = (schedule: Schedule) => {
+          if (schedule.start_time) {
+            // 將 ISO 日期時間轉換為時分格式進行比較
+            const date = new Date(schedule.start_time);
+            return date.getHours() * 60 + date.getMinutes(); // 轉換為分鐘數便於比較
+          } else {
+            // 如果沒有時間，使用預設時間邏輯
+            const defaultTimes = [540, 630, 840, 930, 1140, 1230]; // 對應 09:00, 10:30, 14:00, 15:30, 19:00, 20:30 的分鐘數
+            return defaultTimes[schedule.student_id % defaultTimes.length];
+          }
+        };
+        
+        return getStartTime(a) - getStartTime(b);
+      });
   };
 
   // 根據時間取得課表
@@ -120,8 +137,17 @@ const TutorManagerPage: React.FC = () => {
         startTime = assignedTimeSlot.start;
         endTime = assignedTimeSlot.end;
       } else {
-        startTime = schedule.start_time.substring(0, 5);
-        endTime = schedule.end_time ? schedule.end_time.substring(0, 5) : startTime;
+        startTime = new Date(schedule.start_time).toLocaleTimeString('zh-TW', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
+        endTime = schedule.end_time ? 
+          new Date(schedule.end_time).toLocaleTimeString('zh-TW', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          }) : startTime;
       }
 
       return {
@@ -314,8 +340,17 @@ const TutorManagerPage: React.FC = () => {
     // 如果時間為null，使用預設時間
     const getDisplayTime = (schedule: Schedule) => {
       if (schedule.start_time) {
-        const start = schedule.start_time.substring(0, 5);
-        const end = schedule.end_time?.substring(0, 5) || '';
+        const start = new Date(schedule.start_time).toLocaleTimeString('zh-TW', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
+        const end = schedule.end_time ? 
+          new Date(schedule.end_time).toLocaleTimeString('zh-TW', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          }) : '';
         return `${start} - ${end}`;
       } else {
         // 預設時間分配邏輯
@@ -463,10 +498,13 @@ const TutorManagerPage: React.FC = () => {
                   }}
                 >
                   {navText.next} ›
-                </button>
+                </button>                                
+              </div>
+
+              <div className="calendar-controls">
                 
                 {/* 視圖切換按鈕移到導航右側 */}
-                <div className="btn-group view-switcher" id="viewSwitcher">
+                <div className="btn-group view-switcher" id="viewSwitcher" style={{ transform: 'translateX(-50px)' }}>
                   <button 
                     className={`btn ${currentView === '月' ? 'btn-active' : ''}`}
                     onClick={() => setCurrentView('月')}
@@ -486,14 +524,14 @@ const TutorManagerPage: React.FC = () => {
                     日
                   </button>
                 </div>
-              </div>
-              <div className="calendar-controls">
+
                 <button 
                   className="btn btn-secondary"
                   onClick={() => setCurrentDate(new Date())}
                 >
                   今天
                 </button>
+
                 <button className="btn" style={{ marginLeft: 10 }}>➕ 新增課程</button>
               </div>
             </div>
@@ -527,7 +565,12 @@ const TutorManagerPage: React.FC = () => {
                         <div className="day-number">{day.date}</div>
                         <div className="day-schedules">
                           {daySchedules.slice(0, 3).map((schedule) => {
-                            const displayTime = schedule.start_time ? schedule.start_time.substring(0, 5) : 
+                            const displayTime = schedule.start_time ? 
+                              new Date(schedule.start_time).toLocaleTimeString('zh-TW', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: false 
+                              }) : 
                               ['09:00', '10:30', '14:00', '15:30', '19:00', '20:30'][schedule.student_id % 6];
                             return (
                               <div key={schedule.id} className="schedule-dot">

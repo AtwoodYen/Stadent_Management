@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,7 +23,9 @@ import {
   Select,
   MenuItem,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -37,66 +39,57 @@ interface User {
   id: number;
   username: string;
   email: string;
-  fullName: string;
+  full_name: string;
   role: 'admin' | 'manager' | 'teacher' | 'user';
-  isActive: boolean;
-  lastLogin?: string;
-  createdAt: string;
+  is_active: boolean;
+  last_login?: string;
+  created_at: string;
+  updated_at: string;
   phone?: string;
   department?: string;
+  login_count?: number;
+  email_verified?: boolean;
 }
 
 const UsersPage: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: 1,
-      username: 'admin',
-      email: 'admin@example.com',
-      fullName: '系統管理員',
-      role: 'admin',
-      isActive: true,
-      lastLogin: '2025-01-28 09:30:00',
-      createdAt: '2024-01-01 00:00:00',
-      phone: '0912-345-678',
-      department: '資訊部'
-    },
-    {
-      id: 2,
-      username: 'manager01',
-      email: 'manager@example.com',
-      fullName: '教務主任',
-      role: 'manager',
-      isActive: true,
-      lastLogin: '2025-01-27 18:45:00',
-      createdAt: '2024-02-15 10:30:00',
-      phone: '0923-456-789',
-      department: '教務處'
-    },
-    {
-      id: 3,
-      username: 'teacher_gang',
-      email: 'gang@example.com',
-      fullName: '小剛老師',
-      role: 'teacher',
-      isActive: true,
-      lastLogin: '2025-01-28 08:15:00',
-      createdAt: '2024-03-01 14:20:00',
-      phone: '0934-567-890',
-      department: '程式設計科'
-    }
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    fullName: '',
+    full_name: '',
     role: 'user' as User['role'],
     phone: '',
     department: '',
-    isActive: true
+    is_active: true,
+    password: ''
   });
+
+  // 載入用戶資料
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/users');
+      if (!response.ok) {
+        throw new Error('載入用戶資料失敗');
+      }
+      const data = await response.json();
+      setUsers(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '載入用戶資料失敗');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const roleLabels = {
     admin: '系統管理員',
@@ -125,22 +118,24 @@ const UsersPage: React.FC = () => {
       setFormData({
         username: user.username,
         email: user.email,
-        fullName: user.fullName,
+        full_name: user.full_name,
         role: user.role,
         phone: user.phone || '',
         department: user.department || '',
-        isActive: user.isActive
+        is_active: user.is_active,
+        password: ''
       });
     } else {
       setEditingUser(null);
       setFormData({
         username: '',
         email: '',
-        fullName: '',
+        full_name: '',
         role: 'user',
         phone: '',
         department: '',
-        isActive: true
+        is_active: true,
+        password: ''
       });
     }
     setOpenDialog(true);
@@ -151,41 +146,102 @@ const UsersPage: React.FC = () => {
     setEditingUser(null);
   };
 
-  const handleSave = () => {
-    if (editingUser) {
-      setUsers(prev => prev.map(user =>
-        user.id === editingUser.id
-          ? { ...user, ...formData }
-          : user
-      ));
-    } else {
-      const newUser: User = {
-        id: Math.max(...users.map(u => u.id)) + 1,
-        ...formData,
-        lastLogin: undefined,
-        createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19)
-      };
-      setUsers(prev => [...prev, newUser]);
+  const handleSave = async () => {
+    try {
+      if (editingUser) {
+        // 更新用戶
+        const response = await fetch(`/api/users/${editingUser.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+        
+        if (!response.ok) {
+          throw new Error('更新用戶失敗');
+        }
+        
+        const updatedUser = await response.json();
+        setUsers(prev => prev.map(user =>
+          user.id === editingUser.id ? updatedUser : user
+        ));
+      } else {
+        // 新增用戶
+        const response = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+        
+        if (!response.ok) {
+          throw new Error('新增用戶失敗');
+        }
+        
+        const newUser = await response.json();
+        setUsers(prev => [...prev, newUser]);
+      }
+      handleCloseDialog();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '操作失敗');
     }
-    handleCloseDialog();
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (window.confirm('確定要刪除此用戶嗎？')) {
-      setUsers(prev => prev.filter(user => user.id !== id));
+      try {
+        const response = await fetch(`/api/users/${id}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('刪除用戶失敗');
+        }
+        
+        setUsers(prev => prev.filter(user => user.id !== id));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '刪除失敗');
+      }
     }
   };
 
-  const toggleUserStatus = (id: number) => {
-    setUsers(prev => prev.map(user =>
-      user.id === id
-        ? { ...user, isActive: !user.isActive }
-        : user
-    ));
+  const toggleUserStatus = async (id: number) => {
+    try {
+      const response = await fetch(`/api/users/${id}/toggle-status`, {
+        method: 'PATCH',
+      });
+      
+      if (!response.ok) {
+        throw new Error('切換用戶狀態失敗');
+      }
+      
+      const updatedUser = await response.json();
+      setUsers(prev => prev.map(user =>
+        user.id === id ? updatedUser : user
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '操作失敗');
+    }
   };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box display="flex" alignItems="center" gap={2}>
           <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
@@ -218,7 +274,7 @@ const UsersPage: React.FC = () => {
           </TableHead>
           <TableBody>
             {users.map((user) => (
-              <TableRow key={user.id} sx={{ opacity: user.isActive ? 1 : 0.6 }}>
+              <TableRow key={user.id} sx={{ opacity: user.is_active ? 1 : 0.6 }}>
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>
                     <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
@@ -226,7 +282,7 @@ const UsersPage: React.FC = () => {
                     </Avatar>
                     <Box>
                       <Typography variant="body2" fontWeight="bold">
-                        {user.fullName}
+                        {user.full_name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         @{user.username}
@@ -253,12 +309,12 @@ const UsersPage: React.FC = () => {
                   <FormControlLabel
                     control={
                       <Switch
-                        checked={user.isActive}
+                        checked={user.is_active}
                         onChange={() => toggleUserStatus(user.id)}
                         size="small"
                       />
                     }
-                    label={user.isActive ? "啟用" : "停用"}
+                    label={user.is_active ? "啟用" : "停用"}
                   />
                 </TableCell>
                 <TableCell>
@@ -292,8 +348,8 @@ const UsersPage: React.FC = () => {
               <TextField
                 fullWidth
                 label="用戶名稱"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                 margin="normal"
               />
               <TextField
@@ -313,6 +369,18 @@ const UsersPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               margin="normal"
             />
+
+            {!editingUser && (
+              <TextField
+                fullWidth
+                label="密碼"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                margin="normal"
+                required
+              />
+            )}
 
             <Box display="flex" gap={2}>
               <TextField
@@ -348,8 +416,8 @@ const UsersPage: React.FC = () => {
             <FormControlLabel
               control={
                 <Switch
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 />
               }
               label="啟用狀態"
@@ -362,7 +430,7 @@ const UsersPage: React.FC = () => {
           <Button 
             onClick={handleSave} 
             variant="contained"
-            disabled={!formData.fullName || !formData.username || !formData.email}
+            disabled={!formData.full_name || !formData.username || !formData.email || (!editingUser && !formData.password)}
           >
             {editingUser ? '更新' : '新增'}
           </Button>

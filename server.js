@@ -1101,8 +1101,735 @@ app.delete('/api/schools/:id', async (req, res, next) => {
     }
 });
 
+// --- 用戶管理 API 端點 ---
+
+// [READ] 取得所有用戶資料
+app.get('/api/users', async (req, res, next) => {
+    try {
+        const { role, is_active, department } = req.query;
+        let query = 'SELECT id, username, email, full_name, role, is_active, phone, department, last_login, login_count, email_verified, created_at, updated_at FROM users WHERE 1=1';
+        const request = pool.request();
+        
+        if (role) {
+            query += ' AND role = @role';
+            request.input('role', sql.NVarChar, role);
+        }
+        if (is_active !== undefined) {
+            query += ' AND is_active = @is_active';
+            request.input('is_active', sql.Bit, is_active === 'true' ? 1 : 0);
+        }
+        if (department) {
+            query += ' AND department = @department';
+            request.input('department', sql.NVarChar, department);
+        }
+        
+        query += ' ORDER BY role, full_name';
+        
+        const result = await request.query(query);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得用戶統計資訊
+app.get('/api/users/stats', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                COUNT(*) as total_users,
+                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_users,
+                SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_users,
+                SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as admin_users,
+                SUM(CASE WHEN role = 'manager' THEN 1 ELSE 0 END) as manager_users,
+                SUM(CASE WHEN role = 'teacher' THEN 1 ELSE 0 END) as teacher_users,
+                SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as regular_users,
+                SUM(CASE WHEN email_verified = 1 THEN 1 ELSE 0 END) as verified_users
+            FROM users
+        `);
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得角色列表
+app.get('/api/users/roles', async (req, res, next) => {
+    try {
+        const roles = [
+            { value: 'admin', label: '系統管理員' },
+            { value: 'manager', label: '管理者' },
+            { value: 'teacher', label: '老師' },
+            { value: 'user', label: '一般用戶' }
+        ];
+        res.json(roles);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得部門列表
+app.get('/api/users/departments', async (req, res, next) => {
+    try {
+        const result = await pool.request().query('SELECT DISTINCT department FROM users WHERE department IS NOT NULL ORDER BY department');
+        res.json(result.recordset.map(row => row.department));
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得單一用戶
+app.get('/api/users/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT id, username, email, full_name, role, is_active, phone, department, last_login, login_count, email_verified, created_at, updated_at FROM users WHERE id = @id');
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [CREATE] 新增一位用戶
+app.post(
+    '/api/users',
+    // --- 驗證規則 ---
+    body('username').isLength({ min: 3 }).withMessage('用戶名稱至少需要3個字元'),
+    body('email').isEmail().withMessage('無效的電子信箱格式'),
+    body('full_name').notEmpty().withMessage('姓名為必填'),
+    body('role').isIn(['admin', 'manager', 'teacher', 'user']).withMessage('無效的角色'),
+    body('password').isLength({ min: 6 }).withMessage('密碼至少需要6個字元'),
+    body('phone').optional(),
+    body('department').optional(),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for POST /api/users: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { username, email, full_name, role, password, phone, department, is_active = true } = req.body;
+            
+            // 使用bcrypt加密密碼
+            const bcrypt = require('bcrypt');
+            const password_hash = await bcrypt.hash(password, 12);
+            
+            const result = await pool.request()
+                .input('username', sql.NVarChar, username)
+                .input('email', sql.NVarChar, email)
+                .input('password_hash', sql.NVarChar, password_hash)
+                .input('full_name', sql.NVarChar, full_name)
+                .input('role', sql.NVarChar, role)
+                .input('is_active', sql.Bit, is_active)
+                .input('phone', sql.NVarChar, phone || null)
+                .input('department', sql.NVarChar, department || null)
+                .query(`
+                    INSERT INTO users (username, email, password_hash, full_name, role, is_active, phone, department, password_changed_at) 
+                    OUTPUT inserted.id, inserted.username, inserted.email, inserted.full_name, inserted.role, inserted.is_active, inserted.phone, inserted.department, inserted.created_at, inserted.updated_at
+                    VALUES (@username, @email, @password_hash, @full_name, @role, @is_active, @phone, @department, GETDATE())
+                `);
+            res.status(201).json(result.recordset[0]);
+        } catch (err) {
+            if (err.number === 2627) { // 唯一約束違反
+                return res.status(400).json({ error: '用戶名稱或電子信箱已存在' });
+            }
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 更新一位用戶
+app.put(
+    '/api/users/:id',
+    // --- 驗證規則 ---
+    body('username').isLength({ min: 3 }).withMessage('用戶名稱至少需要3個字元'),
+    body('email').isEmail().withMessage('無效的電子信箱格式'),
+    body('full_name').notEmpty().withMessage('姓名為必填'),
+    body('role').isIn(['admin', 'manager', 'teacher', 'user']).withMessage('無效的角色'),
+    body('phone').optional(),
+    body('department').optional(),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for PUT /api/users/${req.params.id}: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { id } = req.params;
+            const { username, email, full_name, role, phone, department, is_active } = req.body;
+            
+            const result = await pool.request()
+                .input('id', sql.Int, id)
+                .input('username', sql.NVarChar, username)
+                .input('email', sql.NVarChar, email)
+                .input('full_name', sql.NVarChar, full_name)
+                .input('role', sql.NVarChar, role)
+                .input('is_active', sql.Bit, is_active)
+                .input('phone', sql.NVarChar, phone || null)
+                .input('department', sql.NVarChar, department || null)
+                .query(`
+                    UPDATE users 
+                    SET username = @username, email = @email, full_name = @full_name, 
+                        role = @role, is_active = @is_active, phone = @phone, 
+                        department = @department, updated_at = GETDATE()
+                    WHERE id = @id;
+                    SELECT id, username, email, full_name, role, is_active, phone, department, last_login, login_count, email_verified, created_at, updated_at 
+                    FROM users WHERE id = @id;
+                `);
+            if (result.recordset.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            res.json(result.recordset[0]);
+        } catch (err) {
+            if (err.number === 2627) { // 唯一約束違反
+                return res.status(400).json({ error: '用戶名稱或電子信箱已存在' });
+            }
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 更新用戶密碼
+app.put('/api/users/:id/password', 
+    body('password').isLength({ min: 6 }).withMessage('密碼至少需要6個字元'),
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { id } = req.params;
+            const { password } = req.body;
+            
+            // 使用bcrypt加密密碼
+            const bcrypt = require('bcrypt');
+            const password_hash = await bcrypt.hash(password, 12);
+            
+            const result = await pool.request()
+                .input('id', sql.Int, id)
+                .input('password_hash', sql.NVarChar, password_hash)
+                .query(`
+                    UPDATE users 
+                    SET password_hash = @password_hash, password_changed_at = GETDATE(), updated_at = GETDATE()
+                    WHERE id = @id
+                `);
+            if (result.rowsAffected[0] === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            res.json({ message: '密碼更新成功' });
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 切換用戶狀態
+app.patch('/api/users/:id/toggle-status', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                UPDATE users 
+                SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = GETDATE()
+                WHERE id = @id;
+                SELECT id, username, email, full_name, role, is_active, phone, department, last_login, login_count, email_verified, created_at, updated_at 
+                FROM users WHERE id = @id;
+            `);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [DELETE] 刪除一位用戶 (硬刪除，謹慎使用)
+app.delete('/api/users/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        
+        // 防止刪除最後一個管理員
+        const adminCheck = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT role FROM users WHERE id = @id;
+                SELECT COUNT(*) as admin_count FROM users WHERE role = 'admin' AND is_active = 1;
+            `);
+        
+        if (adminCheck.recordsets[0].length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const userRole = adminCheck.recordsets[0][0].role;
+        const adminCount = adminCheck.recordsets[1][0].admin_count;
+        
+        if (userRole === 'admin' && adminCount <= 1) {
+            return res.status(400).json({ error: '無法刪除最後一個管理員' });
+        }
+        
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM users WHERE id = @id');
+            
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(204).send();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// --- 師資管理 API 端點 ---
+
+// [READ] 取得所有師資資料
+app.get('/api/teachers', async (req, res, next) => {
+    try {
+        const { specialty, status, min_rate, max_rate, min_experience, available_day } = req.query;
+        let query = `
+            SELECT 
+                t.id, t.name, t.email, t.phone, t.specialties, t.available_days, 
+                t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
+                t.created_at, t.updated_at
+            FROM teachers t 
+            WHERE 1=1
+        `;
+        const request = pool.request();
+        
+        // 狀態篩選
+        if (status !== undefined) {
+            query += ' AND t.is_active = @status';
+            request.input('status', sql.Bit, status === 'true' ? 1 : 0);
+        }
+        
+        // 專長篩選 (使用 LIKE 搜尋 JSON 字串)
+        if (specialty) {
+            query += ' AND t.specialties LIKE @specialty';
+            request.input('specialty', sql.NVarChar, `%${specialty}%`);
+        }
+        
+        // 時薪範圍篩選
+        if (min_rate) {
+            query += ' AND t.hourly_rate >= @min_rate';
+            request.input('min_rate', sql.Int, min_rate);
+        }
+        if (max_rate) {
+            query += ' AND t.hourly_rate <= @max_rate';
+            request.input('max_rate', sql.Int, max_rate);
+        }
+        
+        // 經驗年資篩選
+        if (min_experience) {
+            query += ' AND t.experience >= @min_experience';
+            request.input('min_experience', sql.Int, min_experience);
+        }
+        
+        // 可授課日篩選
+        if (available_day) {
+            query += ' AND t.available_days LIKE @available_day';
+            request.input('available_day', sql.NVarChar, `%${available_day}%`);
+        }
+        
+        query += ' ORDER BY t.is_active DESC, t.hourly_rate DESC, t.name';
+        
+        const result = await request.query(query);
+        
+        // 解析 JSON 字串為陣列
+        const teachers = result.recordset.map(teacher => ({
+            ...teacher,
+            specialties: teacher.specialties ? JSON.parse(teacher.specialties) : [],
+            availableDays: teacher.available_days ? JSON.parse(teacher.available_days) : []
+        }));
+        
+        res.json(teachers);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得師資統計資訊
+app.get('/api/teachers/stats', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                COUNT(*) as total_teachers,
+                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_teachers,
+                SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_teachers,
+                AVG(CAST(hourly_rate AS FLOAT)) as avg_hourly_rate,
+                AVG(CAST(experience AS FLOAT)) as avg_experience,
+                MIN(hourly_rate) as min_hourly_rate,
+                MAX(hourly_rate) as max_hourly_rate
+            FROM teachers
+        `);
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得專長列表
+app.get('/api/teachers/specialties', async (req, res, next) => {
+    try {
+        // 從所有師資的專長中提取唯一值
+        const result = await pool.request().query(`
+            SELECT DISTINCT specialties 
+            FROM teachers 
+            WHERE is_active = 1 AND specialties IS NOT NULL
+        `);
+        
+        const specialtiesSet = new Set();
+        result.recordset.forEach(row => {
+            if (row.specialties) {
+                try {
+                    const specialties = JSON.parse(row.specialties);
+                    specialties.forEach(specialty => specialtiesSet.add(specialty));
+                } catch (e) {
+                    // 忽略無效的 JSON
+                }
+            }
+        });
+        
+        const specialties = Array.from(specialtiesSet).sort();
+        res.json(specialties);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得可授課日列表
+app.get('/api/teachers/available-days', async (req, res, next) => {
+    try {
+        const availableDays = [
+            '週一', '週二', '週三', '週四', '週五', '週六', '週日'
+        ];
+        res.json(availableDays);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得單一師資
+app.get('/api/teachers/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT 
+                    t.id, t.name, t.email, t.phone, t.specialties, t.available_days, 
+                    t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
+                    t.created_at, t.updated_at
+                FROM teachers t 
+                WHERE t.id = @id
+            `);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Teacher not found' });
+        }
+        
+        const teacher = result.recordset[0];
+        // 解析 JSON 字串為陣列
+        teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
+        teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
+        
+        res.json(teacher);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得師資的課程能力
+app.get('/api/teachers/:id/courses', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT 
+                    tc.id, tc.course_category, tc.max_level, tc.is_preferred,
+                    tc.created_at, tc.updated_at
+                FROM teacher_courses tc
+                WHERE tc.teacher_id = @id
+                ORDER BY tc.is_preferred DESC, tc.course_category
+            `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [CREATE] 新增一位師資
+app.post(
+    '/api/teachers',
+    // --- 驗證規則 ---
+    body('name').notEmpty().withMessage('師資姓名為必填'),
+    body('email').isEmail().withMessage('無效的電子信箱格式'),
+    body('phone').optional(),
+    body('specialties').isArray().withMessage('專長必須是陣列格式'),
+    body('availableDays').isArray().withMessage('可授課日必須是陣列格式'),
+    body('hourlyRate').isInt({ min: 0 }).withMessage('時薪必須是正整數'),
+    body('experience').isInt({ min: 0 }).withMessage('經驗年資必須是正整數'),
+    body('bio').optional(),
+    body('isActive').isBoolean().withMessage('狀態必須是布林值'),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for POST /api/teachers: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { name, email, phone, specialties, availableDays, hourlyRate, experience, bio, isActive } = req.body;
+            
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name)
+                .input('email', sql.NVarChar, email)
+                .input('phone', sql.NVarChar, phone || null)
+                .input('specialties', sql.NVarChar, JSON.stringify(specialties))
+                .input('available_days', sql.NVarChar, JSON.stringify(availableDays))
+                .input('hourly_rate', sql.Int, hourlyRate)
+                .input('experience', sql.Int, experience)
+                .input('bio', sql.NVarChar, bio || null)
+                .input('is_active', sql.Bit, isActive)
+                .query(`
+                    INSERT INTO teachers (name, email, phone, specialties, available_days, hourly_rate, experience, bio, is_active) 
+                    OUTPUT inserted.*
+                    VALUES (@name, @email, @phone, @specialties, @available_days, @hourly_rate, @experience, @bio, @is_active)
+                `);
+            
+            const teacher = result.recordset[0];
+            // 解析 JSON 字串為陣列
+            teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
+            teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
+            
+            res.status(201).json(teacher);
+        } catch (err) {
+            if (err.number === 2627) { // 唯一約束違反
+                return res.status(400).json({ error: '電子信箱已存在' });
+            }
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 更新一位師資
+app.put(
+    '/api/teachers/:id',
+    // --- 驗證規則 ---
+    body('name').notEmpty().withMessage('師資姓名為必填'),
+    body('email').isEmail().withMessage('無效的電子信箱格式'),
+    body('phone').optional(),
+    body('specialties').isArray().withMessage('專長必須是陣列格式'),
+    body('availableDays').isArray().withMessage('可授課日必須是陣列格式'),
+    body('hourlyRate').isInt({ min: 0 }).withMessage('時薪必須是正整數'),
+    body('experience').isInt({ min: 0 }).withMessage('經驗年資必須是正整數'),
+    body('bio').optional(),
+    body('isActive').isBoolean().withMessage('狀態必須是布林值'),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            logger.warn(`Validation error for PUT /api/teachers/${req.params.id}: ${JSON.stringify(errors.array())}`);
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { id } = req.params;
+            const { name, email, phone, specialties, availableDays, hourlyRate, experience, bio, isActive } = req.body;
+            
+            const result = await pool.request()
+                .input('id', sql.Int, id)
+                .input('name', sql.NVarChar, name)
+                .input('email', sql.NVarChar, email)
+                .input('phone', sql.NVarChar, phone || null)
+                .input('specialties', sql.NVarChar, JSON.stringify(specialties))
+                .input('available_days', sql.NVarChar, JSON.stringify(availableDays))
+                .input('hourly_rate', sql.Int, hourlyRate)
+                .input('experience', sql.Int, experience)
+                .input('bio', sql.NVarChar, bio || null)
+                .input('is_active', sql.Bit, isActive)
+                .query(`
+                    UPDATE teachers 
+                    SET name = @name, email = @email, phone = @phone, 
+                        specialties = @specialties, available_days = @available_days,
+                        hourly_rate = @hourly_rate, experience = @experience, 
+                        bio = @bio, is_active = @is_active, updated_at = GETDATE()
+                    WHERE id = @id;
+                    SELECT * FROM teachers WHERE id = @id;
+                `);
+            if (result.recordset.length === 0) {
+                return res.status(404).json({ error: 'Teacher not found' });
+            }
+            
+            const teacher = result.recordset[0];
+            // 解析 JSON 字串為陣列
+            teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
+            teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
+            
+            res.json(teacher);
+        } catch (err) {
+            if (err.number === 2627) { // 唯一約束違反
+                return res.status(400).json({ error: '電子信箱已存在' });
+            }
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 切換師資狀態
+app.patch('/api/teachers/:id/toggle-status', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                UPDATE teachers 
+                SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = GETDATE()
+                WHERE id = @id;
+                SELECT * FROM teachers WHERE id = @id;
+            `);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Teacher not found' });
+        }
+        
+        const teacher = result.recordset[0];
+        // 解析 JSON 字串為陣列
+        teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
+        teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
+        
+        res.json(teacher);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [DELETE] 刪除一位師資 (軟刪除)
+app.delete('/api/teachers/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('UPDATE teachers SET is_active = 0, updated_at = GETDATE() WHERE id = @id AND is_active = 1');
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Teacher not found' });
+        }
+        res.status(204).send();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [CREATE] 新增師資課程能力
+app.post(
+    '/api/teachers/:id/courses',
+    // --- 驗證規則 ---
+    body('courseCategory').notEmpty().withMessage('課程分類為必填'),
+    body('maxLevel').isIn(['初級', '中級', '高級']).withMessage('無效的課程難度'),
+    body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { id } = req.params;
+            const { courseCategory, maxLevel, isPreferred } = req.body;
+            
+            const result = await pool.request()
+                .input('teacher_id', sql.Int, id)
+                .input('course_category', sql.NVarChar, courseCategory)
+                .input('max_level', sql.NVarChar, maxLevel)
+                .input('is_preferred', sql.Bit, isPreferred)
+                .query(`
+                    INSERT INTO teacher_courses (teacher_id, course_category, max_level, is_preferred) 
+                    OUTPUT inserted.*
+                    VALUES (@teacher_id, @course_category, @max_level, @is_preferred)
+                `);
+            res.status(201).json(result.recordset[0]);
+        } catch (err) {
+            if (err.number === 2627) { // 唯一約束違反
+                return res.status(400).json({ error: '該師資已有此課程分類的記錄' });
+            }
+            next(err);
+        }
+    }
+);
+
+// [UPDATE] 更新師資課程能力
+app.put(
+    '/api/teachers/:teacherId/courses/:courseId',
+    // --- 驗證規則 ---
+    body('courseCategory').notEmpty().withMessage('課程分類為必填'),
+    body('maxLevel').isIn(['初級', '中級', '高級']).withMessage('無效的課程難度'),
+    body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
+    // --- 路由處理器 ---
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        try {
+            const { teacherId, courseId } = req.params;
+            const { courseCategory, maxLevel, isPreferred } = req.body;
+            
+            const result = await pool.request()
+                .input('id', sql.Int, courseId)
+                .input('teacher_id', sql.Int, teacherId)
+                .input('course_category', sql.NVarChar, courseCategory)
+                .input('max_level', sql.NVarChar, maxLevel)
+                .input('is_preferred', sql.Bit, isPreferred)
+                .query(`
+                    UPDATE teacher_courses 
+                    SET course_category = @course_category, max_level = @max_level, 
+                        is_preferred = @is_preferred, updated_at = GETDATE()
+                    WHERE id = @id AND teacher_id = @teacher_id;
+                    SELECT * FROM teacher_courses WHERE id = @id;
+                `);
+            if (result.recordset.length === 0) {
+                return res.status(404).json({ error: 'Teacher course not found' });
+            }
+            res.json(result.recordset[0]);
+        } catch (err) {
+            if (err.number === 2627) { // 唯一約束違反
+                return res.status(400).json({ error: '該師資已有此課程分類的記錄' });
+            }
+            next(err);
+        }
+    }
+);
+
+// [DELETE] 刪除師資課程能力
+app.delete('/api/teachers/:teacherId/courses/:courseId', async (req, res, next) => {
+    try {
+        const { teacherId, courseId } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, courseId)
+            .input('teacher_id', sql.Int, teacherId)
+            .query('DELETE FROM teacher_courses WHERE id = @id AND teacher_id = @teacher_id');
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Teacher course not found' });
+        }
+        res.status(204).send();
+    } catch (err) {
+        next(err);
+    }
+});
+
 // --- 集中化的錯誤處理中介軟體 ---
-// 注意：這個中介軟體必須放在所有 app.use() 和路由定義之後
 app.use((err, req, res, next) => {
     // 使用 logger 記錄完整的錯誤資訊
     logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);

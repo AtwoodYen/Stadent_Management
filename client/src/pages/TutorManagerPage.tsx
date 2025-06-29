@@ -112,9 +112,20 @@ const TutorManagerPage: React.FC = () => {
         return assignedTime === timeSlot;
       }
       
-      // 將時間格式統一為 HH:mm
-      const scheduleStartTime = schedule.start_time.substring(0, 5); // 去掉秒數
-      return scheduleStartTime === timeSlot;
+      // 將時間格式統一為 HH:mm，直接從 ISO 字串提取時間部分避免時區問題
+      const timeOnly = schedule.start_time.split('T')[1]; // 取得 "15:15:00.000Z"
+      const scheduleStartTime = timeOnly.substring(0, 5); // 取得 "15:15"
+      
+      // 智能匹配：如果課程時間在時間槽範圍內，則顯示在該時間槽
+      const [slotHour, slotMinute] = timeSlot.split(':').map(Number);
+      const [scheduleHour, scheduleMinute] = scheduleStartTime.split(':').map(Number);
+      
+      // 檢查課程是否在這個時間槽的範圍內（30分鐘時間槽）
+      const slotStartMinutes = slotHour * 60 + slotMinute;
+      const slotEndMinutes = slotStartMinutes + 30;
+      const scheduleMinutes = scheduleHour * 60 + scheduleMinute;
+      
+      return scheduleMinutes >= slotStartMinutes && scheduleMinutes < slotEndMinutes;
     });
   };
 
@@ -137,17 +148,9 @@ const TutorManagerPage: React.FC = () => {
         startTime = assignedTimeSlot.start;
         endTime = assignedTimeSlot.end;
       } else {
-        startTime = new Date(schedule.start_time).toLocaleTimeString('zh-TW', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false 
-        });
+        startTime = schedule.start_time.split('T')[1].substring(0, 5);
         endTime = schedule.end_time ? 
-          new Date(schedule.end_time).toLocaleTimeString('zh-TW', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          }) : startTime;
+          schedule.end_time.split('T')[1].substring(0, 5) : startTime;
       }
 
       return {
@@ -340,17 +343,9 @@ const TutorManagerPage: React.FC = () => {
     // 如果時間為null，使用預設時間
     const getDisplayTime = (schedule: Schedule) => {
       if (schedule.start_time) {
-        const start = new Date(schedule.start_time).toLocaleTimeString('zh-TW', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false 
-        });
+        const start = schedule.start_time.split('T')[1].substring(0, 5);
         const end = schedule.end_time ? 
-          new Date(schedule.end_time).toLocaleTimeString('zh-TW', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          }) : '';
+          schedule.end_time.split('T')[1].substring(0, 5) : '';
         return `${start} - ${end}`;
       } else {
         // 預設時間分配邏輯
@@ -566,11 +561,7 @@ const TutorManagerPage: React.FC = () => {
                         <div className="day-schedules">
                           {daySchedules.slice(0, 3).map((schedule) => {
                             const displayTime = schedule.start_time ? 
-                              new Date(schedule.start_time).toLocaleTimeString('zh-TW', { 
-                                hour: '2-digit', 
-                                minute: '2-digit',
-                                hour12: false 
-                              }) : 
+                              schedule.start_time.split('T')[1].substring(0, 5) : 
                               ['09:00', '10:30', '14:00', '15:30', '19:00', '20:30'][schedule.student_id % 6];
                             return (
                               <div key={schedule.id} className="schedule-dot">

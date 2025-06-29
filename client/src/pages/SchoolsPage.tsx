@@ -35,6 +35,10 @@ const SchoolsPage: React.FC = () => {
   const [districts, setDistricts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // 取得學校資料
   const fetchSchools = async () => {
@@ -84,6 +88,85 @@ const SchoolsPage: React.FC = () => {
     } catch (err) {
       console.error('取得行政區列表失敗:', err);
     }
+  };
+
+  // 按鈕事件處理函數
+  const handleEditSchool = (school: School) => {
+    setSelectedSchool(school);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteSchool = (school: School) => {
+    setSelectedSchool(school);
+    setShowDeleteModal(true);
+  };
+
+  const handleViewSchoolDetail = (school: School) => {
+    setSelectedSchool(school);
+    setShowDetailModal(true);
+  };
+
+  const handleAddSchool = () => {
+    setSelectedSchool(null);
+    setShowEditModal(true);
+  };
+
+  const confirmDeleteSchool = async () => {
+    if (!selectedSchool) return;
+    
+    try {
+      const response = await fetch(`/api/schools/${selectedSchool.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('刪除學校失敗');
+      }
+      
+      // 重新載入資料
+      fetchSchools();
+      fetchStats();
+      setShowDeleteModal(false);
+      setSelectedSchool(null);
+      alert('學校已成功刪除');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '刪除失敗');
+    }
+  };
+
+  const handleSaveSchool = async (schoolData: Partial<School>) => {
+    try {
+      const method = selectedSchool ? 'PUT' : 'POST';
+      const url = selectedSchool ? `/api/schools/${selectedSchool.id}` : '/api/schools';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(schoolData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('儲存學校資料失敗');
+      }
+      
+      // 重新載入資料
+      fetchSchools();
+      fetchStats();
+      setShowEditModal(false);
+      setSelectedSchool(null);
+      alert(selectedSchool ? '學校資料已更新' : '學校已新增');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '儲存失敗');
+    }
+  };
+
+  const closeModals = () => {
+    setShowEditModal(false);
+    setShowDeleteModal(false);
+    setShowDetailModal(false);
+    setSelectedSchool(null);
   };
 
   useEffect(() => {
@@ -286,7 +369,7 @@ const SchoolsPage: React.FC = () => {
               </div>
               <div className="calendar-controls">
                 <span className="student-count">總共 {totalSchools} 所學校</span>
-                <button className="btn btn-secondary">+ 新增學校</button>
+                <button className="btn btn-secondary" onClick={handleAddSchool}>+ 新增學校</button>
               </div>
             </div>
 
@@ -322,9 +405,24 @@ const SchoolsPage: React.FC = () => {
                         <span className="badge badge-gender">{school.our_student_count}</span>
                       </td>
                       <td className="student-actions">
-                        <button className="btn-small btn-edit">編輯</button>
-                        <button className="btn-small btn-delete">刪除</button>
-                        <button className="btn-small btn-schedule">詳情</button>
+                        <button 
+                          className="btn-small btn-edit" 
+                          onClick={() => handleEditSchool(school)}
+                        >
+                          編輯
+                        </button>
+                        <button 
+                          className="btn-small btn-delete" 
+                          onClick={() => handleDeleteSchool(school)}
+                        >
+                          刪除
+                        </button>
+                        <button 
+                          className="btn-small btn-schedule" 
+                          onClick={() => handleViewSchoolDetail(school)}
+                        >
+                          詳情
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -334,7 +432,264 @@ const SchoolsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 編輯模態框 */}
+      {showEditModal && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{selectedSchool ? '編輯學校' : '新增學校'}</h3>
+              <button className="modal-close" onClick={closeModals}>×</button>
+            </div>
+            <div className="modal-body">
+              <SchoolEditForm 
+                school={selectedSchool} 
+                onSave={handleSaveSchool} 
+                onCancel={closeModals}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 刪除確認模態框 */}
+      {showDeleteModal && selectedSchool && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>確認刪除</h3>
+              <button className="modal-close" onClick={closeModals}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>您確定要刪除學校「{selectedSchool.school_name}」嗎？</p>
+              <p className="warning-text">此操作無法復原！</p>
+              <div className="modal-actions">
+                <button className="btn btn-danger" onClick={confirmDeleteSchool}>
+                  確認刪除
+                </button>
+                <button className="btn btn-secondary" onClick={closeModals}>
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 詳情模態框 */}
+      {showDetailModal && selectedSchool && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>學校詳情</h3>
+              <button className="modal-close" onClick={closeModals}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="school-detail">
+                <div className="detail-row">
+                  <label>學校全名：</label>
+                  <span>{selectedSchool.school_name}</span>
+                </div>
+                <div className="detail-row">
+                  <label>簡稱：</label>
+                  <span>{selectedSchool.short_name}</span>
+                </div>
+                <div className="detail-row">
+                  <label>學校性質：</label>
+                  <span className="badge badge-school">{selectedSchool.school_type}</span>
+                </div>
+                <div className="detail-row">
+                  <label>行政區：</label>
+                  <span className="badge badge-grade">{selectedSchool.district}</span>
+                </div>
+                <div className="detail-row">
+                  <label>學制：</label>
+                  <span className="badge badge-level">{selectedSchool.education_level}</span>
+                </div>
+                <div className="detail-row">
+                  <label>電話：</label>
+                  <span>{selectedSchool.phone || '未提供'}</span>
+                </div>
+                <div className="detail-row">
+                  <label>地址：</label>
+                  <span>{selectedSchool.address || '未提供'}</span>
+                </div>
+                <div className="detail-row">
+                  <label>我們的學生數：</label>
+                  <span className="badge badge-gender">{selectedSchool.our_student_count}人</span>
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={closeModals}>
+                  關閉
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+};
+
+// 學校編輯表單組件
+const SchoolEditForm: React.FC<{
+  school: School | null;
+  onSave: (data: Partial<School>) => void;
+  onCancel: () => void;
+}> = ({ school, onSave, onCancel }) => {
+  const [formData, setFormData] = useState({
+    school_name: school?.school_name || '',
+    short_name: school?.short_name || '',
+    school_type: school?.school_type || '',
+    district: school?.district || '',
+    education_level: school?.education_level || '',
+    phone: school?.phone || '',
+    address: school?.address || '',
+    our_student_count: school?.our_student_count || 0
+  });
+
+  // 當 school prop 改變時，更新表單資料
+  useEffect(() => {
+    if (school) {
+      setFormData({
+        school_name: school.school_name || '',
+        short_name: school.short_name || '',
+        school_type: school.school_type || '',
+        district: school.district || '',
+        education_level: school.education_level || '',
+        phone: school.phone || '',
+        address: school.address || '',
+        our_student_count: school.our_student_count || 0
+      });
+    } else {
+      // 新增模式，清空表單
+      setFormData({
+        school_name: '',
+        short_name: '',
+        school_type: '',
+        district: '',
+        education_level: '',
+        phone: '',
+        address: '',
+        our_student_count: 0
+      });
+    }
+  }, [school]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  const handleChange = (field: string, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="school-form">
+      <div className="form-row">
+        <div className="form-group">
+          <label>學校全名 *</label>
+          <input
+            type="text"
+            value={formData.school_name}
+            onChange={(e) => handleChange('school_name', e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label>簡稱</label>
+          <input
+            type="text"
+            value={formData.short_name}
+            onChange={(e) => handleChange('short_name', e.target.value)}
+          />
+        </div>
+      </div>
+      
+      <div className="form-row">
+        <div className="form-group">
+          <label>學校性質 *</label>
+          <select
+            value={formData.school_type}
+            onChange={(e) => handleChange('school_type', e.target.value)}
+            required
+          >
+            <option value="">請選擇</option>
+            <option value="公立">公立</option>
+            <option value="國立">國立</option>
+            <option value="私立">私立</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>行政區 *</label>
+          <input
+            type="text"
+            value={formData.district}
+            onChange={(e) => handleChange('district', e.target.value)}
+            required
+          />
+        </div>
+      </div>
+      
+      <div className="form-row">
+        <div className="form-group">
+          <label>學制 *</label>
+          <select
+            value={formData.education_level}
+            onChange={(e) => handleChange('education_level', e.target.value)}
+            required
+          >
+            <option value="">請選擇</option>
+            <option value="國小">國小</option>
+            <option value="國中">國中</option>
+            <option value="高中">高中</option>
+            <option value="高職">高職</option>
+            <option value="大學">大學</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>我們的學生數</label>
+          <input
+            type="number"
+            value={formData.our_student_count}
+            onChange={(e) => handleChange('our_student_count', parseInt(e.target.value) || 0)}
+            min="0"
+          />
+        </div>
+      </div>
+      
+      <div className="form-group">
+        <label>電話</label>
+        <input
+          type="text"
+          value={formData.phone}
+          onChange={(e) => handleChange('phone', e.target.value)}
+        />
+      </div>
+      
+      <div className="form-group">
+        <label>地址</label>
+        <textarea
+          value={formData.address}
+          onChange={(e) => handleChange('address', e.target.value)}
+          rows={3}
+        />
+      </div>
+      
+      <div className="modal-actions">
+        <button type="submit" className="btn btn-primary">
+          {school ? '更新' : '新增'}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={onCancel}>
+          取消
+        </button>
+      </div>
+    </form>
   );
 };
 

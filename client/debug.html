@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課表調試頁面</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .result { background: #f8f9fa; padding: 10px; margin: 10px 0; border-left: 4px solid #007bff; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>課表系統調試頁面</h1>
+    
+    <div class="section">
+        <h2>API 測試</h2>
+        <button class="button" onclick="testStudentsAPI()">測試學生 API</button>
+        <button class="button" onclick="testSchedulesAPI()">測試課表 API</button>
+        <div id="api-results"></div>
+    </div>
+    
+    <div class="section">
+        <h2>資料轉換測試</h2>
+        <button class="button" onclick="testDataTransformation()">測試資料轉換邏輯</button>
+        <div id="transform-results"></div>
+    </div>
+    
+    <div class="section">
+        <h2>週視圖測試</h2>
+        <button class="button" onclick="testWeekView()">測試週視圖邏輯</button>
+        <div id="week-results"></div>
+    </div>
+
+    <script>
+        async function testStudentsAPI() {
+            const resultsDiv = document.getElementById('api-results');
+            try {
+                console.log('🔄 測試學生 API...');
+                const response = await fetch('/api/students');
+                const data = await response.json();
+                
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <strong>學生 API 結果:</strong><br>
+                        狀態: ${response.status}<br>
+                        資料筆數: ${data.length}<br>
+                        <pre>${JSON.stringify(data.slice(0, 2), null, 2)}</pre>
+                    </div>
+                `;
+                console.log('✅ 學生 API 測試完成:', data);
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="result error">學生 API 錯誤: ${error.message}</div>`;
+                console.error('❌ 學生 API 錯誤:', error);
+            }
+        }
+        
+        async function testSchedulesAPI() {
+            const resultsDiv = document.getElementById('api-results');
+            try {
+                console.log('🔄 測試課表 API...');
+                const response = await fetch('/api/schedules');
+                const data = await response.json();
+                
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <strong>課表 API 結果:</strong><br>
+                        狀態: ${response.status}<br>
+                        資料筆數: ${data.length}<br>
+                        <pre>${JSON.stringify(data.slice(0, 2), null, 2)}</pre>
+                    </div>
+                `;
+                console.log('✅ 課表 API 測試完成:', data);
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="result error">課表 API 錯誤: ${error.message}</div>`;
+                console.error('❌ 課表 API 錯誤:', error);
+            }
+        }
+        
+        async function testDataTransformation() {
+            const resultsDiv = document.getElementById('transform-results');
+            try {
+                console.log('🔄 測試資料轉換...');
+                
+                // 載入資料
+                const [studentsRes, schedulesRes] = await Promise.all([
+                    fetch('/api/students'),
+                    fetch('/api/schedules')
+                ]);
+                
+                const studentsData = await studentsRes.json();
+                const schedulesData = await schedulesRes.json();
+                
+                // 模擬轉換邏輯
+                const formattedStudents = studentsData.map(student => ({
+                    id: student.id || student.student_id,
+                    name: student.chinese_name || student.name || student.student_name || '未知學生',
+                    level: student.level_type || student.level || student.grade || '未知年級'
+                }));
+                
+                // 簡化的課程轉換
+                const today = new Date();
+                const currentWeekStart = new Date(today);
+                currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // 週一
+                
+                const formattedLessons = [];
+                const dayMap = {
+                    '星期一': 1, '星期二': 2, '星期三': 3, '星期四': 4,
+                    '星期五': 5, '星期六': 6, '星期日': 0
+                };
+                
+                schedulesData.forEach(schedule => {
+                    const dayOfWeek = dayMap[schedule.day_of_week];
+                    if (dayOfWeek !== undefined) {
+                        const lessonDate = new Date(currentWeekStart);
+                        if (dayOfWeek === 0) {
+                            lessonDate.setDate(currentWeekStart.getDate() + 6);
+                        } else {
+                            lessonDate.setDate(currentWeekStart.getDate() + dayOfWeek - 1);
+                        }
+                        
+                        const startTime = schedule.start_time.split('T')[1].slice(0, 5);
+                        
+                        formattedLessons.push({
+                            id: schedule.id,
+                            studentId: schedule.student_id,
+                            date: lessonDate,
+                            startTime: startTime,
+                            endTime: schedule.end_time.split('T')[1].slice(0, 5),
+                            topic: schedule.subject,
+                            status: 'scheduled'
+                        });
+                    }
+                });
+                
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <strong>資料轉換結果:</strong><br>
+                        學生數: ${formattedStudents.length}<br>
+                        課程數: ${formattedLessons.length}<br>
+                        本週課程: ${formattedLessons.filter(l => {
+                            const weekStart = new Date(currentWeekStart);
+                            const weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekStart.getDate() + 6);
+                            return l.date >= weekStart && l.date <= weekEnd;
+                        }).length}<br>
+                        <pre>課程範例: ${JSON.stringify(formattedLessons.slice(0, 2), null, 2)}</pre>
+                    </div>
+                `;
+                
+                console.log('✅ 資料轉換測試完成');
+                console.log('學生:', formattedStudents);
+                console.log('課程:', formattedLessons);
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="result error">資料轉換錯誤: ${error.message}</div>`;
+                console.error('❌ 資料轉換錯誤:', error);
+            }
+        }
+        
+        async function testWeekView() {
+            const resultsDiv = document.getElementById('week-results');
+            try {
+                console.log('🔄 測試週視圖邏輯...');
+                
+                // 這裡會測試週視圖的基本邏輯
+                const today = new Date();
+                const currentWeekStart = new Date(today);
+                currentWeekStart.setDate(today.getDate() - today.getDay() + 1);
+                
+                const weekDays = [];
+                for (let i = 0; i < 7; i++) {
+                    const day = new Date(currentWeekStart);
+                    day.setDate(currentWeekStart.getDate() + i);
+                    weekDays.push({
+                        date: day.toISOString().split('T')[0],
+                        dayName: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][day.getDay()],
+                        isToday: day.toDateString() === today.toDateString()
+                    });
+                }
+                
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <strong>週視圖邏輯測試:</strong><br>
+                        今天: ${today.toISOString().split('T')[0]}<br>
+                        本週開始: ${currentWeekStart.toISOString().split('T')[0]}<br>
+                        週天數: ${weekDays.length}<br>
+                        <pre>${JSON.stringify(weekDays, null, 2)}</pre>
+                    </div>
+                `;
+                
+                console.log('✅ 週視圖邏輯測試完成:', weekDays);
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="result error">週視圖測試錯誤: ${error.message}</div>`;
+                console.error('❌ 週視圖測試錯誤:', error);
+            }
+        }
+        
+        // 頁面載入時自動執行基本測試
+        window.onload = function() {
+            console.log('🔄 頁面載入完成，開始自動測試...');
+            testStudentsAPI();
+            setTimeout(() => testSchedulesAPI(), 1000);
+            setTimeout(() => testDataTransformation(), 2000);
+        };
+    </script>
+</body>
+</html> 

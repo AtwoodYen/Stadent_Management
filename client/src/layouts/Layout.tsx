@@ -1,6 +1,7 @@
 import React, { type ReactNode } from 'react';
-import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemIcon, ListItemText, Divider, ListItemButton } from '@mui/material';
+import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemIcon, ListItemText, Divider, ListItemButton, Button, Avatar, Menu, MenuItem } from '@mui/material';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Logout, Person } from '@mui/icons-material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ScheduleIcon from '@mui/icons-material/CalendarToday';
 import PeopleIcon from '@mui/icons-material/People';
@@ -8,6 +9,7 @@ import SchoolIcon from '@mui/icons-material/AccountBalance';
 import BookIcon from '@mui/icons-material/MenuBook';
 import TeacherIcon from '@mui/icons-material/School';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 160;  // 最左側側邊欄寬度
 
@@ -29,6 +31,21 @@ interface LayoutProps
 const Layout: React.FC<LayoutProps> = ({ children }) => 
 {
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    handleUserMenuClose();
+  };
 
   return (
     <Box sx={{ display: 'flex' }}>  //
@@ -42,9 +59,43 @@ const Layout: React.FC<LayoutProps> = ({ children }) =>
         }}
       >
         <Toolbar>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Im未來學院-小剛老師程式設計 家教管理系統
           </Typography>
+          
+          {/* 用戶資訊和登出按鈕 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" sx={{ color: 'white' }}>
+              歡迎，{user?.name || user?.username}
+            </Typography>
+            <Button
+              color="inherit"
+              onClick={handleUserMenuOpen}
+              startIcon={<Avatar sx={{ width: 24, height: 24 }}><Person /></Avatar>}
+            >
+              <Typography variant="body2">帳戶</Typography>
+            </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleUserMenuClose}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+            >
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <Logout fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>登出</ListItemText>
+              </MenuItem>
+            </Menu>
+          </Box>
         </Toolbar>
       </AppBar>
 

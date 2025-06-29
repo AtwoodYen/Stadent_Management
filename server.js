@@ -8,6 +8,8 @@ const sql = require('mssql'); // 確保這裡使用的是 mssql
 const { body, query, validationResult } = require('express-validator');
 const logger = require('./logger'); // 引入我們建立的 logger
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const port = 3000; // 您可以選擇任何未被佔用的 port
@@ -77,6 +79,91 @@ let pool = new sql.ConnectionPool(dbConfig);
 // 測試連線
 app.get('/', (req, res) => {
     res.send('後端伺服器已啟動！');
+});
+
+// --- 認證 API 端點 ---
+
+// JWT 密鑰 (在生產環境中應該從環境變數讀取)
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-here';
+
+// 中介軟體：驗證 JWT Token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+        return res.status(401).json({ message: '存取被拒絕，需要提供 Token' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: 'Token 無效或已過期' });
+        }
+        req.user = user;
+        next();
+    });
+};
+
+// [POST] 用戶登入
+app.post('/api/auth/login', async (req, res, next) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ message: '請提供帳號和密碼' });
+        }
+
+        // 簡單的硬編碼驗證 (在實際應用中應該從資料庫查詢)
+        const validUsers = [
+            { id: 1, username: 'admin', password: '123456', name: '系統管理員', role: 'admin' },
+            { id: 2, username: 'teacher', password: '123456', name: '小剛老師', role: 'teacher' },
+            { id: 3, username: 'manager', password: '123456', name: '教務主任', role: 'manager' }
+        ];
+
+        const user = validUsers.find(u => u.username === username && u.password === password);
+
+        if (!user) {
+            return res.status(401).json({ message: '帳號或密碼錯誤' });
+        }
+
+        // 生成 JWT Token
+        const token = jwt.sign(
+            { 
+                id: user.id, 
+                username: user.username, 
+                role: user.role 
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        // 回傳用戶資訊和 Token (不包含密碼)
+        const { password: _, ...userInfo } = user;
+        
+        logger.info(`User ${username} logged in successfully`);
+        res.json({
+            message: '登入成功',
+            token,
+            user: userInfo
+        });
+
+    } catch (err) {
+        logger.error(`Login error: ${err.message}`);
+        next(err);
+    }
+});
+
+// [POST] 驗證 Token
+app.post('/api/auth/verify', authenticateToken, (req, res) => {
+    res.json({ 
+        message: 'Token 有效',
+        user: req.user 
+    });
+});
+
+// [POST] 用戶登出 (可選，主要是清除客戶端的 Token)
+app.post('/api/auth/logout', (req, res) => {
+    res.json({ message: '登出成功' });
 });
 
 // --- 學生管理 API 端點 ---

@@ -7,7 +7,7 @@
    3. 課程資料保存在本地 state
 -------------------------------- */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles/tutoring.css';          // 內含 .calendar-section 與 .full-width
 import {
   Box,
@@ -63,36 +63,10 @@ interface Lesson {
 
 /* ---------- 主元件 ---------- */
 export default function SchedulePage() {
-  /* ---------------- 學生清單 ---------------- */
-  const [students] = useState<Student[]>([
-    { id: 1, name: '張小明', level: '初級' },
-    { id: 2, name: '王大同', level: '中級' },
-    { id: 3, name: '李小花', level: '高級' },
-    { id: 4, name: '林小華', level: '初級' },
-    { id: 5, name: '陳大明', level: '中級' }
-  ]);
-
-  /* ---------------- 課程清單 ---------------- */
-  const [lessons, setLessons] = useState<Lesson[]>([
-    {
-      id: 1,
-      studentId: 1,
-      date: addDays(new Date(), 1),
-      startTime: '14:00',
-      endTime: '15:30',
-      topic: 'React 基礎教學',
-      status: 'scheduled'
-    },
-    {
-      id: 2,
-      studentId: 2,
-      date: addDays(new Date(), 2),
-      startTime: '10:00',
-      endTime: '11:30',
-      topic: '進階 React',
-      status: 'scheduled'
-    }
-  ]);
+  /* ---------------- 資料狀態 ---------------- */
+  const [students, setStudents] = useState<Student[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
 
   /* ---------------- UI 狀態 ---------------- */
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -146,26 +120,54 @@ export default function SchedulePage() {
   };
 
   /* ---------- 新增課程 ---------- */
-  const handleAddLesson = () => {
+  const handleAddLesson = async () => {
     if (!selectedDate || !selectedStudent || !selectedTime) return;
 
-    const newLesson: Lesson = {
-      id: lessons.length + 1,
-      studentId: Number(selectedStudent),
-      date: selectedDate,
-      startTime: selectedTime,
-      endTime: (() => {
-        const [hh, mm] = selectedTime.split(':').map(Number);
-        const dateObj = new Date(selectedDate);
-        dateObj.setHours(hh, mm, 0, 0);
-        return format(addMinutes(dateObj, 90), 'HH:mm');
-      })(),
-      topic,
+    const endTime = (() => {
+      const [hh, mm] = selectedTime.split(':').map(Number);
+      const dateObj = new Date(selectedDate);
+      dateObj.setHours(hh, mm, 0, 0);
+      return format(addMinutes(dateObj, 90), 'HH:mm');
+    })();
+
+    const lessonData = {
+      student_id: Number(selectedStudent),
+      lesson_date: format(selectedDate, 'yyyy-MM-dd'),
+      start_time: selectedTime,
+      end_time: endTime,
+      subject: topic,
       status: 'scheduled'
     };
 
-    setLessons(prev => [...prev, newLesson]);
-    handleCloseDialog();
+    try {
+      const response = await fetch('http://localhost:3000/api/schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(lessonData),
+      });
+
+      if (response.ok) {
+        const newSchedule = await response.json();
+        const newLesson: Lesson = {
+          id: newSchedule.id,
+          studentId: newSchedule.student_id,
+          date: new Date(newSchedule.lesson_date),
+          startTime: newSchedule.start_time,
+          endTime: newSchedule.end_time,
+          topic: newSchedule.subject,
+          status: newSchedule.status
+        };
+        
+        setLessons(prev => [...prev, newLesson]);
+        handleCloseDialog();
+      } else {
+        console.error('新增課程失敗');
+      }
+    } catch (error) {
+      console.error('新增課程錯誤:', error);
+    }
   };
 
   /* ---------- 檢視切換 ---------- */
@@ -198,6 +200,57 @@ export default function SchedulePage() {
   };
 
   const handleToday = () => setCurrentDate(new Date());
+
+  /* ---------- API 資料載入 ---------- */
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/students');
+      if (response.ok) {
+        const data = await response.json();
+        // 轉換資料格式以符合現有介面
+        const formattedStudents = data.map((student: any) => ({
+          id: student.id,
+          name: student.name,
+          level: student.level || '初級'
+        }));
+        setStudents(formattedStudents);
+      }
+    } catch (error) {
+      console.error('載入學生資料失敗:', error);
+    }
+  };
+
+  const fetchLessons = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/schedules/calendar');
+      if (response.ok) {
+        const data = await response.json();
+        // 轉換資料格式以符合現有介面
+        const formattedLessons = data.map((schedule: any) => ({
+          id: schedule.id,
+          studentId: schedule.student_id,
+          date: new Date(schedule.lesson_date),
+          startTime: schedule.start_time,
+          endTime: schedule.end_time,
+          topic: schedule.subject || '課程',
+          status: schedule.status || 'scheduled'
+        }));
+        setLessons(formattedLessons);
+      }
+    } catch (error) {
+      console.error('載入課程資料失敗:', error);
+    }
+  };
+
+  // 初始載入資料
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchStudents(), fetchLessons()]);
+      setLoading(false);
+    };
+    loadData();
+  }, []);
 
   
   /* ---------- 月視圖 ---------- */
@@ -299,6 +352,14 @@ export default function SchedulePage() {
   );
 
   /* ---------- 畫面 ---------- */
+  if (loading) {
+    return (
+      <div className='schedule-container' style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <div>載入中...</div>
+      </div>
+    );
+  }
+
   return (
     <div className='schedule-container'>
       <div className='main-content'>

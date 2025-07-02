@@ -12,13 +12,13 @@
 ## 部署步驟
 
 ### 1. 資料庫更新
-執行完整的資料庫更新腳本（包含約束修正）：
+執行簡化的資料庫更新腳本（推薦）：
 ```sql
--- 執行完整更新腳本
-SQL/maintenance/update_student_levels_complete.sql
+-- 執行簡化更新腳本
+SQL/maintenance/simple_level_update.sql
 ```
 
-**注意**：如果遇到約束衝突錯誤，請使用此完整腳本，它會自動處理約束修正。
+**注意**：此腳本使用 try-catch 處理約束問題，更穩定可靠。
 
 ### 2. 前端更新
 前端組件已更新完成：
@@ -45,8 +45,10 @@ SQL/maintenance/rollback_student_levels.sql
 
 ### 新增檔案
 - `SQL/maintenance/update_student_levels.sql` - 基本更新腳本
-- `SQL/maintenance/update_student_levels_complete.sql` - 完整更新腳本（推薦）
+- `SQL/maintenance/simple_level_update.sql` - 簡化更新腳本（推薦）
+- `SQL/maintenance/update_student_levels_complete.sql` - 完整更新腳本
 - `SQL/maintenance/fix_level_constraint.sql` - 約束修正腳本
+- `SQL/maintenance/fix_level_constraint_v2.sql` - 約束修正腳本（版本2）
 - `SQL/maintenance/rollback_student_levels.sql` - 回滾腳本
 - `SQL/maintenance/check_student_levels.sql` - 檢查腳本
 - `docs/guides/STUDENT_LEVEL_UPGRADE_GUIDE.md` - 本指南
@@ -67,13 +69,16 @@ SQL/maintenance/rollback_student_levels.sql
 ## 故障排除
 
 ### 約束衝突錯誤
-如果遇到 `CHECK 條件約束衝突` 錯誤，請使用 `update_student_levels_complete.sql` 腳本，它會自動處理約束修正。
+如果遇到 `CHECK 條件約束衝突` 錯誤，請使用 `simple_level_update.sql` 腳本，它會自動處理約束修正。
+
+### 無效的資料行名稱錯誤
+如果遇到 `無效的資料行名稱 'CONSTRAINT_TYPE'` 錯誤，請使用 `simple_level_update.sql` 腳本，它避免了複雜的約束查詢。
 
 ### 手動約束修正
 如需手動修正約束，可執行：
 ```sql
--- 執行約束修正腳本
-SQL/maintenance/fix_level_constraint.sql
+-- 執行約束修正腳本（版本2）
+SQL/maintenance/fix_level_constraint_v2.sql
 ```
 
 ## 測試建議

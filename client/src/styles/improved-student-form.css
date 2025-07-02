@@ -366,4 +366,84 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* 排序標題樣式 */
+.sortable-header {
+  position: relative;
+  user-select: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  padding: 12px 8px;
+  text-align: left;
+  vertical-align: middle;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+}
+
+.sortable-header:hover {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.sortable-header:active {
+  background-color: #bbdefb;
+  transform: translateY(1px);
+}
+
+/* 排序圖示樣式 */
+.sort-icon {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #9e9e9e;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.sortable-header:hover .sort-icon {
+  color: #1976d2;
+  transform: scale(1.1);
+}
+
+/* 當前排序欄位的樣式 */
+.sortable-header.active {
+  background-color: #e3f2fd;
+  border-bottom: 2px solid #1976d2;
+  color: #1976d2;
+}
+
+.sortable-header.active .sort-icon {
+  color: #1976d2;
+}
+
+/* 表格樣式優化 */
+.students-table th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+  padding: 12px 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* 非排序標題的樣式 */
+.students-table th:not(.sortable-header) {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+/* 確保表格內容對齊 */
+.students-table td {
+  padding: 12px 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.students-table tbody tr:hover {
+  background-color: #f8f9fa;
 } 

@@ -38,6 +38,11 @@ interface ClassType {
   sort_order: number;
 }
 
+interface SortConfig {
+  key: keyof Student | 'class_type_name';
+  direction: 'asc' | 'desc';
+}
+
 const StudentsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage, setStudentsPerPage] = useState(10);
@@ -47,6 +52,10 @@ const StudentsPage: React.FC = () => {
     level: '',
     gender: '',
     classType: ''
+  });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    key: 'chinese_name',
+    direction: 'asc'
   });
   const [students, setStudents] = useState<Student[]>([]);
   const [schools, setSchools] = useState<string[]>([]);
@@ -135,17 +144,70 @@ const StudentsPage: React.FC = () => {
     count: students.filter(s => s.grade === grade).length
   }));
 
+  // 排序學生資料
+  const sortStudents = (students: Student[]) => {
+    return [...students].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      if (sortConfig.key === 'class_type_name') {
+        aValue = getClassTypeName(a.class_type);
+        bValue = getClassTypeName(b.class_type);
+      } else {
+        aValue = a[sortConfig.key];
+        bValue = b[sortConfig.key];
+      }
+
+      // 處理空值
+      if (!aValue && !bValue) return 0;
+      if (!aValue) return 1;
+      if (!bValue) return -1;
+
+      // 字串比較
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        const comparison = aValue.localeCompare(bValue, 'zh-TW');
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      }
+
+      // 數字比較
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      // 預設字串比較
+      const comparison = String(aValue).localeCompare(String(bValue), 'zh-TW');
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
+    });
+  };
+
   // 獲取當前頁面的學生
   const getCurrentPageStudents = () => {
+    const sortedStudents = sortStudents(students);
     const startIndex = (currentPage - 1) * studentsPerPage;
     const endIndex = startIndex + studentsPerPage;
-    return students.slice(startIndex, endIndex);
+    return sortedStudents.slice(startIndex, endIndex);
   };
 
   // 根據班別代碼獲取班別名稱
   const getClassTypeName = (classCode: string) => {
     const classType = classTypes.find(ct => ct.class_code === classCode);
     return classType ? classType.class_name : classCode;
+  };
+
+  // 處理排序
+  const handleSort = (key: keyof Student | 'class_type_name') => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // 獲取排序圖示
+  const getSortIcon = (key: keyof Student | 'class_type_name') => {
+    if (sortConfig.key !== key) {
+      return '⇅'; // 未排序
+    }
+    return sortConfig.direction === 'asc' ? '⇑' : '⇓';
   };
 
   const handlePrevPage = () => {
@@ -479,13 +541,48 @@ const StudentsPage: React.FC = () => {
               <table className="students-table">
                 <thead>
                   <tr>
-                    <th>中文姓名</th>
-                    <th>英文姓名</th>
-                    <th>學校</th>
-                    <th>年級</th>
-                    <th>性別</th>
-                    <th>程度</th>
-                    <th>班別</th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'chinese_name' ? 'active' : ''}`}
+                      onClick={() => handleSort('chinese_name')}
+                    >
+                      中文姓名<span className="sort-icon">{getSortIcon('chinese_name')}</span>
+                    </th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'english_name' ? 'active' : ''}`}
+                      onClick={() => handleSort('english_name')}
+                    >
+                      英文姓名<span className="sort-icon">{getSortIcon('english_name')}</span>
+                    </th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'school' ? 'active' : ''}`}
+                      onClick={() => handleSort('school')}
+                    >
+                      學校<span className="sort-icon">{getSortIcon('school')}</span>
+                    </th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'grade' ? 'active' : ''}`}
+                      onClick={() => handleSort('grade')}
+                    >
+                      年級<span className="sort-icon">{getSortIcon('grade')}</span>
+                    </th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'gender' ? 'active' : ''}`}
+                      onClick={() => handleSort('gender')}
+                    >
+                      性別<span className="sort-icon">{getSortIcon('gender')}</span>
+                    </th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'level_type' ? 'active' : ''}`}
+                      onClick={() => handleSort('level_type')}
+                    >
+                      程度<span className="sort-icon">{getSortIcon('level_type')}</span>
+                    </th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'class_type_name' ? 'active' : ''}`}
+                      onClick={() => handleSort('class_type_name')}
+                    >
+                      班別<span className="sort-icon">{getSortIcon('class_type_name')}</span>
+                    </th>
                     <th>操作</th>
                   </tr>
                 </thead>

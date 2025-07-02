@@ -20,6 +20,13 @@ SQL/maintenance/simple_level_update.sql
 
 **注意**：此腳本使用 try-catch 處理約束問題，更穩定可靠。
 
+### 2. 如果遇到約束衝突錯誤
+如果遇到 `ALTER TABLE 陳述式與 CHECK 條件約束衝突` 錯誤，請執行緊急修復腳本：
+```sql
+-- 執行緊急修復腳本
+SQL/maintenance/emergency_level_fix.sql
+```
+
 ### 2. 前端更新
 前端組件已更新完成：
 - ✅ `StudentsPage.tsx` - 學生管理頁面篩選選項
@@ -31,6 +38,13 @@ SQL/maintenance/simple_level_update.sql
 ```sql
 -- 檢查程度分佈
 SQL/maintenance/check_student_levels.sql
+```
+
+### 4. 診斷問題（可選）
+如果遇到問題，可執行診斷腳本：
+```sql
+-- 診斷目前狀態
+SQL/maintenance/diagnose_level_status.sql
 ```
 
 ## 回滾程序
@@ -46,6 +60,9 @@ SQL/maintenance/rollback_student_levels.sql
 ### 新增檔案
 - `SQL/maintenance/update_student_levels.sql` - 基本更新腳本
 - `SQL/maintenance/simple_level_update.sql` - 簡化更新腳本（推薦）
+- `SQL/maintenance/safe_level_update.sql` - 安全更新腳本
+- `SQL/maintenance/emergency_level_fix.sql` - 緊急修復腳本
+- `SQL/maintenance/diagnose_level_status.sql` - 診斷腳本
 - `SQL/maintenance/update_student_levels_complete.sql` - 完整更新腳本
 - `SQL/maintenance/fix_level_constraint.sql` - 約束修正腳本
 - `SQL/maintenance/fix_level_constraint_v2.sql` - 約束修正腳本（版本2）
@@ -69,7 +86,7 @@ SQL/maintenance/rollback_student_levels.sql
 ## 故障排除
 
 ### 約束衝突錯誤
-如果遇到 `CHECK 條件約束衝突` 錯誤，請使用 `simple_level_update.sql` 腳本，它會自動處理約束修正。
+如果遇到 `ALTER TABLE 陳述式與 CHECK 條件約束衝突` 錯誤，請使用 `emergency_level_fix.sql` 腳本，它會強制處理約束衝突。
 
 ### 無效的資料行名稱錯誤
 如果遇到 `無效的資料行名稱 'CONSTRAINT_TYPE'` 錯誤，請使用 `simple_level_update.sql` 腳本，它避免了複雜的約束查詢。

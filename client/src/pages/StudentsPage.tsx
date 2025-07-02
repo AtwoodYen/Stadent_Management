@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StudentFormOptimized from '../components/StudentFormOptimized';
+import StudentDetailView from '../components/StudentDetailView';
 import '../styles/improved-student-form.css';
 
 interface Student {
@@ -26,6 +27,13 @@ interface Student {
   is_active: boolean;
 }
 
+interface ClassType {
+  class_code: string;
+  class_name: string;
+  description: string;
+  sort_order: number;
+}
+
 const StudentsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage, setStudentsPerPage] = useState(10);
@@ -38,6 +46,7 @@ const StudentsPage: React.FC = () => {
   });
   const [students, setStudents] = useState<Student[]>([]);
   const [schools, setSchools] = useState<string[]>([]);
+  const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -86,9 +95,24 @@ const StudentsPage: React.FC = () => {
     }
   };
 
+  // 取得班別列表
+  const fetchClassTypes = async () => {
+    try {
+      const response = await fetch('/api/class-types');
+      if (!response.ok) {
+        throw new Error('無法取得班別列表');
+      }
+      const data = await response.json();
+      setClassTypes(data);
+    } catch (err) {
+      console.error('取得班別列表失敗:', err);
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
     fetchSchools();
+    fetchClassTypes();
   }, [sortOptions]);
 
   // 計算統計資料
@@ -112,6 +136,12 @@ const StudentsPage: React.FC = () => {
     const startIndex = (currentPage - 1) * studentsPerPage;
     const endIndex = startIndex + studentsPerPage;
     return students.slice(startIndex, endIndex);
+  };
+
+  // 根據班別代碼獲取班別名稱
+  const getClassTypeName = (classCode: string) => {
+    const classType = classTypes.find(ct => ct.class_code === classCode);
+    return classType ? classType.class_name : classCode;
   };
 
   const handlePrevPage = () => {
@@ -153,6 +183,11 @@ const StudentsPage: React.FC = () => {
   const handleViewStudentDetail = (student: Student) => {
     setSelectedStudent(student);
     setShowDetailModal(true);
+  };
+
+  const handleEditFromDetail = () => {
+    setShowDetailModal(false);
+    setShowEditModal(true);
   };
 
   const handleAddStudent = () => {
@@ -321,13 +356,39 @@ const StudentsPage: React.FC = () => {
             <div className="calendar-header">
               <div className="calendar-nav">
                 <div className="pagination-controls">
-                  <button className="btn" onClick={handlePrevPage} disabled={currentPage === 1}>
+                  <button 
+                    className="btn" 
+                    onClick={handlePrevPage} 
+                    disabled={currentPage === 1}
+                    style={{
+                      backgroundColor: '#1976d2',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      opacity: currentPage === 1 ? 0.6 : 1
+                    }}
+                  >
                     ‹ 上一頁
                   </button>
                   <div className="page-info">
                     {currentPage} / {totalPages}
                   </div>
-                  <button className="btn" onClick={handleNextPage} disabled={currentPage === totalPages}>
+                  <button 
+                    className="btn" 
+                    onClick={handleNextPage} 
+                    disabled={currentPage === totalPages}
+                    style={{
+                      backgroundColor: '#1976d2',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      opacity: currentPage === totalPages ? 0.6 : 1
+                    }}
+                  >
                     下一頁 ›
                   </button>
                   <select 
@@ -393,9 +454,11 @@ const StudentsPage: React.FC = () => {
                     className="sort-select"
                   >
                     <option value="">班別</option>
-                    <option value="A班">A班</option>
-                    <option value="B班">B班</option>
-                    <option value="C班">C班</option>
+                    {classTypes.map((classType) => (
+                      <option key={classType.class_code} value={classType.class_code}>
+                        {classType.class_name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -438,7 +501,7 @@ const StudentsPage: React.FC = () => {
                         <span className="badge badge-level">{student.level_type}</span>
                       </td>
                       <td>
-                        <span className="badge badge-class">{student.class_type}</span>
+                        <span className="badge badge-class">{getClassTypeName(student.class_type)}</span>
                       </td>
                       <td className="student-actions">
                         <button 
@@ -505,75 +568,12 @@ const StudentsPage: React.FC = () => {
       {/* 詳情模態框 */}
       {showDetailModal && selectedStudent && (
         <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>學生詳細資料</h3>
-            <div className="student-detail">
-              <div className="detail-row">
-                <label>中文姓名：</label>
-                <span>{selectedStudent.chinese_name}</span>
-              </div>
-              <div className="detail-row">
-                <label>英文姓名：</label>
-                <span>{selectedStudent.english_name}</span>
-              </div>
-              <div className="detail-row">
-                <label>學校：</label>
-                <span>{selectedStudent.school}</span>
-              </div>
-              <div className="detail-row">
-                <label>年級：</label>
-                <span>{selectedStudent.grade}</span>
-              </div>
-              <div className="detail-row">
-                <label>性別：</label>
-                <span>{selectedStudent.gender}</span>
-              </div>
-              <div className="detail-row">
-                <label>程度：</label>
-                <span>{selectedStudent.level_type}</span>
-              </div>
-              <div className="detail-row">
-                <label>班別：</label>
-                <span>{selectedStudent.class_type}</span>
-              </div>
-              <div className="detail-row">
-                <label>學生電話：</label>
-                <span>{selectedStudent.student_phone}</span>
-              </div>
-              <div className="detail-row">
-                <label>學生Email：</label>
-                <span>{selectedStudent.student_email}</span>
-              </div>
-              <div className="detail-row">
-                <label>學生Line：</label>
-                <span>{selectedStudent.student_line}</span>
-              </div>
-              <div className="detail-row">
-                <label>父親姓名：</label>
-                <span>{selectedStudent.father_name}</span>
-              </div>
-              <div className="detail-row">
-                <label>父親電話：</label>
-                <span>{selectedStudent.father_phone}</span>
-              </div>
-              <div className="detail-row">
-                <label>母親姓名：</label>
-                <span>{selectedStudent.mother_name}</span>
-              </div>
-              <div className="detail-row">
-                <label>母親電話：</label>
-                <span>{selectedStudent.mother_phone}</span>
-              </div>
-              <div className="detail-row">
-                <label>備註：</label>
-                <span>{selectedStudent.notes}</span>
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={closeModals}>
-                關閉
-              </button>
-            </div>
+          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
+            <StudentDetailView
+              student={selectedStudent}
+              onEdit={handleEditFromDetail}
+              onClose={closeModals}
+            />
           </div>
         </div>
       )}

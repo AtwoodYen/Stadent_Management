@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TextField, 
   Select, 
@@ -32,6 +32,13 @@ interface Student {
   notes: string;
 }
 
+interface ClassType {
+  class_code: string;
+  class_name: string;
+  description: string;
+  sort_order: number;
+}
+
 interface StudentEditFormImprovedProps {
   student: Student | null;
   onSave: (data: Partial<Student>) => void;
@@ -62,6 +69,27 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
     class_type: student?.class_type || '',
     notes: student?.notes || ''
   });
+
+  const [classTypes, setClassTypes] = useState<ClassType[]>([]);
+
+  // 載入班別資料
+  useEffect(() => {
+    const fetchClassTypes = async () => {
+      try {
+        const response = await fetch('/api/class-types');
+        if (response.ok) {
+          const data = await response.json();
+          setClassTypes(data);
+        } else {
+          console.error('無法載入班別資料');
+        }
+      } catch (error) {
+        console.error('載入班別資料時發生錯誤:', error);
+      }
+    };
+
+    fetchClassTypes();
+  }, []);
 
   const handleChange = (field: keyof Student, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -178,9 +206,11 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
                 fullWidth
               >
                 <MenuItem value="">選擇</MenuItem>
-                <MenuItem value="A班">A班</MenuItem>
-                <MenuItem value="B班">B班</MenuItem>
-                <MenuItem value="C班">C班</MenuItem>
+                {classTypes.map((classType) => (
+                  <MenuItem key={classType.class_code} value={classType.class_code}>
+                    {classType.class_name}
+                  </MenuItem>
+                ))}
               </Select>
             </FormRow>
           </Box>

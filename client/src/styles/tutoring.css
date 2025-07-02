@@ -1226,6 +1226,24 @@ body {
   box-sizing: border-box; /* padding 不再額外計算 */
 }
 
+/* 大型模態框樣式 - 用於學生詳情視窗 */
+.modal-content-large {
+  background: white;
+  color: #000000;
+  padding: 0; /* FormContainer 會處理內邊距 */
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 900px;
+  max-height: 85vh;
+  width: min(95%, 900px);
+  height: auto;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+  margin-left: 125px; /* 保持與現有模態框一致的位置 */
+  margin-top: 20px;
+  box-sizing: border-box;
+}
+
 /* 標題與表單區塊留一些距離（可依需求微調） */
 .modal-content h3 {
   margin: 0 0 16px 0;
@@ -1413,6 +1431,15 @@ body {
     margin: 0; /* 手機版清除桌面版的margin設定 */
     margin-left: 0 !important; /* 手機版強制取消左邊距偏移 */
     margin-top: 0 !important; /* 手機版強制取消上邊距偏移 */
+  }
+  
+  .modal-content-large {
+    width: calc(100% - 30px); /* 扣除左右邊距 */
+    max-height: calc(100vh - 60px); /* 手機版扣除上下邊距 */
+    margin: 0; /* 手機版清除桌面版的margin設定 */
+    margin-left: 0 !important; /* 手機版強制取消左邊距偏移 */
+    margin-top: 0 !important; /* 手機版強制取消上邊距偏移 */
+    padding: 0; /* FormContainer 會處理內邊距 */
   }
   
   .form-row {

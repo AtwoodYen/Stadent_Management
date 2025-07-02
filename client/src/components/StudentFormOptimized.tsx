@@ -22,6 +22,13 @@ interface Student {
   notes: string;
 }
 
+interface ClassType {
+  class_code: string;
+  class_name: string;
+  description: string;
+  sort_order: number;
+}
+
 interface StudentFormOptimizedProps {
   student: Student | null;
   onSave: (data: Partial<Student>) => void;
@@ -54,6 +61,27 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
     class_type: '',
     notes: ''
   });
+
+  const [classTypes, setClassTypes] = useState<ClassType[]>([]);
+
+  // 載入班別資料
+  useEffect(() => {
+    const fetchClassTypes = async () => {
+      try {
+        const response = await fetch('/api/class-types');
+        if (response.ok) {
+          const data = await response.json();
+          setClassTypes(data);
+        } else {
+          console.error('無法載入班別資料');
+        }
+      } catch (error) {
+        console.error('載入班別資料時發生錯誤:', error);
+      }
+    };
+
+    fetchClassTypes();
+  }, []);
 
   useEffect(() => {
     if (student) {
@@ -217,9 +245,11 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             required
           >
             <option value="">請選擇</option>
-            <option value="A班">A班</option>
-            <option value="B班">B班</option>
-            <option value="C班">C班</option>
+            {classTypes.map((classType) => (
+              <option key={classType.class_code} value={classType.class_code}>
+                {classType.class_name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

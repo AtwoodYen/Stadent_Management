@@ -541,6 +541,42 @@ app.get('/api/students/schools', async (req, res, next) => {
     }
 });
 
+// [GET] 取得班別列表
+app.get('/api/class-types', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT class_code, class_name, description, sort_order 
+            FROM class_types 
+            WHERE is_active = 1 
+            ORDER BY sort_order, class_name
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得班別統計
+app.get('/api/class-types/stats', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                ct.class_code,
+                ct.class_name,
+                ct.description,
+                COUNT(s.id) as student_count
+            FROM class_types ct
+            LEFT JOIN students s ON ct.class_code = s.class_type AND s.is_active = 1
+            WHERE ct.is_active = 1
+            GROUP BY ct.class_code, ct.class_name, ct.description, ct.sort_order
+            ORDER BY ct.sort_order, ct.class_name
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
 // [READ] 取得單一學生
 app.get('/api/students/:id', async (req, res, next) => {
     try {

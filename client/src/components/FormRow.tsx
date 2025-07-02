@@ -37,7 +37,8 @@ const FormRow: React.FC<FormRowProps> = ({
         sx={{
           fontWeight: 'bold',
           color: 'text.primary',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
+          textAlign: 'right'
         }}
       >
         {label}

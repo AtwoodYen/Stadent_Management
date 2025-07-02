@@ -22,10 +22,8 @@ import {
   CircularProgress,
   Snackbar,
   Autocomplete,
-  FormHelperText
+
 } from '@mui/material';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import type { DropResult } from '@hello-pangea/dnd';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -37,7 +35,6 @@ import {
   School as SchoolIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
-import DraggableSpecialties from '../components/DraggableSpecialties';
 import TeacherCourses from '../components/TeacherCourses';
 import { useAuth } from '../context/AuthContext';
 
@@ -360,36 +357,7 @@ const TeachersPage: React.FC = () => {
     setSelectedTeacherForCourses(null);
   };
 
-  // 處理拖拽結束
-  const handleDragEnd = (result: DropResult) => {
-    // 如果沒有有效的目標位置，則不做任何操作
-    if (!result.destination) {
-      console.log('拖拽取消：沒有有效的目標位置');
-      return;
-    }
 
-    // 如果拖拽到同一位置，則不做任何操作
-    if (result.source.index === result.destination.index) {
-      console.log('拖拽取消：位置沒有改變');
-      return;
-    }
-
-    console.log('拖拽操作：', {
-      從: result.source.index,
-      到: result.destination.index,
-      師資ID: result.draggableId
-    });
-
-    // 創建新的師資列表
-    const newTeachers = Array.from(teachers);
-    const [draggedTeacher] = newTeachers.splice(result.source.index, 1);
-    newTeachers.splice(result.destination.index, 0, draggedTeacher);
-
-    // 更新狀態
-    setTeachers(newTeachers);
-    
-    console.log('拖拽完成：師資順序已更新');
-  };
 
   if (loading && teachers.length === 0) {
     return (
@@ -575,73 +543,35 @@ const TeachersPage: React.FC = () => {
       </Box>
 
       {/* 師資列表 */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="teachers" type="TEACHER">
-          {(provided, snapshot) => (
-            <Box
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              sx={{ 
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 2,
-                width: '100%',
-                minHeight: snapshot.isDraggingOver ? '200px' : 'auto',
-                transition: 'min-height 0.2s ease',
-                '& > *': {
-                  transition: 'transform 0.2s ease, opacity 0.2s ease',
-                  flexBasis: '350px',
-                  flexGrow: 1,
-                  maxWidth: '400px'
-                }
-              }}
-            >
-              {teachers.map((teacher, index) => (
-                <Draggable key={teacher.id} draggableId={teacher.id.toString()} index={index}>
-                  {(provided, snapshot) => (
-                    <Card
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: 'fit-content',
-                        minWidth: '300px',
-                        transform: snapshot.isDragging ? 
-                          `${provided.draggableProps.style?.transform} rotate(5deg)` : 
-                          provided.draggableProps.style?.transform,
-                        boxShadow: snapshot.isDragging ? 8 : 2,
-                        opacity: snapshot.isDragging ? 0.9 : 1,
-                        zIndex: snapshot.isDragging ? 1000 : 1,
-                        transition: snapshot.isDragging ? 'none' : 'transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease',
-                        cursor: 'default',
-                        '&:hover': {
-                          boxShadow: snapshot.isDragging ? 8 : 4,
-                        },
-                        // 確保拖拽時的樣式優先級
-                        ...provided.draggableProps.style,
-                        ...(snapshot.isDragging && {
-                          transform: `${provided.draggableProps.style?.transform} rotate(5deg)`,
-                        })
-                      }}
-                    >
-                      {/* 拖拽手柄區域 */}
-                      <Box
-                        {...provided.dragHandleProps}
-                        sx={{
-                          p: 1,
-                          backgroundColor: snapshot.isDragging ? 'rgba(25, 118, 210, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                          textAlign: 'center',
-                          cursor: 'grab',
-                          '&:active': { cursor: 'grabbing' },
-                          borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
-                          transition: 'background-color 0.2s ease'
-                        }}
-                      >
-                        <Typography variant="caption" color={snapshot.isDragging ? 'primary' : 'text.secondary'}>
-                          ⋮⋮ 拖拽移動 ⋮⋮
-                        </Typography>
-                      </Box>
+      <Box
+        sx={{ 
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 2,
+          width: '100%',
+          '& > *': {
+            flexBasis: '350px',
+            flexGrow: 1,
+            maxWidth: '400px'
+          }
+        }}
+      >
+        {teachers.map((teacher) => (
+          <Card
+            key={teacher.id}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              height: 'fit-content',
+              minWidth: '300px',
+              boxShadow: 2,
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              cursor: 'default',
+              '&:hover': {
+                boxShadow: 4,
+              }
+            }}
+          >
                       
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -764,14 +694,8 @@ const TeachersPage: React.FC = () => {
                         )}
                       </CardActions>
                     </Card>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </Box>
-          )}
-        </Droppable>
-      </DragDropContext>
+                  ))}
+                </Box>
 
       {teachers.length === 0 && !loading && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -843,10 +767,31 @@ const TeachersPage: React.FC = () => {
               </FormControl>
             </Box>
             {/* 專長編輯 */}
-            <DraggableSpecialties
-              specialties={formData.specialties}
-              availableOptions={specialties}
-              onChange={(newSpecialties: string[]) => setFormData({ ...formData, specialties: newSpecialties })}
+            <Autocomplete
+              multiple
+              options={specialties}
+              value={formData.specialties}
+              onChange={(_, newValue) => {
+                setFormData({ ...formData, specialties: newValue as string[] });
+              }}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    {...getTagProps({ index })}
+                    key={index}
+                  />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="專長"
+                  placeholder="選擇或輸入專長..."
+                  helperText="可多選或輸入新專長"
+                />
+              )}
             />
 
             {/* 可授課日編輯 */}

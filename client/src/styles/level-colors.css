@@ -1,0 +1,86 @@
+/* 程度顏色系統 CSS 樣式 */
+
+/* 學生列表中的程度標籤樣式 */
+.badge-level {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  display: inline-block;
+  min-width: 40px;
+  transition: all 0.2s ease;
+}
+
+/* 程度等級的顏色定義 */
+.level-新手 {
+  background-color: #e8f5e8 !important;
+  color: #2e7d32 !important;
+  border: 1px solid #4caf50 !important;
+}
+
+.level-入門 {
+  background-color: #e3f2fd !important;
+  color: #1565c0 !important;
+  border: 1px solid #2196f3 !important;
+}
+
+.level-進階 {
+  background-color: #fff3e0 !important;
+  color: #ef6c00 !important;
+  border: 1px solid #ff9800 !important;
+}
+
+.level-高階 {
+  background-color: #fce4ec !important;
+  color: #c2185b !important;
+  border: 1px solid #e91e63 !important;
+}
+
+.level-精英 {
+  background-color: #f3e5f5 !important;
+  color: #7b1fa2 !important;
+  border: 1px solid #9c27b0 !important;
+}
+
+/* 舊程度等級的對應（向後相容） */
+.level-初級 {
+  background-color: #e8f5e8 !important;
+  color: #2e7d32 !important;
+  border: 1px solid #4caf50 !important;
+}
+
+.level-中級 {
+  background-color: #e3f2fd !important;
+  color: #1565c0 !important;
+  border: 1px solid #2196f3 !important;
+}
+
+.level-高級 {
+  background-color: #fce4ec !important;
+  color: #c2185b !important;
+  border: 1px solid #e91e63 !important;
+}
+
+/* 預設樣式 */
+.level-未設定,
+.level-default {
+  background-color: #f5f5f5 !important;
+  color: #757575 !important;
+  border: 1px solid #bdbdbd !important;
+}
+
+/* 懸停效果 */
+.badge-level:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .badge-level {
+    font-size: 11px;
+    padding: 3px 6px;
+    min-width: 35px;
+  }
+} 

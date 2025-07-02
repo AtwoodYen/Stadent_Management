@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import StudentFormOptimized from '../components/StudentFormOptimized';
 import StudentDetailView from '../components/StudentDetailView';
+import { getLevelColors } from '../utils/levelColors';
+import { getGenderColors } from '../utils/genderColors';
 import '../styles/improved-student-form.css';
+import '../styles/level-colors.css';
+import '../styles/gender-colors.css';
 
 interface Student {
   id: number;
@@ -497,10 +501,18 @@ const StudentsPage: React.FC = () => {
                         <span className="badge badge-grade">{student.grade}</span>
                       </td>
                       <td>
-                        <span className="badge badge-gender">{student.gender}</span>
+                        <span 
+                          className={`badge badge-gender gender-${student.gender || '未設定'}`}
+                        >
+                          {student.gender || '未設定'}
+                        </span>
                       </td>
                       <td>
-                        <span className="badge badge-level">{student.level_type}</span>
+                        <span 
+                          className={`badge badge-level level-${student.level_type || '未設定'}`}
+                        >
+                          {student.level_type || '未設定'}
+                        </span>
                       </td>
                       <td>
                         <span 

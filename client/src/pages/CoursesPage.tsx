@@ -28,6 +28,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import { getLevelColors } from '../utils/levelColors';
 
 interface Course {
   id: number;
@@ -184,12 +185,13 @@ const CoursesPage: React.FC = () => {
   };
 
   const getLevelColor = (level: string) => {
-    switch (level) {
-      case '初級': return 'success';
-      case '中級': return 'warning';
-      case '高級': return 'error';
-      default: return 'default';
-    }
+    const colors = getLevelColors(level);
+    return {
+      backgroundColor: colors.backgroundColor,
+      color: colors.color,
+      border: '1px solid',
+      borderColor: colors.borderColor
+    };
   };
 
   // 解析先修課程字串為陣列
@@ -339,7 +341,7 @@ const CoursesPage: React.FC = () => {
                 <TableCell>
                   <Chip
                     label={course.level}
-                    color={getLevelColor(course.level) as any}
+                    sx={getLevelColor(course.level)}
                     size="small"
                   />
                 </TableCell>

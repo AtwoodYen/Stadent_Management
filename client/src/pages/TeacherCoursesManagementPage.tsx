@@ -40,6 +40,7 @@ import {
   Star as StarIcon,
   StarBorder as StarBorderIcon
 } from '@mui/icons-material';
+import { getLevelColors } from '../utils/levelColors';
 
 // 介面定義
 interface TeacherCourse {
@@ -614,10 +615,12 @@ const TeacherCoursesManagementPage: React.FC = () => {
                   <TableCell>
                     <Chip
                       label={course.max_level}
-                      color={
-                        course.max_level === '高級' ? 'error' :
-                        course.max_level === '中級' ? 'warning' : 'default'
-                      }
+                      sx={{
+                        backgroundColor: getLevelColors(course.max_level).backgroundColor,
+                        color: getLevelColors(course.max_level).color,
+                        border: '1px solid',
+                        borderColor: getLevelColors(course.max_level).borderColor
+                      }}
                       size="small"
                     />
                   </TableCell>

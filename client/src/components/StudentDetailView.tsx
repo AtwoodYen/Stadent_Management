@@ -8,6 +8,8 @@ import {
 } from '@mui/material';
 import FormRow from './FormRow';
 import FormContainer from './FormContainer';
+import { getLevelColors } from '../utils/levelColors';
+import { getGenderColors } from '../utils/genderColors';
 
 interface Student {
   id?: number;
@@ -174,8 +176,12 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
             <Chip 
               label={student.gender || '未設定'} 
               size="small"
-              color={student.gender === '男' ? 'info' : student.gender === '女' ? 'success' : 'default'}
-              variant="outlined"
+              sx={{
+                backgroundColor: student.gender ? getGenderColors(student.gender).backgroundColor : '#f5f5f5',
+                color: student.gender ? getGenderColors(student.gender).color : '#757575',
+                border: student.gender ? '1px solid' : 'none',
+                borderColor: student.gender ? getGenderColors(student.gender).borderColor : 'transparent'
+              }}
             />
           </FormRow>
         </Box>
@@ -186,8 +192,12 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
             <Chip 
               label={student.level_type || '未設定'} 
               size="small"
-              color={student.level_type ? 'warning' : 'default'}
-              variant="outlined"
+              sx={{
+                backgroundColor: student.level_type ? getLevelColors(student.level_type).backgroundColor : '#f5f5f5',
+                color: student.level_type ? getLevelColors(student.level_type).color : '#757575',
+                border: student.level_type ? '1px solid' : 'none',
+                borderColor: student.level_type ? getLevelColors(student.level_type).borderColor : 'transparent'
+              }}
             />
           </FormRow>
           

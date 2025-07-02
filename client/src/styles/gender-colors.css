@@ -1,0 +1,49 @@
+/* 性別顏色系統 CSS 樣式 */
+
+/* 學生列表中的性別標籤樣式 */
+.badge-gender {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  display: inline-block;
+  min-width: 40px;
+  transition: all 0.2s ease;
+}
+
+/* 性別的顏色定義 */
+.gender-女 {
+  background-color: #fce4ec !important;
+  color: #c2185b !important;
+  border: 1px solid #e91e63 !important;
+}
+
+.gender-男 {
+  background-color: #e3f2fd !important;
+  color: #1565c0 !important;
+  border: 1px solid #2196f3 !important;
+}
+
+/* 預設樣式 */
+.gender-未設定,
+.gender-default {
+  background-color: #f5f5f5 !important;
+  color: #757575 !important;
+  border: 1px solid #bdbdbd !important;
+}
+
+/* 懸停效果 */
+.badge-gender:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .badge-gender {
+    font-size: 11px;
+    padding: 3px 6px;
+    min-width: 35px;
+  }
+} 

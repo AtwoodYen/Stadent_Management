@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Chip,
   Avatar,
   IconButton,
@@ -51,10 +52,25 @@ interface User {
   email_verified?: boolean;
 }
 
+// 排序類型定義
+type SortField = 'full_name' | 'role' | 'department' | 'is_active' | 'created_at';
+type SortOrder = 'asc' | 'desc';
+
+interface SortState {
+  field: SortField | null;
+  order: SortOrder;
+}
+
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 排序狀態
+  const [sortState, setSortState] = useState<SortState>({
+    field: null,
+    order: 'asc'
+  });
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -90,6 +106,66 @@ const UsersPage: React.FC = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // 排序處理函數
+  const handleSort = (field: SortField) => {
+    setSortState(prevState => ({
+      field,
+      order: prevState.field === field && prevState.order === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // 排序函數
+  const sortUsers = (users: User[]) => {
+    if (!sortState.field) return users;
+
+    return [...users].sort((a, b) => {
+      let aValue: any = a[sortState.field!];
+      let bValue: any = b[sortState.field!];
+
+      // 特殊處理不同欄位的排序
+      switch (sortState.field) {
+        case 'role':
+          // 角色排序：admin > manager > teacher > user
+          const roleOrder = { 'admin': 4, 'manager': 3, 'teacher': 2, 'user': 1 };
+          aValue = roleOrder[aValue as keyof typeof roleOrder] || 0;
+          bValue = roleOrder[bValue as keyof typeof roleOrder] || 0;
+          break;
+        
+        case 'is_active':
+          // 狀態排序：啟用 > 停用
+          aValue = aValue ? 1 : 0;
+          bValue = bValue ? 1 : 0;
+          break;
+        
+        case 'created_at':
+          // 日期排序
+          aValue = new Date(aValue).getTime();
+          bValue = new Date(bValue).getTime();
+          break;
+        
+        case 'department':
+          // 部門排序，空值放在最後
+          aValue = aValue || 'zzz_no_department';
+          bValue = bValue || 'zzz_no_department';
+          aValue = String(aValue).toLowerCase();
+          bValue = String(bValue).toLowerCase();
+          break;
+        
+        default:
+          // 字串排序（姓名等）
+          aValue = String(aValue || '').toLowerCase();
+          bValue = String(bValue || '').toLowerCase();
+      }
+
+      if (aValue < bValue) return sortState.order === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortState.order === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // 排序後的用戶資料
+  const sortedUsers = sortUsers(users);
 
   const roleLabels = {
     admin: '系統管理員',
@@ -264,16 +340,48 @@ const UsersPage: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>用戶</TableCell>
-              <TableCell>角色</TableCell>
-              <TableCell>部門</TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortState.field === 'full_name'}
+                  direction={sortState.field === 'full_name' ? sortState.order : 'asc'}
+                  onClick={() => handleSort('full_name')}
+                >
+                  用戶名稱
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortState.field === 'role'}
+                  direction={sortState.field === 'role' ? sortState.order : 'asc'}
+                  onClick={() => handleSort('role')}
+                >
+                  角色
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortState.field === 'department'}
+                  direction={sortState.field === 'department' ? sortState.order : 'asc'}
+                  onClick={() => handleSort('department')}
+                >
+                  部門
+                </TableSortLabel>
+              </TableCell>
               <TableCell>聯絡方式</TableCell>
-              <TableCell>狀態</TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortState.field === 'is_active'}
+                  direction={sortState.field === 'is_active' ? sortState.order : 'asc'}
+                  onClick={() => handleSort('is_active')}
+                >
+                  狀態
+                </TableSortLabel>
+              </TableCell>
               <TableCell>操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map((user) => (
+            {sortedUsers.map((user) => (
               <TableRow key={user.id} sx={{ opacity: user.is_active ? 1 : 0.6 }}>
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>

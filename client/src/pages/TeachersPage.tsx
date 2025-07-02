@@ -24,6 +24,8 @@ import {
   Autocomplete,
 
 } from '@mui/material';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import type { DropResult } from '@hello-pangea/dnd';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -33,7 +35,10 @@ import {
   Phone as PhoneIcon,
   AttachMoney as MoneyIcon,
   School as SchoolIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  DragIndicator as DragIcon,
+  ViewList as ViewListIcon,
+  ViewModule as ViewModuleIcon
 } from '@mui/icons-material';
 import TeacherCourses from '../components/TeacherCourses';
 import { useAuth } from '../context/AuthContext';
@@ -95,6 +100,9 @@ const TeachersPage: React.FC = () => {
   // 課程能力管理相關 state
   const [coursesDialogOpen, setCoursesDialogOpen] = useState(false);
   const [selectedTeacherForCourses, setSelectedTeacherForCourses] = useState<Teacher | null>(null);
+  
+  // 顯示模式狀態
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // 表單狀態
   const [formData, setFormData] = useState({
@@ -357,7 +365,41 @@ const TeachersPage: React.FC = () => {
     setSelectedTeacherForCourses(null);
   };
 
+  // 處理拖拽結束
+  const handleDragEnd = (result: DropResult) => {
+    // 如果沒有有效的目標位置，則不做任何操作
+    if (!result.destination) {
+      console.log('拖拽取消：沒有有效的目標位置');
+      return;
+    }
 
+    // 如果拖拽到同一位置，則不做任何操作
+    if (result.source.index === result.destination.index) {
+      console.log('拖拽取消：位置沒有改變');
+      return;
+    }
+
+    console.log('拖拽操作：', {
+      從: result.source.index,
+      到: result.destination.index,
+      師資ID: result.draggableId
+    });
+
+    // 創建新的師資列表
+    const newTeachers = Array.from(teachers);
+    const [draggedTeacher] = newTeachers.splice(result.source.index, 1);
+    newTeachers.splice(result.destination.index, 0, draggedTeacher);
+
+    // 更新狀態
+    setTeachers(newTeachers);
+    
+    console.log('拖拽完成：師資順序已更新');
+  };
+
+  // 處理拖拽開始
+  const handleDragStart = (start: any) => {
+    console.log('開始拖拽:', start.draggableId);
+  };
 
   if (loading && teachers.length === 0) {
     return (
@@ -533,6 +575,64 @@ const TeachersPage: React.FC = () => {
 
         <Box sx={{ flexGrow: 1 }} />
 
+        {/* 顯示模式切換按鈕 */}
+        <Box sx={{ display: 'flex', gap: 1, mr: 2 }}>
+          <Button
+            variant={viewMode === 'grid' ? 'contained' : 'outlined'}
+            size="small"
+            startIcon={<ViewModuleIcon />}
+            onClick={() => setViewMode('grid')}
+            sx={{
+              minWidth: 'auto',
+              px: 2,
+              '&.MuiButton-contained': {
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                color: 'primary.main',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 1)',
+                }
+              },
+              '&.MuiButton-outlined': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                color: 'white',
+                '&:hover': {
+                  borderColor: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                }
+              }
+            }}
+          >
+            區塊
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'contained' : 'outlined'}
+            size="small"
+            startIcon={<ViewListIcon />}
+            onClick={() => setViewMode('list')}
+            sx={{
+              minWidth: 'auto',
+              px: 2,
+              '&.MuiButton-contained': {
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                color: 'primary.main',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 1)',
+                }
+              },
+              '&.MuiButton-outlined': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                color: 'white',
+                '&:hover': {
+                  borderColor: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                }
+              }
+            }}
+          >
+            列表
+          </Button>
+        </Box>
+
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -543,38 +643,75 @@ const TeachersPage: React.FC = () => {
       </Box>
 
       {/* 師資列表 */}
-      <Box
-        sx={{ 
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 2,
-          width: '100%',
-          '& > *': {
-            flexBasis: '350px',
-            flexGrow: 1,
-            maxWidth: '400px'
-          }
-        }}
-      >
-        {teachers.map((teacher) => (
-          <Card
-            key={teacher.id}
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              height: 'fit-content',
-              minWidth: '300px',
-              boxShadow: 2,
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-              cursor: 'default',
-              '&:hover': {
-                boxShadow: 4,
-              }
-            }}
-          >
+      <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <Droppable droppableId="teachers" type="TEACHER">
+          {(provided, snapshot) => (
+            <Box
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              sx={{ 
+                display: 'flex',
+                flexDirection: viewMode === 'list' ? 'column' : 'row',
+                flexWrap: viewMode === 'grid' ? 'wrap' : 'nowrap',
+                gap: 2,
+                width: '100%',
+                minHeight: snapshot.isDraggingOver ? '200px' : 'auto',
+                transition: 'min-height 0.2s ease',
+                position: 'relative',
+                alignItems: 'flex-start',
+                '& > *': {
+                  flexShrink: 0
+                }
+              }}
+            >
+              {teachers.map((teacher, index) => (
+                <Draggable key={teacher.id} draggableId={teacher.id.toString()} index={index}>
+                  {(provided, snapshot) => (
+                    <Card
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: viewMode === 'list' ? 'row' : 'column',
+                        height: viewMode === 'list' ? 'auto' : 'fit-content',
+                        width: viewMode === 'grid' ? '350px' : '100%',
+                        maxWidth: viewMode === 'grid' ? '400px' : 'none',
+                        flexShrink: 0,
+                        position: snapshot.isDragging ? 'absolute' : 'relative',
+                        transform: snapshot.isDragging ? provided.draggableProps.style?.transform : 'none',
+                        boxShadow: snapshot.isDragging ? 8 : 2,
+                        opacity: snapshot.isDragging ? 0.9 : 1,
+                        zIndex: snapshot.isDragging ? 1000 : 1,
+                        transition: snapshot.isDragging ? 'none' : 'all 0.2s ease',
+                        cursor: 'default',
+                        '&:hover': {
+                          boxShadow: snapshot.isDragging ? 8 : 4,
+                        },
+                        ...provided.draggableProps.style
+                      }}
+                    >
+                      {/* 拖拽手柄區域 */}
+                      <Box
+                        {...provided.dragHandleProps}
+                        sx={{
+                          p: 1,
+                          backgroundColor: snapshot.isDragging ? 'rgba(25, 118, 210, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                          textAlign: 'center',
+                          cursor: 'grab',
+                          '&:active': { cursor: 'grabbing' },
+                          borderBottom: viewMode === 'grid' ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
+                          borderRight: viewMode === 'list' ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
+                          minWidth: viewMode === 'list' ? '50px' : 'auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <DragIcon fontSize="small" color={snapshot.isDragging ? 'primary' : 'action'} />
+                      </Box>
                       
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: viewMode === 'list' ? 'row' : 'column', alignItems: viewMode === 'list' ? 'center' : 'stretch', gap: viewMode === 'list' ? 3 : 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: viewMode === 'grid' ? 2 : 0, minWidth: viewMode === 'list' ? '200px' : 'auto' }}>
                           <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
                             <PersonIcon />
                           </Avatar>
@@ -590,61 +727,132 @@ const TeachersPage: React.FC = () => {
                           </Box>
                         </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary">
-                            {teacher.email}
-                          </Typography>
-                        </Box>
+                        {viewMode === 'grid' ? (
+                          // 區塊模式：垂直佈局
+                          <>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {teacher.email}
+                              </Typography>
+                            </Box>
 
-                        {teacher.phone && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                            <Typography variant="body2" color="text.secondary">
-                              {teacher.phone}
+                            {teacher.phone && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  {teacher.phone}
+                                </Typography>
+                              </Box>
+                            )}
+
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                時薪 ${teacher.hourly_rate}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                              <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                經驗 {teacher.experience} 年
+                              </Typography>
+                            </Box>
+
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                              專長：
                             </Typography>
-                          </Box>
-                        )}
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                              {teacher.specialties.map((specialty, index) => (
+                                <Chip key={index} label={specialty} size="small" variant="outlined" />
+                              ))}
+                            </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary">
-                            時薪 ${teacher.hourly_rate}
-                          </Typography>
-                        </Box>
+                            {teacher.bio && (
+                              <Typography variant="body2" color="text.secondary" sx={{ 
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical'
+                              }}>
+                                {teacher.bio}
+                              </Typography>
+                            )}
+                          </>
+                        ) : (
+                          // 列表模式：水平佈局
+                          <>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '150px' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  {teacher.email}
+                                </Typography>
+                              </Box>
+                              {teacher.phone && (
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                                  <Typography variant="body2" color="text.secondary">
+                                    {teacher.phone}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary">
-                            經驗 {teacher.experience} 年
-                          </Typography>
-                        </Box>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  時薪 ${teacher.hourly_rate}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  經驗 {teacher.experience} 年
+                                </Typography>
+                              </Box>
+                            </Box>
 
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          專長：
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                          {teacher.specialties.map((specialty, index) => (
-                            <Chip key={index} label={specialty} size="small" variant="outlined" />
-                          ))}
-                        </Box>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                專長：
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {teacher.specialties.map((specialty, index) => (
+                                  <Chip key={index} label={specialty} size="small" variant="outlined" />
+                                ))}
+                              </Box>
+                            </Box>
 
-                        {teacher.bio && (
-                          <Typography variant="body2" color="text.secondary" sx={{ 
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical'
-                          }}>
-                            {teacher.bio}
-                          </Typography>
+                            {teacher.bio && (
+                              <Box sx={{ minWidth: '200px', maxWidth: '300px' }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ 
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical'
+                                }}>
+                                  {teacher.bio}
+                                </Typography>
+                              </Box>
+                            )}
+                          </>
                         )}
                       </CardContent>
 
-                      <Divider />
+                      {viewMode === 'grid' && <Divider />}
 
-                      <CardActions sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                      <CardActions sx={{ 
+                        justifyContent: viewMode === 'list' ? 'flex-end' : 'space-between', 
+                        flexWrap: 'wrap', 
+                        gap: 1,
+                        flexDirection: viewMode === 'list' ? 'row' : 'row',
+                        minWidth: viewMode === 'list' ? 'auto' : 'auto'
+                      }}>
                         <Button
                           size="small"
                           startIcon={<EditIcon />}
@@ -694,8 +902,14 @@ const TeachersPage: React.FC = () => {
                         )}
                       </CardActions>
                     </Card>
-                  ))}
-                </Box>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </Box>
+          )}
+        </Droppable>
+      </DragDropContext>
 
       {teachers.length === 0 && !loading && (
         <Box sx={{ textAlign: 'center', py: 4 }}>

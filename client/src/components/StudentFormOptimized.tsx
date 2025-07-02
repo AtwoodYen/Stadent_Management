@@ -229,9 +229,11 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             onChange={(e) => handleChange('level_type', e.target.value)}
           >
             <option value="">請選擇</option>
-            <option value="初級">初級</option>
-            <option value="中級">中級</option>
-            <option value="進階">進階</option>
+                            <option value="新手">新手</option>
+                <option value="入門">入門</option>
+                <option value="進階">進階</option>
+                <option value="高階">高階</option>
+                <option value="精英">精英</option>
           </select>
         </div>
         

@@ -433,9 +433,11 @@ const StudentsPage: React.FC = () => {
                     className="sort-select"
                   >
                     <option value="">程度</option>
-                    <option value="初級">初級</option>
-                    <option value="中級">中級</option>
+                    <option value="新手">新手</option>
+                    <option value="入門">入門</option>
                     <option value="進階">進階</option>
+                    <option value="高階">高階</option>
+                    <option value="精英">精英</option>
                   </select>
                   
                   <select 
@@ -501,7 +503,35 @@ const StudentsPage: React.FC = () => {
                         <span className="badge badge-level">{student.level_type}</span>
                       </td>
                       <td>
-                        <span className="badge badge-class">{getClassTypeName(student.class_type)}</span>
+                        <span 
+                          className="badge badge-class"
+                          style={{
+                            backgroundColor: student.class_type === 'CPP' ? '#e3f2fd' : // 淺藍色 - C/C++
+                                   student.class_type === 'PROJECT' ? '#f3e5f5' : // 淺紫色 - 專題製作
+                                   student.class_type === 'SCRATCH' ? '#e8f5e8' : // 淺綠色 - Scratch
+                                   student.class_type === 'APCS_A' ? '#fff3e0' : // 淺橙色 - APCS A
+                                   student.class_type === 'APCS_P' ? '#fce4ec' : // 淺粉色 - APCS P
+                                   student.class_type === 'ANIMATION' ? '#f1f8e9' : // 淺青綠色 - 動畫美術
+                                   '#f5f5f5', // 預設灰色
+                            color: student.class_type === 'CPP' ? '#1976d2' : // 深藍色
+                                   student.class_type === 'PROJECT' ? '#7b1fa2' : // 深紫色
+                                   student.class_type === 'SCRATCH' ? '#388e3c' : // 深綠色
+                                   student.class_type === 'APCS_A' ? '#f57c00' : // 深橙色
+                                   student.class_type === 'APCS_P' ? '#c2185b' : // 深粉色
+                                   student.class_type === 'ANIMATION' ? '#689f38' : // 深青綠色
+                                   '#757575', // 預設深灰色
+                            border: student.class_type ? '1px solid' : 'none',
+                            borderColor: student.class_type === 'CPP' ? '#1976d2' :
+                                        student.class_type === 'PROJECT' ? '#7b1fa2' :
+                                        student.class_type === 'SCRATCH' ? '#388e3c' :
+                                        student.class_type === 'APCS_A' ? '#f57c00' :
+                                        student.class_type === 'APCS_P' ? '#c2185b' :
+                                        student.class_type === 'ANIMATION' ? '#689f38' :
+                                        'transparent'
+                          }}
+                        >
+                          {getClassTypeName(student.class_type)}
+                        </span>
                       </td>
                       <td className="student-actions">
                         <button 

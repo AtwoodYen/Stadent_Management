@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getEducationLevelColors } from '../utils/educationLevelColors';
+import '../styles/education-level-colors.css';
 
 interface School {
   id: number;
@@ -426,17 +428,17 @@ const SchoolsPage: React.FC = () => {
                     ))}
                   </select>
                   
-                  <select 
+                                    <select
                     value={sortOptions.level} 
                     onChange={(e) => handleSortChange('level', e.target.value)}
                     className="sort-select"
                   >
                     <option value="">學制</option>
-                    <option value="高中">高中</option>
-                    <option value="國中">國中</option>
                     <option value="國小">國小</option>
-                    <option value="高職">高職</option>
+                    <option value="國中">國中</option>
+                    <option value="高中">高中</option>
                     <option value="大學">大學</option>
+                    <option value="在職">在職</option>
                   </select>
                 </div>
               </div>
@@ -472,7 +474,17 @@ const SchoolsPage: React.FC = () => {
                         <span className="badge badge-grade">{school.district}</span>
                       </td>
                       <td>
-                        <span className="badge badge-level">{school.education_level}</span>
+                        <span 
+                          className={`badge badge-education-level education-level-${school.education_level || '未設定'}`}
+                          style={{
+                            backgroundColor: getEducationLevelColors(school.education_level).backgroundColor,
+                            color: getEducationLevelColors(school.education_level).color,
+                            border: '1px solid',
+                            borderColor: getEducationLevelColors(school.education_level).borderColor
+                          }}
+                        >
+                          {school.education_level || '未設定'}
+                        </span>
                       </td>
                       <td>
                         <span className="badge badge-gender">{school.our_student_count}</span>
@@ -579,7 +591,17 @@ const SchoolsPage: React.FC = () => {
                 </div>
                 <div className="detail-row">
                   <label>學制：</label>
-                  <span className="badge badge-level">{selectedSchool.education_level}</span>
+                  <span 
+                    className={`badge badge-education-level education-level-${selectedSchool.education_level || '未設定'}`}
+                    style={{
+                      backgroundColor: getEducationLevelColors(selectedSchool.education_level).backgroundColor,
+                      color: getEducationLevelColors(selectedSchool.education_level).color,
+                      border: '1px solid',
+                      borderColor: getEducationLevelColors(selectedSchool.education_level).borderColor
+                    }}
+                  >
+                    {selectedSchool.education_level || '未設定'}
+                  </span>
                 </div>
                 <div className="detail-row">
                   <label>電話：</label>
@@ -824,8 +846,8 @@ const SchoolEditForm: React.FC<{
             <option value="國小">國小</option>
             <option value="國中">國中</option>
             <option value="高中">高中</option>
-            <option value="高職">高職</option>
             <option value="大學">大學</option>
+            <option value="在職">在職</option>
           </select>
         </div>
         <div className="form-group">

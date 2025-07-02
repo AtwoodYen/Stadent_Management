@@ -139,10 +139,17 @@ const StudentsPage: React.FC = () => {
   }));
 
   // 按年級統計
-  const gradeStats = ['高一', '高二', '高三'].map(grade => ({
+  const allGrades = [
+    '小一', '小二', '小三', '小四', '小五', '小六',
+    '國一', '國二', '國三',
+    '高一', '高二', '高三',
+    '大一', '大二', '大三', '大四'
+  ];
+  
+  const gradeStats = allGrades.map(grade => ({
     grade,
     count: students.filter(s => s.grade === grade).length
-  }));
+  })).filter(stat => stat.count > 0); // 只顯示有學生的年級
 
   // 排序學生資料
   const sortStudents = (students: Student[]) => {
@@ -488,9 +495,30 @@ const StudentsPage: React.FC = () => {
                     className="sort-select"
                   >
                     <option value="">年級</option>
-                    <option value="高一">高一</option>
-                    <option value="高二">高二</option>
-                    <option value="高三">高三</option>
+                    <optgroup label="小學">
+                      <option value="小一">小一</option>
+                      <option value="小二">小二</option>
+                      <option value="小三">小三</option>
+                      <option value="小四">小四</option>
+                      <option value="小五">小五</option>
+                      <option value="小六">小六</option>
+                    </optgroup>
+                    <optgroup label="國中">
+                      <option value="國一">國一</option>
+                      <option value="國二">國二</option>
+                      <option value="國三">國三</option>
+                    </optgroup>
+                    <optgroup label="高中">
+                      <option value="高一">高一</option>
+                      <option value="高二">高二</option>
+                      <option value="高三">高三</option>
+                    </optgroup>
+                    <optgroup label="大學">
+                      <option value="大一">大一</option>
+                      <option value="大二">大二</option>
+                      <option value="大三">大三</option>
+                      <option value="大四">大四</option>
+                    </optgroup>
                   </select>
                   
                   <select 

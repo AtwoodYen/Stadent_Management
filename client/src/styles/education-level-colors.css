@@ -1,0 +1,56 @@
+/* 學制顏色系統 CSS 樣式 */
+
+/* 國小 - 最淺藍色 */
+.badge-education-level.education-level-國小 {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #1565c0;
+}
+
+/* 國中 - 淺藍色 */
+.badge-education-level.education-level-國中 {
+  background-color: #bbdefb;
+  color: #1976d2;
+  border: 1px solid #1976d2;
+}
+
+/* 高中 - 中藍色 */
+.badge-education-level.education-level-高中 {
+  background-color: #90caf9;
+  color: #0d47a1;
+  border: 1px solid #0d47a1;
+}
+
+/* 大學 - 較深藍色 */
+.badge-education-level.education-level-大學 {
+  background-color: #64b5f6;
+  color: #0d47a1;
+  border: 1px solid #0d47a1;
+}
+
+/* 在職 - 最深藍色 */
+.badge-education-level.education-level-在職 {
+  background-color: #42a5f5;
+  color: #ffffff;
+  border: 1px solid #1976d2;
+}
+
+/* 預設樣式 */
+.badge-education-level {
+  background-color: #f5f5f5;
+  color: #757575;
+  border: 1px solid #e0e0e0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-block;
+  text-align: center;
+  min-width: 40px;
+}
+
+/* Hover 效果 */
+.badge-education-level:hover {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+} 

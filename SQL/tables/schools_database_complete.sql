@@ -26,7 +26,7 @@ CREATE TABLE schools (
     short_name NVARCHAR(20) NOT NULL,          -- 簡稱
     school_type NVARCHAR(10) NOT NULL CHECK (school_type IN (N'公立', N'國立', N'私立')),  -- 性質
     district NVARCHAR(20) NOT NULL,            -- 行政區
-    education_level NVARCHAR(10) NOT NULL CHECK (education_level IN (N'國小', N'國中', N'高中', N'高職', N'大學')),  -- 學制
+    education_level NVARCHAR(10) NOT NULL CHECK (education_level IN (N'國小', N'國中', N'高中', N'大學')),  -- 學制
     
     -- 聯絡資訊
     phone NVARCHAR(20),                        -- 學校電話
@@ -85,7 +85,10 @@ GO
 -- =====================================================
 -- 創建自動更新學生數的觸發器
 -- =====================================================
--- 當學生表有變動時，自動更新學校的學生數
+IF OBJECT_ID('tr_update_school_student_count', 'TR') IS NOT NULL
+    DROP TRIGGER tr_update_school_student_count;
+GO
+
 CREATE TRIGGER tr_update_school_student_count
 ON students
 AFTER INSERT, UPDATE, DELETE
@@ -108,7 +111,6 @@ BEGIN
         SELECT DISTINCT school FROM deleted
     );
 END;
-
 GO
 
 -- =====================================================

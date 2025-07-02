@@ -6,7 +6,8 @@ import {
   Button, 
   Box, 
   Typography,
-  Divider
+  Divider,
+  ListSubheader
 } from '@mui/material';
 import FormRow from './FormRow';
 import FormContainer from './FormContainer';
@@ -161,9 +162,26 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
                 required
               >
                 <MenuItem value="">選擇年級</MenuItem>
+                <ListSubheader>小學</ListSubheader>
+                <MenuItem value="小一">小一</MenuItem>
+                <MenuItem value="小二">小二</MenuItem>
+                <MenuItem value="小三">小三</MenuItem>
+                <MenuItem value="小四">小四</MenuItem>
+                <MenuItem value="小五">小五</MenuItem>
+                <MenuItem value="小六">小六</MenuItem>
+                <ListSubheader>國中</ListSubheader>
+                <MenuItem value="國一">國一</MenuItem>
+                <MenuItem value="國二">國二</MenuItem>
+                <MenuItem value="國三">國三</MenuItem>
+                <ListSubheader>高中</ListSubheader>
                 <MenuItem value="高一">高一</MenuItem>
                 <MenuItem value="高二">高二</MenuItem>
                 <MenuItem value="高三">高三</MenuItem>
+                <ListSubheader>大學</ListSubheader>
+                <MenuItem value="大一">大一</MenuItem>
+                <MenuItem value="大二">大二</MenuItem>
+                <MenuItem value="大三">大三</MenuItem>
+                <MenuItem value="大四">大四</MenuItem>
               </Select>
             </FormRow>
           </Box>

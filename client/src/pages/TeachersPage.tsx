@@ -650,18 +650,15 @@ const TeachersPage: React.FC = () => {
               {...provided.droppableProps}
               ref={provided.innerRef}
               sx={{ 
-                display: 'flex',
+                display: viewMode === 'grid' ? 'grid' : 'flex',
                 flexDirection: viewMode === 'list' ? 'column' : 'row',
-                flexWrap: viewMode === 'grid' ? 'wrap' : 'nowrap',
+                gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fit, minmax(350px, 1fr))' : 'none',
                 gap: 2,
                 width: '100%',
                 minHeight: snapshot.isDraggingOver ? '200px' : 'auto',
                 transition: 'min-height 0.2s ease',
                 position: 'relative',
-                alignItems: 'flex-start',
-                '& > *': {
-                  flexShrink: 0
-                }
+                alignItems: 'flex-start'
               }}
             >
               {teachers.map((teacher, index) => (
@@ -674,10 +671,8 @@ const TeachersPage: React.FC = () => {
                         display: 'flex',
                         flexDirection: viewMode === 'list' ? 'row' : 'column',
                         height: viewMode === 'list' ? 'auto' : 'fit-content',
-                        width: viewMode === 'grid' ? '350px' : '100%',
-                        maxWidth: viewMode === 'grid' ? '400px' : 'none',
-                        flexShrink: 0,
-                        position: snapshot.isDragging ? 'absolute' : 'relative',
+                        width: '100%',
+                        position: snapshot.isDragging ? 'fixed' : 'relative',
                         transform: snapshot.isDragging ? provided.draggableProps.style?.transform : 'none',
                         boxShadow: snapshot.isDragging ? 8 : 2,
                         opacity: snapshot.isDragging ? 0.9 : 1,

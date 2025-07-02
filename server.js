@@ -104,6 +104,22 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// 登入失敗追蹤 (在實際應用中應該使用資料庫或 Redis)
+const loginAttempts = new Map();
+
+// 清理過期的登入嘗試記錄
+const cleanupExpiredAttempts = () => {
+    const now = Date.now();
+    for (const [username, data] of loginAttempts.entries()) {
+        if (data.lockedUntil && now > data.lockedUntil) {
+            loginAttempts.delete(username);
+        }
+    }
+};
+
+// 每10分鐘清理一次過期記錄
+setInterval(cleanupExpiredAttempts, 10 * 60 * 1000);
+
 // [POST] 用戶登入
 app.post('/api/auth/login', async (req, res, next) => {
     try {
@@ -113,20 +129,104 @@ app.post('/api/auth/login', async (req, res, next) => {
             return res.status(400).json({ message: '請提供帳號和密碼' });
         }
 
-        // 簡單的硬編碼驗證 (在實際應用中應該從資料庫查詢)
-        const validUsers = [
-            { id: 1, username: 'admin', password: '123456', name: '系統管理員', role: 'admin' },
-            { id: 2, username: 'teacher', password: '123456', name: '小剛老師', role: 'teacher' },
-            { id: 3, username: 'manager', password: '123456', name: '教務主任', role: 'manager' }
-        ];
+        // 從資料庫查詢用戶（包含鎖定狀態）
+        const result = await pool.request()
+            .input('username', sql.NVarChar, username)
+            .query(`
+                SELECT id, username, password_hash, full_name, role, is_active, 
+                       email_verified, is_locked, unlock_time
+                FROM users 
+                WHERE username = @username AND is_active = 1
+            `);
 
-        const user = validUsers.find(u => u.username === username && u.password === password);
+        const user = result.recordset[0];
 
+        // 檢查用戶是否存在
         if (!user) {
             return res.status(401).json({ message: '帳號或密碼錯誤' });
         }
 
-        // 生成 JWT Token
+        // 檢查帳號是否被鎖定且尚未到解鎖時間
+        const now = new Date();
+        if (user.is_locked && user.unlock_time && now < new Date(user.unlock_time)) {
+            const remainingTime = Math.ceil((new Date(user.unlock_time) - now) / (1000 * 60));
+            logger.warn(`Login attempt for locked account: ${username}`);
+            return res.status(423).json({ 
+                message: `帳號已被鎖定，請在 ${remainingTime} 分鐘後再試`,
+                remainingMinutes: remainingTime
+            });
+        }
+
+        // 如果帳號被鎖定但已過解鎖時間，自動解鎖
+        if (user.is_locked && user.unlock_time && now >= new Date(user.unlock_time)) {
+            await pool.request()
+                .input('username', sql.NVarChar, username)
+                .query(`
+                    UPDATE users 
+                    SET is_locked = 0, unlock_time = NULL 
+                    WHERE username = @username
+                `);
+            logger.info(`Account auto-unlocked: ${username}`);
+        }
+
+        // 驗證密碼
+        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        
+        if (!isPasswordValid) {
+            // 檢查現有的記憶體失敗次數
+            const attemptData = loginAttempts.get(username) || { count: 0, firstAttempt: Date.now() };
+            attemptData.count += 1;
+            attemptData.lastAttempt = Date.now();
+
+            if (attemptData.count >= 3) {
+                // 鎖定帳號 1 小時
+                const unlockTime = new Date(Date.now() + (60 * 60 * 1000)); // 1小時後
+                
+                await pool.request()
+                    .input('username', sql.NVarChar, username)
+                    .input('unlockTime', sql.DateTime2, unlockTime)
+                    .query(`
+                        UPDATE users 
+                        SET is_locked = 1, unlock_time = @unlockTime 
+                        WHERE username = @username
+                    `);
+
+                // 清除記憶體中的失敗記錄
+                loginAttempts.delete(username);
+                
+                logger.warn(`Account locked due to multiple failed attempts: ${username}`);
+                return res.status(423).json({ 
+                    message: '連續登入失敗 3 次，帳號已被鎖定 1 小時',
+                    remainingMinutes: 60
+                });
+            } else {
+                loginAttempts.set(username, attemptData);
+                const remainingAttempts = 3 - attemptData.count;
+                
+                logger.warn(`Failed login attempt ${attemptData.count}/3 for user: ${username}`);
+                return res.status(401).json({ 
+                    message: `帳號或密碼錯誤 (剩餘嘗試次數: ${remainingAttempts})`,
+                    remainingAttempts
+                });
+            }
+        }
+
+        // 登入成功，清除失敗記錄
+        loginAttempts.delete(username);
+
+        // 更新最後登入時間、登入次數，並確保帳號未鎖定
+        await pool.request()
+            .input('userId', sql.Int, user.id)
+            .query(`
+                UPDATE users 
+                SET last_login = GETDATE(), 
+                    login_count = login_count + 1,
+                    is_locked = 0,
+                    unlock_time = NULL
+                WHERE id = @userId
+            `);
+
+        // 生成 JWT Token (設置為4小時過期，更安全)
         const token = jwt.sign(
             { 
                 id: user.id, 
@@ -134,11 +234,17 @@ app.post('/api/auth/login', async (req, res, next) => {
                 role: user.role 
             },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '4h' }
         );
 
         // 回傳用戶資訊和 Token (不包含密碼)
-        const { password: _, ...userInfo } = user;
+        const userInfo = {
+            id: user.id,
+            username: user.username,
+            name: user.full_name,
+            role: user.role,
+            email_verified: user.email_verified
+        };
         
         logger.info(`User ${username} logged in successfully`);
         res.json({
@@ -164,6 +270,201 @@ app.post('/api/auth/verify', authenticateToken, (req, res) => {
 // [POST] 用戶登出 (可選，主要是清除客戶端的 Token)
 app.post('/api/auth/logout', (req, res) => {
     res.json({ message: '登出成功' });
+});
+
+// [GET] 檢查帳號鎖定狀態
+app.get('/api/auth/lock-status/:username', async (req, res, next) => {
+    try {
+        const { username } = req.params;
+        
+        if (!username) {
+            return res.status(400).json({ message: '請提供帳號' });
+        }
+
+        // 從資料庫查詢用戶鎖定狀態
+        const result = await pool.request()
+            .input('username', sql.NVarChar, username)
+            .query(`
+                SELECT username, is_locked, unlock_time
+                FROM users 
+                WHERE username = @username AND is_active = 1
+            `);
+
+        const user = result.recordset[0];
+        
+        // 如果用戶不存在，返回未鎖定狀態
+        if (!user) {
+            return res.json({
+                isLocked: false,
+                remainingMinutes: 0,
+                failedAttempts: 0
+            });
+        }
+
+        const now = new Date();
+        
+        // 檢查是否被鎖定且尚未到解鎖時間
+        if (user.is_locked && user.unlock_time && now < new Date(user.unlock_time)) {
+            const remainingTime = Math.ceil((new Date(user.unlock_time) - now) / (1000 * 60));
+            res.json({
+                isLocked: true,
+                remainingMinutes: remainingTime,
+                unlockTime: user.unlock_time,
+                failedAttempts: 3 // 已被鎖定表示已達到3次失敗
+            });
+        } else {
+            // 如果帳號被標記為鎖定但已過解鎖時間，自動解鎖
+            if (user.is_locked && user.unlock_time && now >= new Date(user.unlock_time)) {
+                await pool.request()
+                    .input('username', sql.NVarChar, username)
+                    .query(`
+                        UPDATE users 
+                        SET is_locked = 0, unlock_time = NULL 
+                        WHERE username = @username
+                    `);
+                logger.info(`Account auto-unlocked: ${username}`);
+            }
+            
+            // 檢查記憶體中的失敗次數
+            const attemptData = loginAttempts.get(username);
+            
+            res.json({
+                isLocked: false,
+                remainingMinutes: 0,
+                failedAttempts: attemptData ? attemptData.count : 0
+            });
+        }
+        
+    } catch (err) {
+        logger.error(`Check lock status error: ${err.message}`);
+        next(err);
+    }
+});
+
+// [POST] 驗證管理員密碼
+app.post('/api/auth/verify-admin', authenticateToken, async (req, res, next) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ message: '請提供密碼' });
+        }
+        
+        // 檢查當前用戶是否為管理員
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: '權限不足，僅限管理員操作' });
+        }
+        
+        // 從資料庫查詢管理員用戶
+        const result = await pool.request()
+            .input('username', sql.NVarChar, req.user.username)
+            .query(`
+                SELECT id, username, password_hash, full_name, role
+                FROM users 
+                WHERE username = @username AND role = 'admin' AND is_active = 1
+            `);
+
+        const admin = result.recordset[0];
+        
+        if (!admin) {
+            return res.status(403).json({ message: '找不到管理員帳號' });
+        }
+
+        // 驗證管理員密碼
+        const isPasswordValid = await bcrypt.compare(password, admin.password_hash);
+        
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: '管理員密碼錯誤' });
+        }
+        
+        res.json({ message: '密碼驗證成功' });
+        
+    } catch (err) {
+        logger.error(`Admin password verification error: ${err.message}`);
+        next(err);
+    }
+});
+
+// [POST] 解鎖用戶帳號 (管理員功能)
+app.post('/api/auth/unlock-account', authenticateToken, async (req, res, next) => {
+    try {
+        const { username } = req.body;
+        
+        if (!username) {
+            return res.status(400).json({ message: '請提供要解鎖的帳號' });
+        }
+        
+        // 檢查當前用戶是否為管理員
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: '權限不足，僅限管理員操作' });
+        }
+        
+        // 檢查目標用戶是否存在
+        const userResult = await pool.request()
+            .input('username', sql.NVarChar, username)
+            .query(`
+                SELECT id, username, is_locked, unlock_time
+                FROM users 
+                WHERE username = @username AND is_active = 1
+            `);
+
+        const targetUser = userResult.recordset[0];
+        
+        if (!targetUser) {
+            return res.status(404).json({ message: '找不到指定的用戶' });
+        }
+        
+        if (!targetUser.is_locked) {
+            return res.status(400).json({ message: '該帳號目前未被鎖定' });
+        }
+        
+        // 解鎖帳號
+        await pool.request()
+            .input('username', sql.NVarChar, username)
+            .query(`
+                UPDATE users 
+                SET is_locked = 0, unlock_time = NULL 
+                WHERE username = @username
+            `);
+        
+        // 清除記憶體中的失敗記錄
+        loginAttempts.delete(username);
+        
+        logger.info(`Account manually unlocked by admin ${req.user.username}: ${username}`);
+        res.json({ message: `帳號 ${username} 已成功解鎖` });
+        
+    } catch (err) {
+        logger.error(`Account unlock error: ${err.message}`);
+        next(err);
+    }
+});
+
+// [GET] 取得所有被鎖定的帳號 (管理員功能)
+app.get('/api/auth/locked-accounts', authenticateToken, async (req, res, next) => {
+    try {
+        // 檢查當前用戶是否為管理員
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: '權限不足，僅限管理員操作' });
+        }
+        
+        const result = await pool.request().query(`
+            SELECT username, full_name, is_locked, unlock_time, 
+                   CASE 
+                       WHEN unlock_time IS NULL THEN '永久鎖定'
+                       WHEN unlock_time <= GETDATE() THEN '已可解鎖'
+                       ELSE CONCAT(DATEDIFF(MINUTE, GETDATE(), unlock_time), ' 分鐘後解鎖')
+                   END as lock_status
+            FROM users 
+            WHERE is_locked = 1 AND is_active = 1
+            ORDER BY unlock_time DESC
+        `);
+        
+        res.json(result.recordset);
+        
+    } catch (err) {
+        logger.error(`Get locked accounts error: ${err.message}`);
+        next(err);
+    }
 });
 
 // --- 學生管理 API 端點 ---
@@ -261,7 +562,7 @@ app.post(
     '/api/students',
     // --- 驗證規則 ---
     body('chinese_name').notEmpty().withMessage('中文姓名為必填'),
-    body('english_name').notEmpty().withMessage('英文姓名為必填'),
+    body('english_name').optional(),
     body('school').notEmpty().withMessage('學校為必填'),
     body('grade').notEmpty().withMessage('年級為必填'),
     body('gender').isIn(['男', '女']).withMessage('無效的性別'),
@@ -288,7 +589,7 @@ app.post(
             
             const result = await pool.request()
                 .input('chinese_name', sql.NVarChar, chinese_name)
-                .input('english_name', sql.NVarChar, english_name)
+                .input('english_name', sql.NVarChar, english_name || null)
                 .input('student_phone', sql.NVarChar, student_phone || null)
                 .input('student_email', sql.NVarChar, student_email || null)
                 .input('student_line', sql.NVarChar, student_line || null)
@@ -331,7 +632,7 @@ app.put(
     '/api/students/:id',
     // --- 驗證規則 ---
     body('chinese_name').notEmpty().withMessage('中文姓名為必填'),
-    body('english_name').notEmpty().withMessage('英文姓名為必填'),
+    body('english_name').optional(),
     body('school').notEmpty().withMessage('學校為必填'),
     body('grade').notEmpty().withMessage('年級為必填'),
     body('gender').isIn(['男', '女']).withMessage('無效的性別'),
@@ -358,7 +659,7 @@ app.put(
             const result = await pool.request()
                 .input('id', sql.Int, id)
                 .input('chinese_name', sql.NVarChar, chinese_name)
-                .input('english_name', sql.NVarChar, english_name)
+                .input('english_name', sql.NVarChar, english_name || null)
                 .input('student_phone', sql.NVarChar, student_phone || null)
                 .input('student_email', sql.NVarChar, student_email || null)
                 .input('student_line', sql.NVarChar, student_line || null)
@@ -1635,22 +1936,74 @@ app.get('/api/teachers/:id', async (req, res, next) => {
     }
 });
 
+// [GET] 取得所有師資的課程能力（用於管理頁面）
+app.get('/api/teacher-courses', async (req, res, next) => {
+    try {
+        console.log('=== 取得所有師資課程能力 ===');
+        
+        const result = await pool.request()
+            .query(`
+                SELECT 
+                    tc.id,
+                    tc.teacher_id,
+                    t.name as teacher_name,
+                    tc.course_category,
+                    tc.max_level,
+                    tc.is_preferred,
+                    tc.created_at
+                FROM teacher_courses tc
+                INNER JOIN teachers t ON tc.teacher_id = t.id
+                ORDER BY t.name, tc.is_preferred DESC, tc.course_category
+            `);
+            
+        console.log('查詢結果筆數:', result.recordset.length);
+        res.json(result.recordset);
+        
+    } catch (err) {
+        console.error('取得所有師資課程能力錯誤:', err);
+        next(err);
+    }
+});
+
 // [GET] 取得師資的課程能力
 app.get('/api/teachers/:id/courses', async (req, res, next) => {
     try {
         const { id } = req.params;
+        console.log('=== 師資課程能力查詢 DEBUG ===');
+        console.log('師資 ID:', id);
+        console.log('ID 類型:', typeof id);
+        
+        // 先檢查師資是否存在
+        const teacherCheck = await pool.request()
+            .input('teacherId', sql.Int, id)
+            .query('SELECT id, name FROM teachers WHERE id = @teacherId');
+            
+        if (teacherCheck.recordset.length === 0) {
+            console.log('師資不存在');
+            return res.status(404).json({ error: '師資不存在' });
+        }
+        
+        console.log('師資存在:', teacherCheck.recordset[0]);
+        
+        // 簡化的查詢語句
         const result = await pool.request()
-            .input('id', sql.Int, id)
-            .query(`
-                SELECT 
-                    tc.id, tc.course_category, tc.max_level, tc.is_preferred,
-                    tc.created_at, tc.updated_at
-                FROM teacher_courses tc
-                WHERE tc.teacher_id = @id
-                ORDER BY tc.is_preferred DESC, tc.course_category
-            `);
+            .input('teacherId', sql.Int, id)
+            .query('SELECT * FROM teacher_courses WHERE teacher_id = @teacherId ORDER BY is_preferred DESC, course_category');
+            
+        console.log('查詢結果筆數:', result.recordset.length);
+        console.log('查詢結果:', result.recordset);
+        console.log('=========================');
+        
         res.json(result.recordset);
     } catch (err) {
+        console.error('師資課程能力查詢錯誤:', err);
+        console.error('錯誤詳細:', {
+            message: err.message,
+            number: err.number,
+            state: err.state,
+            severity: err.severity,
+            stack: err.stack
+        });
         next(err);
     }
 });
@@ -1679,6 +2032,15 @@ app.post(
         try {
             const { name, email, phone, specialties, availableDays, hourlyRate, experience, bio, isActive } = req.body;
             
+            // 檢查 email 是否已被其他老師使用
+            const emailCheckResult = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query('SELECT id FROM teachers WHERE email = @email');
+                
+            if (emailCheckResult.recordset.length > 0) {
+                return res.status(400).json({ error: '此電子信箱已被其他老師使用#1' });
+            }
+            
             const result = await pool.request()
                 .input('name', sql.NVarChar, name)
                 .input('email', sql.NVarChar, email)
@@ -1703,7 +2065,7 @@ app.post(
             res.status(201).json(teacher);
         } catch (err) {
             if (err.number === 2627) { // 唯一約束違反
-                return res.status(400).json({ error: '電子信箱已存在' });
+                return res.status(400).json({ error: '#2' });
             }
             next(err);
         }
@@ -1735,6 +2097,36 @@ app.put(
             const { id } = req.params;
             const { name, email, phone, specialties, availableDays, hourlyRate, experience, bio, isActive } = req.body;
             
+            // 調試：記錄實際收到的資料
+            console.log('=== 師資更新調試資訊 ===');
+            console.log('師資ID:', id);
+            console.log('收到的email:', email);
+            console.log('收到的姓名:', name);
+            console.log('========================');
+            
+            // ID為0是合法的師資ID，不需要特殊處理
+            console.log('正在更新師資ID:', id);
+            
+            // 檢查 email 是否已被其他老師使用（排除當前編輯的老師）
+            console.log('檢查email衝突，排除ID:', id);
+            const emailCheckResult = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .input('id', sql.Int, id)
+                .query('SELECT id, name FROM teachers WHERE email = @email AND id != @id');
+                
+            console.log('email檢查結果:', emailCheckResult.recordset);
+            
+            if (emailCheckResult.recordset.length > 0) {
+                const conflictTeacher = emailCheckResult.recordset[0];
+                console.log('發現email衝突:', conflictTeacher);
+                return res.status(400).json({ 
+                    error: `此電子信箱已被其他老師使用：${conflictTeacher.name} (ID: ${conflictTeacher.id})` 
+                });
+            }
+            
+            console.log('準備執行UPDATE語句...');
+            console.log('UPDATE參數:', { id, name, email, phone, hourlyRate, experience, isActive });
+            
             const result = await pool.request()
                 .input('id', sql.Int, id)
                 .input('name', sql.NVarChar, name)
@@ -1755,6 +2147,8 @@ app.put(
                     WHERE id = @id;
                     SELECT * FROM teachers WHERE id = @id;
                 `);
+                
+            console.log('UPDATE執行成功，影響行數:', result.rowsAffected);
             if (result.recordset.length === 0) {
                 return res.status(404).json({ error: 'Teacher not found' });
             }
@@ -1767,7 +2161,7 @@ app.put(
             res.json(teacher);
         } catch (err) {
             if (err.number === 2627) { // 唯一約束違反
-                return res.status(400).json({ error: '電子信箱已存在' });
+                return res.status(400).json({ error: '此電子信箱已被其他老師使用#2' });
             }
             next(err);
         }
@@ -1882,7 +2276,7 @@ app.put(
                 .query(`
                     UPDATE teacher_courses 
                     SET course_category = @course_category, max_level = @max_level, 
-                        is_preferred = @is_preferred, updated_at = GETDATE()
+                        is_preferred = @is_preferred
                     WHERE id = @id AND teacher_id = @teacher_id;
                     SELECT * FROM teacher_courses WHERE id = @id;
                 `);
@@ -1942,3 +2336,4 @@ const startServer = async () => {
 };
 
 startServer();
+

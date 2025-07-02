@@ -35,6 +35,7 @@
 - `cleanup_existing_tables.sql` - 清理現有表格
 - `force_cleanup_students.sql` - 強制清理學生資料
 - `fix_teachers_data.sql` - 修復師資資料
+- `add_account_lock_fields.sql` - 新增帳號鎖定相關欄位
 
 ## 使用說明
 

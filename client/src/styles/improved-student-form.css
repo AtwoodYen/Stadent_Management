@@ -1,0 +1,369 @@
+/* 學生表單優化樣式 - Phase 1 */
+
+/* 表單容器 */
+.student-form {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 區域標題 */
+.student-form .section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 24px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e3f2fd;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.student-form .section-title:first-of-type {
+  margin-top: 0;
+}
+
+/* 表單行容器 */
+.student-form .form-row {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: start;
+}
+
+/* 基本資料區域的網格佈局 */
+.student-form .basic-info-row {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+}
+
+.student-form .basic-details-row {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* 聯絡資訊區域的網格佈局 */
+.student-form .contact-row {
+  grid-template-columns: 1fr 1fr 1fr;
+  margin-bottom: 10px !important;
+}
+
+.student-form .notes-row {
+  grid-template-columns: 1fr;
+}
+
+/* 聯絡資訊與備註並排容器 */
+.student-form .contact-notes-container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+/* 聯絡資訊區域 */
+.student-form .contact-section {
+  flex: 2;
+}
+
+/* 備註區域 */
+.student-form .notes-section {
+  flex: 1;
+}
+
+/* 備註區域的textarea調整 */
+.student-form .notes-section .form-field textarea {
+  min-height: 200px;
+  height: 200px;
+}
+
+/* 表單欄位組 */
+.student-form .form-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0; /* 防止flex item溢出 */
+}
+
+/* 標籤樣式 */
+.student-form .form-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
+  margin: 0;
+  white-space: nowrap;
+  min-width: 60px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.student-form .form-field label .required {
+  color: #d32f2f;
+  margin-left: 2px;
+}
+
+/* 輸入框統一樣式 */
+.student-form .form-field input,
+.student-form .form-field select,
+.student-form .form-field textarea {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: #fff;
+  color: #000;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 特定欄位寬度調整 */
+.student-form .form-field select {
+  min-width: 80px;
+}
+
+/* 年級 欄位縮小 */
+.student-form .form-field:nth-child(4) select {
+  max-width: 80px;
+  min-width: 80px;
+  width: 80px;
+  flex: 0 0 80px;
+  font-size: 13px;
+}
+
+/* 性別 欄位縮小 */
+.student-form .form-field:nth-child(5) select {
+  max-width: 50px;
+  min-width: 50px;
+  width: 50px;
+  flex: 0 0 50px;
+  font-size: 13px;
+  padding: 10px 6px;
+}
+
+/* 程度、班別欄位縮小 */
+.student-form .form-field:nth-child(6) select,
+.student-form .form-field:nth-child(7) select {
+  max-width: 90px;
+  flex: 0 1 90px;
+}
+
+/* 聯絡資訊區域欄位寬度設定 */
+/* 學生信箱欄位 - 使用更精確的選擇器 */
+.student-form .contact-row .form-field:nth-child(2) input[type="email"] {
+  max-width: 300px !important;
+  min-width: 300px;
+  width: 300px;
+  flex: 0 0 300px !important;
+}
+
+/* 學生Line欄位 */
+.student-form .contact-row .form-field:nth-child(3) input[type="text"] {
+  max-width: 300px !important;
+  min-width: 300px;
+  width: 300px;
+  flex: 0 0 300px !important;
+}
+
+.student-form .form-field input:focus,
+.student-form .form-field select:focus,
+.student-form .form-field textarea:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+  color: #000;
+}
+
+/* Textarea 特殊樣式 */
+.student-form .form-field textarea {
+  min-height: 80px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* 備註欄位特殊佈局 */
+.student-form .notes-row .form-field {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.student-form .notes-row .form-field label {
+  min-width: auto;
+}
+
+/* 按鈕區域 */
+.student-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  padding-bottom: 8px;
+  border-top: 1px solid #eee;
+  position: relative;
+}
+
+.student-form .form-actions button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 80px;
+  color: #fff;
+  position: relative;
+  top: -8px;
+  right: 16px;
+}
+
+.student-form .btn-primary {
+  background-color: #1976d2;
+  color: white;
+}
+
+.student-form .btn-primary:hover {
+  background-color: #1565c0;
+}
+
+.student-form .btn-secondary {
+  background-color: #f5f5f5;
+  color: #000;
+  border: 1px solid #ddd;
+}
+
+.student-form .btn-secondary:hover {
+  background-color: #eeeeee;
+}
+
+/* 響應式設計 */
+@media (max-width: 1400px) {
+  /* 較小桌面：每行4個欄位 */
+  .student-form .basic-info-row {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  /* 平板版本：每行3個欄位 */
+  .student-form .basic-info-row {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  /* 小平板：每行2個欄位 */
+  .student-form .basic-info-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  /* 小平板：聯絡資訊和備註改為上下排列 */
+  .student-form .contact-notes-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-form {
+    padding: 16px;
+    margin: 0 8px;
+  }
+  
+  .student-form .basic-info-row,
+  .student-form .basic-details-row,
+  .student-form .contact-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 32px !important;
+  }
+  
+  /* 手機版：聯絡資訊和備註改為上下排列 */
+  .student-form .contact-notes-container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  /* 手機版：備註區域的textarea高度調整 */
+  .student-form .notes-section .form-field textarea {
+    min-height: 120px;
+    height: 120px;
+  }
+  
+  .student-form .form-row {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  /* 手機版改為上下排列 */
+  .student-form .form-field {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .student-form .form-field label {
+    min-width: auto;
+    text-align: left;
+  }
+  
+  /* 手機版取消特定寬度限制 */
+  .student-form .form-field:nth-child(4) select,
+  .student-form .form-field:nth-child(5) select,
+  .student-form .form-field:nth-child(6) select,
+  .student-form .form-field:nth-child(7) select {
+    max-width: none;
+    flex: 1;
+  }
+  
+  .student-form .form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .student-form .form-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-form .section-title {
+    font-size: 14px;
+  }
+  
+  .student-form .form-field input,
+  .student-form .form-field select,
+  .student-form .form-field textarea {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}
+
+/* 載入狀態 */
+.student-form.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.student-form.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #1976d2;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+} 

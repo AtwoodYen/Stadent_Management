@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import StudentFormOptimized from '../components/StudentFormOptimized';
+import '../styles/improved-student-form.css';
 
 interface Student {
   id: number;
@@ -38,6 +40,13 @@ const StudentsPage: React.FC = () => {
   const [schools, setSchools] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 編輯相關狀態
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 取得學生資料
   const fetchStudents = async () => {
@@ -128,6 +137,100 @@ const StudentsPage: React.FC = () => {
   const handleStudentsPerPageChange = (value: number) => {
     setStudentsPerPage(value);
     setCurrentPage(1); // 重置到第一頁
+  };
+
+  // 編輯相關事件處理函數
+  const handleEditStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setShowDeleteModal(true);
+  };
+
+  const handleViewStudentDetail = (student: Student) => {
+    setSelectedStudent(student);
+    setShowDetailModal(true);
+  };
+
+  const handleAddStudent = () => {
+    setSelectedStudent(null);
+    setShowEditModal(true);
+  };
+
+  const confirmDeleteStudent = async () => {
+    if (!selectedStudent) return;
+    
+    try {
+      const response = await fetch(`/api/students/${selectedStudent.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error('刪除學生失敗');
+      }
+      
+      // 重新載入資料
+      fetchStudents();
+      setShowDeleteModal(false);
+      setSelectedStudent(null);
+      alert('學生已成功刪除');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '刪除失敗');
+    }
+  };
+
+  const handleSaveStudent = async (studentData: Partial<Student>) => {
+    try {
+      setIsSaving(true);
+      const method = selectedStudent ? 'PUT' : 'POST';
+      const url = selectedStudent ? `/api/students/${selectedStudent.id}` : '/api/students';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(studentData),
+      });
+      
+      if (!response.ok) {
+        // 嘗試解析詳細錯誤信息
+        try {
+          const errorData = await response.json();
+          if (errorData.errors && Array.isArray(errorData.errors)) {
+            // 將所有驗證錯誤組合成一個清楚的訊息
+            const errorMessages = errorData.errors.map((error: any) => error.msg).join('\n');
+            throw new Error(`儲存失敗，請檢查以下問題：\n${errorMessages}`);
+          } else if (errorData.error) {
+            throw new Error(`儲存失敗：${errorData.error}`);
+          }
+        } catch (parseError) {
+          // 如果無法解析錯誤響應，使用通用錯誤訊息
+          throw new Error('儲存學生資料失敗，請檢查網路連線或聯繫系統管理員');
+        }
+      }
+      
+      // 重新載入資料
+      fetchStudents();
+      setShowEditModal(false);
+      setSelectedStudent(null);
+      alert(selectedStudent ? '學生資料已更新' : '學生已新增');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '儲存失敗');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const closeModals = () => {
+    setShowEditModal(false);
+    setShowDeleteModal(false);
+    setShowDetailModal(false);
+    setSelectedStudent(null);
+    setIsSaving(false);
   };
 
   if (loading) {
@@ -298,7 +401,7 @@ const StudentsPage: React.FC = () => {
               </div>
               <div className="calendar-controls">
                 <span className="student-count">總共 {totalStudents} 位學生</span>
-                <button className="btn btn-secondary">+ 新增學生</button>
+                <button className="btn btn-secondary" onClick={handleAddStudent}>+ 新增學生</button>
               </div>
             </div>
 
@@ -338,9 +441,24 @@ const StudentsPage: React.FC = () => {
                         <span className="badge badge-class">{student.class_type}</span>
                       </td>
                       <td className="student-actions">
-                        <button className="btn-small btn-edit">編輯</button>
-                        <button className="btn-small btn-delete">刪除</button>
-                        <button className="btn-small btn-schedule">詳情</button>
+                        <button 
+                          className="btn-small btn-edit"
+                          onClick={() => handleEditStudent(student)}
+                        >
+                          編輯
+                        </button>
+                        <button 
+                          className="btn-small btn-delete"
+                          onClick={() => handleDeleteStudent(student)}
+                        >
+                          刪除
+                        </button>
+                        <button 
+                          className="btn-small btn-schedule"
+                          onClick={() => handleViewStudentDetail(student)}
+                        >
+                          詳情
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -350,8 +468,120 @@ const StudentsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 編輯模態框 */}
+      {showEditModal && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>{selectedStudent ? '編輯學生' : '新增學生'}</h3>
+            <StudentEditForm
+              student={selectedStudent}
+              onSave={handleSaveStudent}
+              onCancel={closeModals}
+              isLoading={isSaving}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 刪除確認模態框 */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>確認刪除</h3>
+            <p>確定要刪除學生「{selectedStudent?.chinese_name}」嗎？</p>
+            <div className="modal-actions">
+              <button className="btn btn-danger" onClick={confirmDeleteStudent}>
+                確認刪除
+              </button>
+              <button className="btn btn-secondary" onClick={closeModals}>
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 詳情模態框 */}
+      {showDetailModal && selectedStudent && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>學生詳細資料</h3>
+            <div className="student-detail">
+              <div className="detail-row">
+                <label>中文姓名：</label>
+                <span>{selectedStudent.chinese_name}</span>
+              </div>
+              <div className="detail-row">
+                <label>英文姓名：</label>
+                <span>{selectedStudent.english_name}</span>
+              </div>
+              <div className="detail-row">
+                <label>學校：</label>
+                <span>{selectedStudent.school}</span>
+              </div>
+              <div className="detail-row">
+                <label>年級：</label>
+                <span>{selectedStudent.grade}</span>
+              </div>
+              <div className="detail-row">
+                <label>性別：</label>
+                <span>{selectedStudent.gender}</span>
+              </div>
+              <div className="detail-row">
+                <label>程度：</label>
+                <span>{selectedStudent.level_type}</span>
+              </div>
+              <div className="detail-row">
+                <label>班別：</label>
+                <span>{selectedStudent.class_type}</span>
+              </div>
+              <div className="detail-row">
+                <label>學生電話：</label>
+                <span>{selectedStudent.student_phone}</span>
+              </div>
+              <div className="detail-row">
+                <label>學生Email：</label>
+                <span>{selectedStudent.student_email}</span>
+              </div>
+              <div className="detail-row">
+                <label>學生Line：</label>
+                <span>{selectedStudent.student_line}</span>
+              </div>
+              <div className="detail-row">
+                <label>父親姓名：</label>
+                <span>{selectedStudent.father_name}</span>
+              </div>
+              <div className="detail-row">
+                <label>父親電話：</label>
+                <span>{selectedStudent.father_phone}</span>
+              </div>
+              <div className="detail-row">
+                <label>母親姓名：</label>
+                <span>{selectedStudent.mother_name}</span>
+              </div>
+              <div className="detail-row">
+                <label>母親電話：</label>
+                <span>{selectedStudent.mother_phone}</span>
+              </div>
+              <div className="detail-row">
+                <label>備註：</label>
+                <span>{selectedStudent.notes}</span>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={closeModals}>
+                關閉
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
+
+// 使用優化後的學生編輯表單組件
+const StudentEditForm = StudentFormOptimized;
 
 export default StudentsPage; 

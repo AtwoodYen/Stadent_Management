@@ -9,13 +9,14 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './layouts/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
-import SchedulePage from './pages/SchedulePage';
 import StudentsPage from './pages/StudentsPage';
 import SchoolsPage from './pages/SchoolsPage';
 import TutorManagerPage from './pages/TutorManagerPage';
 import CoursesPage from './pages/CoursesPage';
 import TeachersPage from './pages/TeachersPage';
+import TeacherCoursesManagementPage from './pages/TeacherCoursesManagementPage';
 import UsersPage from './pages/UsersPage';
+import DevTools from './components/DevTools';
 import './App.css';
 
 // 創建主題
@@ -40,7 +41,10 @@ const theme = createTheme({
 const AppContent = () => {
   const { isAuthenticated, loading, login } = useAuth();
 
+  console.log('AppContent 渲染狀態:', { isAuthenticated, loading });
+
   if (loading) {
+    console.log('顯示載入畫面');
     return (
       <Box 
         display="flex" 
@@ -54,8 +58,11 @@ const AppContent = () => {
   }
 
   if (!isAuthenticated) {
+    console.log('未認證，顯示登入頁面');
     return <LoginPage onLogin={login} />;
   }
+
+  console.log('已認證，顯示主應用程式');
 
   return (
     <Router>
@@ -67,6 +74,7 @@ const AppContent = () => {
           <Route path="/schools" element={<SchoolsPage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/teachers" element={<TeachersPage />} />
+          <Route path="/teacher-courses" element={<TeacherCoursesManagementPage />} />
           <Route path="/users" element={<UsersPage />} />
         </Routes>
       </Layout>
@@ -81,6 +89,7 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
         <AuthProvider>
           <AppContent />
+          <DevTools />
         </AuthProvider>
       </LocalizationProvider>
     </ThemeProvider>

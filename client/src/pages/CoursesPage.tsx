@@ -22,7 +22,8 @@ import {
   Chip,
   IconButton,
   Alert,
-  CircularProgress
+  CircularProgress,
+  TableSortLabel
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -39,6 +40,9 @@ interface Course {
   prerequisites: string;
 }
 
+type SortField = 'name' | 'category' | 'level' | 'duration_minutes' | 'price';
+type SortOrder = 'asc' | 'desc';
+
 const CoursesPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -46,6 +50,8 @@ const CoursesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -192,6 +198,45 @@ const CoursesPage: React.FC = () => {
     return prerequisites.split(',').map(p => p.trim()).filter(p => p.length > 0);
   };
 
+  // 排序處理函數
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // 如果點擊的是同一欄位，切換排序順序
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // 如果點擊的是不同欄位，設定新欄位並重設為升序
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  // 排序後的課程資料
+  const sortedCourses = [...courses].sort((a, b) => {
+    let aValue: any = a[sortField];
+    let bValue: any = b[sortField];
+
+    // 處理難度排序的特殊邏輯
+    if (sortField === 'level') {
+      const levelOrder = { '初級': 1, '中級': 2, '高級': 3 };
+      aValue = levelOrder[aValue as keyof typeof levelOrder] || 0;
+      bValue = levelOrder[bValue as keyof typeof levelOrder] || 0;
+    }
+
+    // 處理字串和數字的比較
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+
+    if (aValue < bValue) {
+      return sortOrder === 'asc' ? -1 : 1;
+    }
+    if (aValue > bValue) {
+      return sortOrder === 'asc' ? 1 : -1;
+    }
+    return 0;
+  });
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -230,17 +275,57 @@ const CoursesPage: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>課程名稱</TableCell>
-              <TableCell>分類</TableCell>
-              <TableCell>難度</TableCell>
-              <TableCell>時長(分鐘)</TableCell>
-              <TableCell>價格</TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === 'name'}
+                  direction={sortField === 'name' ? sortOrder : 'asc'}
+                  onClick={() => handleSort('name')}
+                >
+                  課程名稱
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === 'category'}
+                  direction={sortField === 'category' ? sortOrder : 'asc'}
+                  onClick={() => handleSort('category')}
+                >
+                  分類
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === 'level'}
+                  direction={sortField === 'level' ? sortOrder : 'asc'}
+                  onClick={() => handleSort('level')}
+                >
+                  難度
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === 'duration_minutes'}
+                  direction={sortField === 'duration_minutes' ? sortOrder : 'asc'}
+                  onClick={() => handleSort('duration_minutes')}
+                >
+                  時長(分鐘)
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === 'price'}
+                  direction={sortField === 'price' ? sortOrder : 'asc'}
+                  onClick={() => handleSort('price')}
+                >
+                  價格
+                </TableSortLabel>
+              </TableCell>
               <TableCell>先修課程</TableCell>
               <TableCell>操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {courses.map((course) => (
+            {sortedCourses.map((course) => (
               <TableRow key={course.id}>
                 <TableCell>
                   <Box>
@@ -322,16 +407,39 @@ const CoursesPage: React.FC = () => {
                   <MenuItem value="">
                     <TextField
                       size="small"
-                      placeholder="輸入新分類"
+                      placeholder="輸入新分類後按 Enter 或失去焦點完成"
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           const value = (e.target as HTMLInputElement).value;
-                          if (value) {
-                            setFormData({ ...formData, category: value });
+                          if (value.trim()) {
+                            const newCategory = value.trim();
+                            // 如果是新分類，添加到分類列表中
+                            if (!categories.includes(newCategory)) {
+                              setCategories([...categories, newCategory]);
+                            }
+                            setFormData({ ...formData, category: newCategory });
+                            // 清空輸入框
+                            (e.target as HTMLInputElement).value = '';
+                            // 關閉下拉選單
+                            (e.target as HTMLInputElement).blur();
                           }
                         }
                       }}
+                      onBlur={(e) => {
+                        const value = e.target.value;
+                        if (value.trim()) {
+                          const newCategory = value.trim();
+                          // 如果是新分類，添加到分類列表中
+                          if (!categories.includes(newCategory)) {
+                            setCategories([...categories, newCategory]);
+                          }
+                          setFormData({ ...formData, category: newCategory });
+                          // 清空輸入框
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }}
+                      sx={{ width: '100%' }}
                     />
                   </MenuItem>
                 </Select>

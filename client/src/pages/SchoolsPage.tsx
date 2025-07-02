@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 interface School {
   id: number;
@@ -23,6 +24,7 @@ interface SchoolStats {
 }
 
 const SchoolsPage: React.FC = () => {
+  const { user, token } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [schoolsPerPage, setSchoolsPerPage] = useState(10);
   const [sortOptions, setSortOptions] = useState({
@@ -39,6 +41,9 @@ const SchoolsPage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // 取得學校資料
   const fetchSchools = async () => {
@@ -97,6 +102,12 @@ const SchoolsPage: React.FC = () => {
   };
 
   const handleDeleteSchool = (school: School) => {
+    // 檢查是否為管理員
+    if (user?.role !== 'admin') {
+      alert('權限不足，僅限系統管理員可以刪除學校');
+      return;
+    }
+    
     setSelectedSchool(school);
     setShowDeleteModal(true);
   };
@@ -111,26 +122,85 @@ const SchoolsPage: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const confirmDeleteSchool = async () => {
+  const confirmDeleteSchool = () => {
     if (!selectedSchool) return;
     
+    // 顯示密碼驗證模態框
+    setShowDeleteModal(false);
+    setShowPasswordModal(true);
+    setPasswordError('');
+    setAdminPassword('');
+  };
+
+  const verifyPasswordAndDelete = async () => {
+    if (!selectedSchool || !adminPassword) {
+      setPasswordError('請輸入管理員密碼');
+      return;
+    }
+
+    // 調試信息
+    console.log('當前用戶:', user);
+    console.log('Token:', token ? '存在' : '不存在');
+
     try {
-      const response = await fetch(`/api/schools/${selectedSchool.id}`, {
-        method: 'DELETE',
+      // 先驗證管理員密碼
+      const verifyResponse = await fetch('/api/auth/verify-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: adminPassword })
       });
-      
-      if (!response.ok) {
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json();
+        
+        // 如果是 Token 相關錯誤，提示用戶重新登入
+        if (verifyResponse.status === 401 || verifyResponse.status === 403) {
+          if (errorData.message.includes('Token') || errorData.message.includes('過期')) {
+            setPasswordError('登入已過期，請重新登入後再試');
+            // 可以選擇自動跳轉到登入頁面
+            setTimeout(() => {
+              window.location.href = '/login';
+            }, 2000);
+            return;
+          }
+        }
+        
+        setPasswordError(errorData.message || '密碼驗證失敗');
+        return;
+      }
+
+      // 密碼驗證成功，執行刪除
+      const deleteResponse = await fetch(`/api/schools/${selectedSchool.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!deleteResponse.ok) {
+        if (deleteResponse.status === 401 || deleteResponse.status === 403) {
+          setPasswordError('登入已過期，請重新登入後再試');
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+          return;
+        }
         throw new Error('刪除學校失敗');
       }
-      
+
       // 重新載入資料
       fetchSchools();
       fetchStats();
-      setShowDeleteModal(false);
+      setShowPasswordModal(false);
       setSelectedSchool(null);
+      setAdminPassword('');
       alert('學校已成功刪除');
+      
     } catch (err) {
-      alert(err instanceof Error ? err.message : '刪除失敗');
+      setPasswordError(err instanceof Error ? err.message : '刪除失敗');
     }
   };
 
@@ -166,7 +236,10 @@ const SchoolsPage: React.FC = () => {
     setShowEditModal(false);
     setShowDeleteModal(false);
     setShowDetailModal(false);
+    setShowPasswordModal(false);
     setSelectedSchool(null);
+    setAdminPassword('');
+    setPasswordError('');
   };
 
   useEffect(() => {
@@ -411,12 +484,14 @@ const SchoolsPage: React.FC = () => {
                         >
                           編輯
                         </button>
-                        <button 
-                          className="btn-small btn-delete" 
-                          onClick={() => handleDeleteSchool(school)}
-                        >
-                          刪除
-                        </button>
+                        {user?.role === 'admin' && (
+                          <button 
+                            className="btn-small btn-delete" 
+                            onClick={() => handleDeleteSchool(school)}
+                          >
+                            刪除
+                          </button>
+                        )}
                         <button 
                           className="btn-small btn-schedule" 
                           onClick={() => handleViewSchoolDetail(school)}
@@ -528,6 +603,58 @@ const SchoolsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 管理員密碼驗證模態框 */}
+      {showPasswordModal && selectedSchool && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🔐 管理員身份驗證</h3>
+              <button className="modal-close" onClick={closeModals}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="password-verification">
+                <p><strong>即將刪除學校：</strong>{selectedSchool.school_name}</p>
+                <p className="warning-text">⚠️ 此操作無法復原，請謹慎操作！</p>
+                
+                <div className="form-group">
+                  <label>請輸入管理員密碼：</label>
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="輸入您的管理員密碼"
+                    style={{ color: '#000', backgroundColor: '#fff' }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        verifyPasswordAndDelete();
+                      }
+                    }}
+                  />
+                  {passwordError && (
+                    <div className="error-message" style={{ color: '#e53e3e', marginTop: '10px' }}>
+                      {passwordError}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="modal-actions">
+                <button 
+                  className="btn btn-danger" 
+                  onClick={verifyPasswordAndDelete}
+                  disabled={!adminPassword}
+                >
+                  確認刪除
+                </button>
+                <button className="btn btn-secondary" onClick={closeModals}>
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -538,21 +665,27 @@ const SchoolEditForm: React.FC<{
   onSave: (data: Partial<School>) => void;
   onCancel: () => void;
 }> = ({ school, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    school_name: school?.school_name || '',
-    short_name: school?.short_name || '',
-    school_type: school?.school_type || '',
-    district: school?.district || '',
-    education_level: school?.education_level || '',
-    phone: school?.phone || '',
-    address: school?.address || '',
-    our_student_count: school?.our_student_count || 0
+  const schoolNameRef = useRef<HTMLInputElement>(null);
+  const shortNameRef = useRef<HTMLInputElement>(null);
+  
+  const [formData, setFormData] = useState(() => {
+    return {
+      school_name: school?.school_name || '',
+      short_name: school?.short_name || '',
+      school_type: school?.school_type || '',
+      district: school?.district || '',
+      education_level: school?.education_level || '',
+      phone: school?.phone || '',
+      address: school?.address || '',
+      our_student_count: school?.our_student_count || 0
+    };
   });
 
   // 當 school prop 改變時，更新表單資料
   useEffect(() => {
+    
     if (school) {
-      setFormData({
+      const newFormData = {
         school_name: school.school_name || '',
         short_name: school.short_name || '',
         school_type: school.school_type || '',
@@ -561,25 +694,50 @@ const SchoolEditForm: React.FC<{
         phone: school.phone || '',
         address: school.address || '',
         our_student_count: school.our_student_count || 0
-      });
-    } else {
-      // 新增模式，清空表單
-      setFormData({
-        school_name: '',
-        short_name: '',
-        school_type: '',
-        district: '',
-        education_level: '',
-        phone: '',
-        address: '',
-        our_student_count: 0
-      });
+              };
+        setFormData(newFormData);
+      
+      // 直接設定輸入框的值
+      if (schoolNameRef.current) {
+        schoolNameRef.current.value = newFormData.school_name;
+      }
+      if (shortNameRef.current) {
+        shortNameRef.current.value = newFormData.short_name;
+      }
+          } else {
+        // 新增模式，清空表單
+        setFormData({
+          school_name: '',
+          short_name: '',
+          school_type: '',
+          district: '',
+          education_level: '',
+          phone: '',
+          address: '',
+          our_student_count: 0
+        });
+        
+        // 直接清空輸入框
+        if (schoolNameRef.current) {
+          schoolNameRef.current.value = '';
+        }
+        if (shortNameRef.current) {
+          shortNameRef.current.value = '';
+        }
     }
   }, [school]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // 從 ref 獲取最新值
+    const submitData = {
+      ...formData,
+      school_name: schoolNameRef.current?.value || '',
+      short_name: shortNameRef.current?.value || ''
+    };
+    
+    onSave(submitData);
   };
 
   const handleChange = (field: string, value: string | number) => {
@@ -587,26 +745,41 @@ const SchoolEditForm: React.FC<{
       ...prev,
       [field]: value
     }));
+    
+    // 同步更新 ref（如果需要）
+    if (field === 'school_name' && schoolNameRef.current) {
+      schoolNameRef.current.value = String(value);
+    }
+    if (field === 'short_name' && shortNameRef.current) {
+      shortNameRef.current.value = String(value);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="school-form">
+    <form 
+      onSubmit={handleSubmit} 
+      className="school-form"
+    >
       <div className="form-row">
         <div className="form-group">
           <label>學校全名 *</label>
           <input
+            ref={schoolNameRef}
             type="text"
-            value={formData.school_name}
             onChange={(e) => handleChange('school_name', e.target.value)}
             required
+            placeholder="學校全名"
+            style={{ color: '#000', backgroundColor: '#fff' }}
           />
         </div>
         <div className="form-group">
           <label>簡稱</label>
           <input
+            ref={shortNameRef}
             type="text"
-            value={formData.short_name}
             onChange={(e) => handleChange('short_name', e.target.value)}
+            placeholder="學校簡稱"
+            style={{ color: '#000', backgroundColor: '#fff' }}
           />
         </div>
       </div>
@@ -618,6 +791,7 @@ const SchoolEditForm: React.FC<{
             value={formData.school_type}
             onChange={(e) => handleChange('school_type', e.target.value)}
             required
+            style={{ color: '#000', backgroundColor: '#fff' }}
           >
             <option value="">請選擇</option>
             <option value="公立">公立</option>
@@ -632,6 +806,7 @@ const SchoolEditForm: React.FC<{
             value={formData.district}
             onChange={(e) => handleChange('district', e.target.value)}
             required
+            style={{ color: '#000', backgroundColor: '#fff' }}
           />
         </div>
       </div>
@@ -643,6 +818,7 @@ const SchoolEditForm: React.FC<{
             value={formData.education_level}
             onChange={(e) => handleChange('education_level', e.target.value)}
             required
+            style={{ color: '#000', backgroundColor: '#fff' }}
           >
             <option value="">請選擇</option>
             <option value="國小">國小</option>
@@ -659,6 +835,7 @@ const SchoolEditForm: React.FC<{
             value={formData.our_student_count}
             onChange={(e) => handleChange('our_student_count', parseInt(e.target.value) || 0)}
             min="0"
+            style={{ color: '#000', backgroundColor: '#fff' }}
           />
         </div>
       </div>
@@ -669,6 +846,7 @@ const SchoolEditForm: React.FC<{
           type="text"
           value={formData.phone}
           onChange={(e) => handleChange('phone', e.target.value)}
+          style={{ color: '#000', backgroundColor: '#fff' }}
         />
       </div>
       
@@ -678,6 +856,7 @@ const SchoolEditForm: React.FC<{
           value={formData.address}
           onChange={(e) => handleChange('address', e.target.value)}
           rows={3}
+          style={{ color: '#000', backgroundColor: '#fff' }}
         />
       </div>
       

@@ -1199,28 +1199,36 @@ body {
 
 /* 模態框樣式 */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: fixed;  /* 蓋滿視窗 */
+  inset: 0;  /* 等於 top: 0; left: 0; right: 0; bottom: 0; */
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(5px);
 }
 
 .modal-content {
   background: white;
-  border-radius: 12px;
+  color: #000000;
+  padding: 24px 32px;  
+  border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  max-width: 600px;
-  width: 90%;
-  max-height: 90vh;
+  max-width: 1550px;
+  max-height: 600px;
+  width: min(90%, 1550px);
+  height: auto;
+  min-height: 400px;
   overflow-y: auto;
   animation: modalSlideIn 0.3s ease-out;
+  margin-left: 125px; /* 增加20px：105px + 20px = 125px，整體向右移 */
+  margin-top: 20px; /* 整體向下移20px */
+  box-sizing: border-box; /* padding 不再額外計算 */
+}
+
+/* 標題與表單區塊留一些距離（可依需求微調） */
+.modal-content h3 {
+  margin: 0 0 16px 0;
 }
 
 @keyframes modalSlideIn {
@@ -1238,7 +1246,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 20px 30px; /* 增加左右內邊距 */
   border-bottom: 1px solid #e2e8f0;
   background: linear-gradient(45deg, #4299e1, #3182ce);
   color: white;
@@ -1272,7 +1280,7 @@ body {
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 20px 30px; /* 增加左右內邊距，讓內容不貼邊 */
 }
 
 .modal-actions {
@@ -1280,7 +1288,7 @@ body {
   gap: 12px;
   justify-content: flex-end;
   margin-top: 20px;
-  padding-top: 20px;
+  padding: 20px 30px 25px 30px; /* 上20px 左右30px 下25px，讓按鈕不貼底邊 */
   border-top: 1px solid #e2e8f0;
 }
 
@@ -1395,9 +1403,16 @@ body {
 
 /* 響應式設計 */
 @media (max-width: 768px) {
+  .modal-overlay {
+    padding: 45px 15px 15px 15px; /* 手機版：上45px(30px+15px) 右15px 下15px 左15px */
+  }
+  
   .modal-content {
-    width: 95%;
-    margin: 20px;
+    width: calc(100% - 30px); /* 扣除左右邊距 */
+    max-height: calc(100vh - 60px); /* 手機版扣除上下邊距：100vh - 45px - 15px = 60px */
+    margin: 0; /* 手機版清除桌面版的margin設定 */
+    margin-left: 0 !important; /* 手機版強制取消左邊距偏移 */
+    margin-top: 0 !important; /* 手機版強制取消上邊距偏移 */
   }
   
   .form-row {
@@ -1409,7 +1424,11 @@ body {
   }
   
   .modal-body {
-    padding: 20px;
+    padding: 16px 20px; /* 手機版保持適當的左右邊距 */
+  }
+  
+  .modal-actions {
+    padding: 16px 20px 20px 20px; /* 手機版調整按鈕區域邊距 */
   }
   
   .detail-row {
@@ -1419,6 +1438,344 @@ body {
   }
   
   .detail-row label {
+    min-width: auto;
+  }
+}
+
+/* 密碼驗證模態框樣式 */
+.password-verification {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.password-verification p {
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.password-verification .warning-text {
+  color: #e53e3e;
+  font-weight: bold;
+  background: #fed7d7;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #f56565;
+}
+
+.password-verification .form-group {
+  margin: 20px 0;
+  text-align: left;
+}
+
+.password-verification .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #2d3748;
+}
+
+.password-verification .form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.password-verification .form-group input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.password-verification .error-message {
+  background: #fed7d7;
+  color: #c53030;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #f56565;
+  font-size: 14px;
+  text-align: center;
+}
+
+.btn:disabled {
+  background: #a0aec0;
+  color: #718096;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn:disabled:hover {
+  background: #a0aec0;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 學生編輯表單樣式 */
+.student-form {
+  max-width: 100%;
+  margin: 0;
+  width: 100%;
+  padding: 0; /* 移除內邊距，因為modal-body已經有30px邊距 */
+  overflow-x: hidden; /* 防止水平滾動 */
+  box-sizing: border-box; /* 確保padding和border計入總寬度 */
+}
+
+.student-form .form-row {
+  display: flex;
+  column-gap: 0px;   /* 原本 8→2，再減半成 4→2 的感覺 */
+  row-gap:    4px;   /* 垂直間距也一起縮 */
+  gap: 2px; /* 減少間距從12px到8px */
+  margin-bottom: 2px;  
+  align-items: flex-end;
+  overflow-x: hidden; /* 防止水平滾動 */
+}
+
+.student-form .form-group {
+  display: grid;
+  grid-template-columns: auto 1fr; /* label在左，input在右，很重要！ */
+  column-gap: 8px;                 /* 標題與輸入框只留 8px */
+  align-items: center;
+  flex: 0 0 auto;                  /* 不要被 flex 撐寬 */
+  margin-bottom: 3px;              /* 項目間距離縮小 */
+}
+
+.student-form label {
+  font-weight: 600;
+  margin-bottom: 0px;
+}
+
+.student-form .form-group.full-width {
+  flex: 1 1 100%;
+  flex-direction: row;
+  align-items: center;
+}
+
+.student-form .form-group label {
+  font-weight: bold;
+  color: #000;
+  font-size: 14px;
+  white-space: nowrap;
+  margin: 0;
+  min-width: auto;                 /* 讓長標題自然撐開即可 */
+  text-align: left;
+  flex-shrink: 0;
+  margin-right: 4px;   /* label 與輸入框之間只留 4px */
+}
+
+.student-form input,
+.student-form select {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.student-form textarea {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 400px;
+  box-sizing: border-box;
+}
+
+/* 特定欄位寬度設定 */
+.student-form .form-group.name-field {
+  flex: 0 0 auto;
+  min-width: 250px;
+}
+
+.student-form .form-group.name-field input {
+  width: 120px;
+}
+
+.student-form .form-group.english-name-field {
+  flex: 0 0 auto;
+  min-width: 280px;
+}
+
+.student-form .form-group.english-name-field input {
+  width: 150px;
+}
+
+.student-form .form-group.school-field {
+  flex: 0 0 auto;
+  min-width: 250px;
+}
+
+.student-form .form-group.school-field input {
+  width: 130px;
+}
+
+.student-form .form-group.grade-field {
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+.student-form .form-group.grade-field select {
+  width: 80px;
+}
+
+.student-form .form-group.gender-field {
+  flex: 0 0 auto;
+  min-width: 180px;
+}
+
+.student-form .form-group.gender-field select {
+  width: 70px;
+}
+
+.student-form .form-group.level-field {
+  flex: 0 0 auto;
+  min-width: 180px;
+}
+
+.student-form .form-group.level-field select {
+  width: 80px;
+}
+
+.student-form .form-group.class-field {
+  flex: 0 0 auto;
+  min-width: 180px;
+}
+
+.student-form .form-group.class-field select {
+  width: 80px;
+}
+
+.student-form .form-group.phone-field {
+  flex: 0 0 auto;
+  min-width: 250px;
+}
+
+.student-form .form-group.phone-field input {
+  width: 140px;
+}
+
+.student-form .form-group.email-field {
+  flex: 1 1 auto;
+  min-width: 350px;
+  max-width: 100%;
+}
+
+.student-form .form-group.email-field input {
+  width: 200px;
+  max-width: 250px;
+}
+
+.student-form .form-group.line-field {
+  flex: 0 1 auto;
+  min-width: 250px;
+  max-width: 300px;
+}
+
+.student-form .form-group.line-field input {
+  width: 140px;
+  max-width: 180px;
+}
+
+.student-form .form-group input,
+.student-form .form-group select,
+.student-form .form-group textarea {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #000;
+  background-color: #fff;
+  transition: border-color 0.3s;
+}
+
+.student-form .form-group input:focus,
+.student-form .form-group select:focus,
+.student-form .form-group textarea:focus {
+  outline: none;
+  border-color: #4CAF50;
+  color: #000;
+}
+
+.student-form .form-section {
+  margin: 8px 0;
+  padding: 8px 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 3px solid #4CAF50;
+}
+
+.student-form .form-section h4 {
+  margin: 0 0 8px 0;
+  color: #000;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.student-form .required {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+/* 學生詳情樣式 */
+.student-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.student-detail .detail-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.student-detail .detail-row:last-child {
+  border-bottom: none;
+}
+
+.student-detail .detail-row label {
+  font-weight: 600;
+  color: #4a5568;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.student-detail .detail-row span {
+  color: #2d3748;
+  flex: 1;
+}
+
+/* 學生表單的響應式設計 */
+@media (max-width: 768px) {
+  .student-form {
+    padding: 0 5px;
+  }
+  
+  .student-form .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .student-form .form-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 100%;
+  }
+  
+  .student-form .form-group input,
+  .student-form .form-group select {
+    width: 100% !important;
+  }
+  
+  .student-detail .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .student-detail .detail-row label {
     min-width: auto;
   }
 }

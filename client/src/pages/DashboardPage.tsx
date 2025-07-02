@@ -22,6 +22,8 @@ const dashboardData = {
 };
 
 const DashboardPage: React.FC = () => {
+  console.log('DashboardPage 正在渲染');
+  
   return (
     <Box>
       <Typography variant="h4" gutterBottom sx={{ color: 'white', fontWeight: 'bold' }}>

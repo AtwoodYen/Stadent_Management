@@ -20,8 +20,12 @@ import {
   Avatar,
   Divider,
   CircularProgress,
-  Snackbar
+  Snackbar,
+  Autocomplete,
+  FormHelperText
 } from '@mui/material';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import type { DropResult } from '@hello-pangea/dnd';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -30,8 +34,12 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   AttachMoney as MoneyIcon,
-  School as SchoolIcon
+  School as SchoolIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
+import DraggableSpecialties from '../components/DraggableSpecialties';
+import TeacherCourses from '../components/TeacherCourses';
+import { useAuth } from '../context/AuthContext';
 
 // 型別定義
 interface Teacher {
@@ -61,7 +69,7 @@ interface TeacherStats {
 }
 
 const TeachersPage: React.FC = () => {
-  // 狀態管理
+  const { user } = useAuth(); // 獲取當前用戶資訊
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [stats, setStats] = useState<TeacherStats | null>(null);
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -80,6 +88,16 @@ const TeachersPage: React.FC = () => {
     min_experience: '',
     available_day: ''
   });
+
+  // 刪除確認對話框相關 state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingTeacher, setDeletingTeacher] = useState<Teacher | null>(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
+  // 課程能力管理相關 state
+  const [coursesDialogOpen, setCoursesDialogOpen] = useState(false);
+  const [selectedTeacherForCourses, setSelectedTeacherForCourses] = useState<Teacher | null>(null);
 
   // 表單狀態
   const [formData, setFormData] = useState({
@@ -243,23 +261,75 @@ const TeachersPage: React.FC = () => {
     }
   };
 
-  // 刪除師資
-  const handleDeleteTeacher = async (id: number) => {
-    if (!confirm('確定要刪除這位師資嗎？')) return;
-    
-    try {
-      const response = await fetch(`/api/teachers/${id}`, {
-        method: 'DELETE'
-      });
-      
-      if (!response.ok) throw new Error('刪除失敗');
-      
+  // 開啟刪除確認對話框
+  const handleDeleteTeacher = async (teacher: Teacher) => {
+    // 檢查是否為系統管理員
+    if (user?.role !== 'admin') {
       setSnackbar({
         open: true,
-        message: '師資刪除成功',
+        message: '只有系統管理員才能刪除師資',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    setDeletingTeacher(teacher);
+    setDeleteDialogOpen(true);
+    setAdminPassword('');
+    setPasswordError('');
+  };
+
+  // 關閉刪除確認對話框
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setDeletingTeacher(null);
+    setAdminPassword('');
+    setPasswordError('');
+  };
+
+  // 驗證管理員密碼並執行刪除
+  const verifyPasswordAndDelete = async () => {
+    if (!adminPassword) {
+      setPasswordError('請輸入管理員密碼');
+      return;
+    }
+
+    try {
+      // 從 localStorage 獲取 token
+      const token = localStorage.getItem('authToken');
+      
+      // 驗證管理員密碼
+      const verifyResponse = await fetch('/api/auth/verify-admin', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          password: adminPassword 
+        })
+      });
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json();
+        setPasswordError(errorData.message || '密碼驗證失敗');
+        return;
+      }
+
+      // 密碼驗證成功，執行刪除
+      const deleteResponse = await fetch(`/api/teachers/${deletingTeacher?.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!deleteResponse.ok) throw new Error('刪除失敗');
+
+      setSnackbar({
+        open: true,
+        message: `師資 ${deletingTeacher?.name} 刪除成功`,
         severity: 'success'
       });
-      
+
+      handleCloseDeleteDialog();
       fetchTeachers();
       fetchStats();
     } catch (err) {
@@ -269,6 +339,56 @@ const TeachersPage: React.FC = () => {
         severity: 'error'
       });
     }
+  };
+
+  // 開啟課程能力管理
+  const handleOpenCourses = (teacher: Teacher) => {
+    console.log('=== 開啟課程能力管理 ===');
+    console.log('選中的師資:', teacher);
+    console.log('師資 ID:', teacher.id);
+    console.log('師資 ID 類型:', typeof teacher.id);
+    console.log('師資姓名:', teacher.name);
+    console.log('=======================');
+    
+    setSelectedTeacherForCourses(teacher);
+    setCoursesDialogOpen(true);
+  };
+
+  // 關閉課程能力管理
+  const handleCloseCourses = () => {
+    setCoursesDialogOpen(false);
+    setSelectedTeacherForCourses(null);
+  };
+
+  // 處理拖拽結束
+  const handleDragEnd = (result: DropResult) => {
+    // 如果沒有有效的目標位置，則不做任何操作
+    if (!result.destination) {
+      console.log('拖拽取消：沒有有效的目標位置');
+      return;
+    }
+
+    // 如果拖拽到同一位置，則不做任何操作
+    if (result.source.index === result.destination.index) {
+      console.log('拖拽取消：位置沒有改變');
+      return;
+    }
+
+    console.log('拖拽操作：', {
+      從: result.source.index,
+      到: result.destination.index,
+      師資ID: result.draggableId
+    });
+
+    // 創建新的師資列表
+    const newTeachers = Array.from(teachers);
+    const [draggedTeacher] = newTeachers.splice(result.source.index, 1);
+    newTeachers.splice(result.destination.index, 0, draggedTeacher);
+
+    // 更新狀態
+    setTeachers(newTeachers);
+    
+    console.log('拖拽完成：師資順序已更新');
   };
 
   if (loading && teachers.length === 0) {
@@ -346,7 +466,20 @@ const TeachersPage: React.FC = () => {
 
       {/* 篩選和操作列 */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
+        <FormControl size="small" sx={{ 
+          minWidth: 120,
+          '& .MuiInputLabel-root': { 
+            color: 'white',
+            '&.Mui-focused': { color: 'white' }
+          },
+          '& .MuiOutlinedInput-root': {
+            color: 'white',
+            '& fieldset': { borderColor: 'white' },
+            '&:hover fieldset': { borderColor: 'white' },
+            '&.Mui-focused fieldset': { borderColor: 'white' }
+          },
+          '& .MuiSelect-icon': { color: 'white' }
+        }}>
           <InputLabel>專長</InputLabel>
           <Select
             value={filters.specialty}
@@ -362,7 +495,20 @@ const TeachersPage: React.FC = () => {
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 120 }}>
+        <FormControl size="small" sx={{ 
+          minWidth: 120,
+          '& .MuiInputLabel-root': { 
+            color: 'white',
+            '&.Mui-focused': { color: 'white' }
+          },
+          '& .MuiOutlinedInput-root': {
+            color: 'white',
+            '& fieldset': { borderColor: 'white' },
+            '&:hover fieldset': { borderColor: 'white' },
+            '&.Mui-focused fieldset': { borderColor: 'white' }
+          },
+          '& .MuiSelect-icon': { color: 'white' }
+        }}>
           <InputLabel>狀態</InputLabel>
           <Select
             value={filters.status}
@@ -381,7 +527,19 @@ const TeachersPage: React.FC = () => {
           type="number"
           value={filters.min_rate}
           onChange={(e) => setFilters({ ...filters, min_rate: e.target.value })}
-          sx={{ width: 120 }}
+          sx={{ 
+            width: 120,
+            '& .MuiInputLabel-root': { 
+              color: 'white',
+              '&.Mui-focused': { color: 'white' }
+            },
+            '& .MuiOutlinedInput-root': {
+              color: 'white',
+              '& fieldset': { borderColor: 'white' },
+              '&:hover fieldset': { borderColor: 'white' },
+              '&.Mui-focused fieldset': { borderColor: 'white' }
+            }
+          }}
         />
 
         <TextField
@@ -390,7 +548,19 @@ const TeachersPage: React.FC = () => {
           type="number"
           value={filters.max_rate}
           onChange={(e) => setFilters({ ...filters, max_rate: e.target.value })}
-          sx={{ width: 120 }}
+          sx={{ 
+            width: 120,
+            '& .MuiInputLabel-root': { 
+              color: 'white',
+              '&.Mui-focused': { color: 'white' }
+            },
+            '& .MuiOutlinedInput-root': {
+              color: 'white',
+              '& fieldset': { borderColor: 'white' },
+              '&:hover fieldset': { borderColor: 'white' },
+              '&.Mui-focused fieldset': { borderColor: 'white' }
+            }
+          }}
         />
 
         <Box sx={{ flexGrow: 1 }} />
@@ -405,107 +575,203 @@ const TeachersPage: React.FC = () => {
       </Box>
 
       {/* 師資列表 */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-        {teachers.map((teacher) => (
-          <Card key={teacher.id} sx={{ width: 350, display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ flexGrow: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
-                  <PersonIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" component="div">
-                    {teacher.name}
-                  </Typography>
-                  <Chip
-                    label={teacher.is_active ? '啟用' : '停用'}
-                    color={teacher.is_active ? 'success' : 'default'}
-                    size="small"
-                  />
-                </Box>
-              </Box>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="teachers" type="TEACHER">
+          {(provided, snapshot) => (
+            <Box
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              sx={{ 
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 2,
+                width: '100%',
+                minHeight: snapshot.isDraggingOver ? '200px' : 'auto',
+                transition: 'min-height 0.2s ease',
+                '& > *': {
+                  transition: 'transform 0.2s ease, opacity 0.2s ease',
+                  flexBasis: '350px',
+                  flexGrow: 1,
+                  maxWidth: '400px'
+                }
+              }}
+            >
+              {teachers.map((teacher, index) => (
+                <Draggable key={teacher.id} draggableId={teacher.id.toString()} index={index}>
+                  {(provided, snapshot) => (
+                    <Card
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: 'fit-content',
+                        minWidth: '300px',
+                        transform: snapshot.isDragging ? 
+                          `${provided.draggableProps.style?.transform} rotate(5deg)` : 
+                          provided.draggableProps.style?.transform,
+                        boxShadow: snapshot.isDragging ? 8 : 2,
+                        opacity: snapshot.isDragging ? 0.9 : 1,
+                        zIndex: snapshot.isDragging ? 1000 : 1,
+                        transition: snapshot.isDragging ? 'none' : 'transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease',
+                        cursor: 'default',
+                        '&:hover': {
+                          boxShadow: snapshot.isDragging ? 8 : 4,
+                        },
+                        // 確保拖拽時的樣式優先級
+                        ...provided.draggableProps.style,
+                        ...(snapshot.isDragging && {
+                          transform: `${provided.draggableProps.style?.transform} rotate(5deg)`,
+                        })
+                      }}
+                    >
+                      {/* 拖拽手柄區域 */}
+                      <Box
+                        {...provided.dragHandleProps}
+                        sx={{
+                          p: 1,
+                          backgroundColor: snapshot.isDragging ? 'rgba(25, 118, 210, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                          textAlign: 'center',
+                          cursor: 'grab',
+                          '&:active': { cursor: 'grabbing' },
+                          borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                          transition: 'background-color 0.2s ease'
+                        }}
+                      >
+                        <Typography variant="caption" color={snapshot.isDragging ? 'primary' : 'text.secondary'}>
+                          ⋮⋮ 拖拽移動 ⋮⋮
+                        </Typography>
+                      </Box>
+                      
+                      <CardContent sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
+                            <PersonIcon />
+                          </Avatar>
+                          <Box>
+                            <Typography variant="h6" component="div">
+                              {teacher.name}
+                            </Typography>
+                            <Chip
+                              label={teacher.is_active ? '啟用' : '停用'}
+                              color={teacher.is_active ? 'success' : 'default'}
+                              size="small"
+                            />
+                          </Box>
+                        </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  {teacher.email}
-                </Typography>
-              </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            {teacher.email}
+                          </Typography>
+                        </Box>
 
-              {teacher.phone && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                  <Typography variant="body2" color="text.secondary">
-                    {teacher.phone}
-                  </Typography>
-                </Box>
-              )}
+                        {teacher.phone && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {teacher.phone}
+                            </Typography>
+                          </Box>
+                        )}
 
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  時薪 ${teacher.hourly_rate}
-                </Typography>
-              </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            時薪 ${teacher.hourly_rate}
+                          </Typography>
+                        </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  經驗 {teacher.experience} 年
-                </Typography>
-              </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="body2" color="text.secondary">
+                            經驗 {teacher.experience} 年
+                          </Typography>
+                        </Box>
 
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                專長：
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                {teacher.specialties.map((specialty, index) => (
-                  <Chip key={index} label={specialty} size="small" variant="outlined" />
-                ))}
-              </Box>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          專長：
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                          {teacher.specialties.map((specialty, index) => (
+                            <Chip key={index} label={specialty} size="small" variant="outlined" />
+                          ))}
+                        </Box>
 
-              {teacher.bio && (
-                <Typography variant="body2" color="text.secondary" sx={{ 
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical'
-                }}>
-                  {teacher.bio}
-                </Typography>
-              )}
-            </CardContent>
+                        {teacher.bio && (
+                          <Typography variant="body2" color="text.secondary" sx={{ 
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical'
+                          }}>
+                            {teacher.bio}
+                          </Typography>
+                        )}
+                      </CardContent>
 
-            <Divider />
+                      <Divider />
 
-            <CardActions>
-              <Button
-                size="small"
-                startIcon={<EditIcon />}
-                onClick={() => handleOpenDialog(teacher)}
-              >
-                編輯
-              </Button>
-              <Button
-                size="small"
-                color={teacher.is_active ? 'warning' : 'success'}
-                onClick={() => handleToggleStatus(teacher.id)}
-              >
-                {teacher.is_active ? '停用' : '啟用'}
-              </Button>
-              <Button
-                size="small"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={() => handleDeleteTeacher(teacher.id)}
-              >
-                刪除
-              </Button>
-            </CardActions>
-          </Card>
-        ))}
-      </Box>
+                      <CardActions sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDialog(teacher);
+                          }}
+                          sx={{ pointerEvents: 'auto' }}
+                        >
+                          編輯
+                        </Button>
+                        <Button
+                          size="small"
+                          color="info"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCourses(teacher);
+                          }}
+                          sx={{ pointerEvents: 'auto' }}
+                        >
+                          課程能力
+                        </Button>
+                        <Button
+                          size="small"
+                          color={teacher.is_active ? 'warning' : 'success'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStatus(teacher.id);
+                          }}
+                          sx={{ pointerEvents: 'auto' }}
+                        >
+                          {teacher.is_active ? '停用' : '啟用'}
+                        </Button>
+                        {user?.role === 'admin' && (
+                          <Button
+                            size="small"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteTeacher(teacher);
+                            }}
+                            sx={{ pointerEvents: 'auto' }}
+                          >
+                            刪除
+                          </Button>
+                        )}
+                      </CardActions>
+                    </Card>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </Box>
+          )}
+        </Droppable>
+      </DragDropContext>
 
       {teachers.length === 0 && !loading && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -576,6 +842,41 @@ const TeachersPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Box>
+            {/* 專長編輯 */}
+            <DraggableSpecialties
+              specialties={formData.specialties}
+              availableOptions={specialties}
+              onChange={(newSpecialties: string[]) => setFormData({ ...formData, specialties: newSpecialties })}
+            />
+
+            {/* 可授課日編輯 */}
+            <Autocomplete
+              multiple
+              options={['週一', '週二', '週三', '週四', '週五', '週六', '週日']}
+              value={formData.availableDays}
+              onChange={(_, newValue) => {
+                setFormData({ ...formData, availableDays: newValue as string[] });
+              }}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    {...getTagProps({ index })}
+                    key={index}
+                  />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="可授課日"
+                  placeholder="選擇可授課的日期..."
+                  helperText="可多選授課日期"
+                />
+              )}
+            />
+
             <TextField
               fullWidth
               label="個人簡介"
@@ -598,6 +899,66 @@ const TeachersPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* 刪除確認對話框 */}
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={handleCloseDeleteDialog}
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="error" />
+          管理員身份驗證
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              ⚠️ 您即將刪除師資：<strong>{deletingTeacher?.name}</strong>
+              <br />
+              此操作無法復原，請謹慎操作！
+            </Alert>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+            </Typography>
+
+            <TextField
+              fullWidth
+              type="password"
+              label="管理員密碼"
+              value={adminPassword}
+              onChange={(e) => {
+                setAdminPassword(e.target.value);
+                setPasswordError(''); // 清除錯誤訊息
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && adminPassword) {
+                  verifyPasswordAndDelete();
+                }
+              }}
+              error={!!passwordError}
+              helperText={passwordError || '請輸入您的登入密碼'}
+              placeholder="輸入管理員密碼..."
+              autoFocus
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="inherit">
+            取消
+          </Button>
+          <Button
+            onClick={verifyPasswordAndDelete}
+            color="error"
+            variant="contained"
+            disabled={!adminPassword}
+            startIcon={<DeleteIcon />}
+          >
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 通知訊息 */}
       <Snackbar
         open={snackbar.open}
@@ -612,6 +973,16 @@ const TeachersPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* 課程能力管理 */}
+      {selectedTeacherForCourses && (
+        <TeacherCourses
+          teacherId={selectedTeacherForCourses.id}
+          teacherName={selectedTeacherForCourses.name}
+          open={coursesDialogOpen}
+          onClose={handleCloseCourses}
+        />
+      )}
     </Box>
   );
 };

@@ -113,6 +113,11 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
       return;
     }
     
+    // 檢查 teacherId 是否為 0（這是合法的 ID）
+    if (teacherId === 0) {
+      console.log('teacherId 為 0，這是合法的師資 ID');
+    }
+    
     console.log('開始載入師資課程能力, teacherId:', teacherId);
     setLoading(true);
     try {
@@ -282,10 +287,19 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
 
   // 當對話框開啟時載入資料
   useEffect(() => {
+    console.log('=== TeacherCourses useEffect 觸發 ===');
+    console.log('open:', open);
+    console.log('teacherId:', teacherId);
+    console.log('teacherId 類型:', typeof teacherId);
+    console.log('teacherId 是否為真值:', !!teacherId);
+    
     if (open && teacherId) {
+      console.log('開始載入資料...');
       fetchTeacherCourses();
       fetchTeacherSpecialties();
       fetchCourseCategories();
+    } else {
+      console.log('跳過載入資料，條件不滿足');
     }
   }, [open, teacherId]);
 

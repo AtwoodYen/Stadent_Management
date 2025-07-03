@@ -521,6 +521,33 @@ const TeachersPage: React.FC = () => {
                   </Typography>
                 </Box>
 
+                {/* 顯示課程能力（優先顯示主力課程） */}
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  課程能力：
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                  {(() => {
+                    console.log(`師資 ${teacher.name} 的課程能力資料:`, {
+                      preferredCourses: teacher.preferredCourses,
+                      courseCategories: teacher.courseCategories,
+                      preferredLength: teacher.preferredCourses?.length,
+                      categoriesLength: teacher.courseCategories?.length
+                    });
+                    
+                    if (teacher.preferredCourses && teacher.preferredCourses.length > 0) {
+                      return teacher.preferredCourses.map((course, idx) => (
+                        <Chip key={idx} label={course} size="small" variant="outlined" color="primary" />
+                      ));
+                    } else if (teacher.courseCategories && teacher.courseCategories.length > 0) {
+                      return teacher.courseCategories.map((course, idx) => (
+                        <Chip key={idx} label={course} size="small" variant="outlined" />
+                      ));
+                    } else {
+                      return <Chip label="無課程能力" size="small" variant="outlined" />;
+                    }
+                  })()}
+                </Box>
+
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   可授課日：
                 </Typography>
@@ -574,6 +601,27 @@ const TeachersPage: React.FC = () => {
                     <Typography variant="body2" color="text.secondary">
                       經驗 {teacher.experience} 年
                     </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    課程能力：
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {(() => {
+                      if (teacher.preferredCourses && teacher.preferredCourses.length > 0) {
+                        return teacher.preferredCourses.map((course, idx) => (
+                          <Chip key={idx} label={course} size="small" variant="outlined" color="primary" />
+                        ));
+                      } else if (teacher.courseCategories && teacher.courseCategories.length > 0) {
+                        return teacher.courseCategories.map((course, idx) => (
+                          <Chip key={idx} label={course} size="small" variant="outlined" />
+                        ));
+                      } else {
+                        return <Chip label="無課程能力" size="small" variant="outlined" />;
+                      }
+                    })()}
                   </Box>
                 </Box>
 

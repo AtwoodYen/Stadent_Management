@@ -1865,7 +1865,8 @@ app.get('/api/teachers', async (req, res, next) => {
             request.input('available_day', sql.NVarChar, `%${available_day}%`);
         }
         
-        query += ' ORDER BY t.is_active DESC, t.hourly_rate DESC, t.name';
+        // 移除預設排序，讓前端完全控制排序
+        // query += ' ORDER BY t.is_active DESC, t.hourly_rate DESC, t.name';
         
         const result = await request.query(query);
         

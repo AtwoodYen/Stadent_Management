@@ -149,6 +149,8 @@ const TeachersPage: React.FC = () => {
       if (!response.ok) throw new Error('載入師資資料失敗');
       
       const data = await response.json();
+      // 只在初始載入或篩選條件改變時更新排序
+      // 保持拖拽排序的結果
       setTeachers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '載入失敗');
@@ -235,6 +237,19 @@ const TeachersPage: React.FC = () => {
         throw new Error(errorData.error || '儲存失敗');
       }
       
+      if (editingTeacher) {
+        // 更新現有師資：只更新當前師資的資料，保持排序
+        const updatedTeacher = await response.json();
+        setTeachers(prev => prev.map(t => 
+          t.id === editingTeacher.id 
+            ? { ...t, ...updatedTeacher, specialties: updatedTeacher.specialties || [], availableDays: updatedTeacher.availableDays || [] }
+            : t
+        ));
+      } else {
+        // 新增師資：重新載入以獲取新師資的完整資料
+        fetchTeachers();
+      }
+      
       setSnackbar({
         open: true,
         message: editingTeacher ? '師資資料更新成功' : '新增師資成功',
@@ -242,7 +257,6 @@ const TeachersPage: React.FC = () => {
       });
       
       handleCloseDialog();
-      fetchTeachers();
       fetchStats();
     } catch (err) {
       setSnackbar({
@@ -262,13 +276,17 @@ const TeachersPage: React.FC = () => {
       
       if (!response.ok) throw new Error('狀態切換失敗');
       
+      // 只更新當前師資的狀態，保持排序
+      setTeachers(prev => prev.map(t => 
+        t.id === id ? { ...t, is_active: !t.is_active } : t
+      ));
+      
       setSnackbar({
         open: true,
         message: '師資狀態更新成功',
         severity: 'success'
       });
       
-      fetchTeachers();
       fetchStats();
     } catch (err) {
       setSnackbar({
@@ -348,7 +366,8 @@ const TeachersPage: React.FC = () => {
       });
 
       handleCloseDeleteDialog();
-      fetchTeachers();
+      // 從列表中移除被刪除的師資，保持其他師資的排序
+      setTeachers(prev => prev.filter(t => t.id !== deletingTeacher?.id));
       fetchStats();
     } catch (err) {
       setSnackbar({
@@ -411,137 +430,83 @@ const TeachersPage: React.FC = () => {
       transitionDuration: isDragging ? '0s' : '0.2s',
     } as React.CSSProperties;
     return (
-      <Card ref={setNodeRef} style={style} {...attributes} {...listeners}>
-        <CardContent sx={{ 
-          flexGrow: 1, 
-          display: 'flex', 
-          flexDirection: viewMode === 'list' ? 'row' : 'column', 
-          alignItems: viewMode === 'list' ? 'center' : 'stretch', 
-          gap: viewMode === 'list' ? 3 : 0 
+      <Card ref={setNodeRef} style={style} {...attributes}>
+        <Box {...listeners} sx={{ 
+          flexGrow: 1,
+          cursor: 'grab',
+          '&:active': { cursor: 'grabbing' }
         }}>
-          <Box sx={{ 
+          <CardContent sx={{ 
+            flexGrow: 1, 
             display: 'flex', 
-            alignItems: 'center', 
-            mb: viewMode === 'grid' ? 2 : 0, 
-            minWidth: viewMode === 'list' ? '200px' : 'auto' 
+            flexDirection: viewMode === 'list' ? 'row' : 'column', 
+            alignItems: viewMode === 'list' ? 'center' : 'stretch', 
+            gap: viewMode === 'list' ? 3 : 0 
           }}>
-            <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
-              <PersonIcon />
-            </Avatar>
-            <Box>
-              <Typography variant="h6" component="div">
-                {teacher.name}
-              </Typography>
-              <Chip
-                label={teacher.is_active ? '啟用' : '停用'}
-                color={teacher.is_active ? 'success' : 'default'}
-                size="small"
-              />
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              mb: viewMode === 'grid' ? 2 : 0, 
+              minWidth: viewMode === 'list' ? '200px' : 'auto' 
+            }}>
+              <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
+                <PersonIcon />
+              </Avatar>
+              <Box>
+                <Typography variant="h6" component="div">
+                  {teacher.name}
+                </Typography>
+                <Chip
+                  label={teacher.is_active ? '啟用' : '停用'}
+                  color={teacher.is_active ? 'success' : 'default'}
+                  size="small"
+                />
+              </Box>
             </Box>
-          </Box>
 
-          {viewMode === 'grid' ? (
-            // 區塊模式：垂直佈局
-            <>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  {teacher.email}
-                </Typography>
-              </Box>
-
-              {teacher.phone && (
+            {viewMode === 'grid' ? (
+              // 區塊模式：垂直佈局
+              <>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                  <Typography variant="body2" color="text.secondary">
-                    {teacher.phone}
-                  </Typography>
-                </Box>
-              )}
-
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  時薪 ${teacher.hourly_rate}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  經驗 {teacher.experience} 年
-                </Typography>
-              </Box>
-
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                專長：
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                {teacher.specialties.map((specialty, index) => (
-                  <Chip key={index} label={specialty} size="small" variant="outlined" />
-                ))}
-              </Box>
-
-              {teacher.bio && (
-                <Typography variant="body2" color="text.secondary" sx={{ 
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical'
-                }}>
-                  {teacher.bio}
-                </Typography>
-              )}
-            </>
-          ) : (
-            // 列表模式：水平佈局
-            <>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '150px' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                   <Typography variant="body2" color="text.secondary">
                     {teacher.email}
                   </Typography>
                 </Box>
+
                 {teacher.phone && (
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
                       {teacher.phone}
                     </Typography>
                   </Box>
                 )}
-              </Box>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                   <Typography variant="body2" color="text.secondary">
                     時薪 ${teacher.hourly_rate}
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                   <Typography variant="body2" color="text.secondary">
                     經驗 {teacher.experience} 年
                   </Typography>
                 </Box>
-              </Box>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" gutterBottom>
                   專長：
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
                   {teacher.specialties.map((specialty, index) => (
                     <Chip key={index} label={specialty} size="small" variant="outlined" />
                   ))}
                 </Box>
-              </Box>
 
-              {teacher.bio && (
-                <Box sx={{ minWidth: '200px', maxWidth: '300px' }}>
+                {teacher.bio && (
                   <Typography variant="body2" color="text.secondary" sx={{ 
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -551,29 +516,97 @@ const TeachersPage: React.FC = () => {
                   }}>
                     {teacher.bio}
                   </Typography>
+                )}
+              </>
+            ) : (
+              // 列表模式：水平佈局
+              <>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '150px' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {teacher.email}
+                    </Typography>
+                  </Box>
+                  {teacher.phone && (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {teacher.phone}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
-              )}
-            </>
-          )}
-        </CardContent>
 
-        {viewMode === 'grid' && <Divider />}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      時薪 ${teacher.hourly_rate}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      經驗 {teacher.experience} 年
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    專長：
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {teacher.specialties.map((specialty, index) => (
+                      <Chip key={index} label={specialty} size="small" variant="outlined" />
+                    ))}
+                  </Box>
+                </Box>
+
+                {teacher.bio && (
+                  <Box sx={{ minWidth: '200px', maxWidth: '300px' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ 
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {teacher.bio}
+                    </Typography>
+                  </Box>
+                )}
+              </>
+                          )}
+            </CardContent>
+          </Box>
+
+          {viewMode === 'grid' && <Divider />}
 
         <CardActions sx={{ 
           justifyContent: viewMode === 'list' ? 'flex-end' : 'space-between', 
           flexWrap: 'wrap', 
           gap: 1,
           flexDirection: 'row',
-          minWidth: viewMode === 'list' ? 'auto' : 'auto'
+          minWidth: viewMode === 'list' ? 'auto' : 'auto',
+          position: 'relative',
+          zIndex: 1000,
+          pointerEvents: 'auto'
         }}>
           <Button
             size="small"
             startIcon={<EditIcon />}
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               handleOpenDialog(teacher);
             }}
-            sx={{ pointerEvents: 'auto' }}
+            sx={{ 
+              pointerEvents: 'auto',
+              zIndex: 1000,
+              position: 'relative'
+            }}
           >
             編輯
           </Button>
@@ -582,9 +615,14 @@ const TeachersPage: React.FC = () => {
             color="info"
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               handleOpenCourses(teacher);
             }}
-            sx={{ pointerEvents: 'auto' }}
+            sx={{ 
+              pointerEvents: 'auto',
+              zIndex: 1000,
+              position: 'relative'
+            }}
           >
             課程能力
           </Button>
@@ -593,9 +631,14 @@ const TeachersPage: React.FC = () => {
             color={teacher.is_active ? 'warning' : 'success'}
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               handleToggleStatus(teacher.id);
             }}
-            sx={{ pointerEvents: 'auto' }}
+            sx={{ 
+              pointerEvents: 'auto',
+              zIndex: 1000,
+              position: 'relative'
+            }}
           >
             {teacher.is_active ? '停用' : '啟用'}
           </Button>
@@ -606,9 +649,14 @@ const TeachersPage: React.FC = () => {
               startIcon={<DeleteIcon />}
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 handleDeleteTeacher(teacher);
               }}
-              sx={{ pointerEvents: 'auto' }}
+              sx={{ 
+                pointerEvents: 'auto',
+                zIndex: 1000,
+                position: 'relative'
+              }}
             >
               刪除
             </Button>

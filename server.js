@@ -1834,7 +1834,7 @@ app.get('/api/teachers', async (req, res, next) => {
             SELECT 
                 t.id, t.name, t.email, t.phone, t.available_days, 
                 t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
-                t.created_at, t.updated_at,
+                t.created_at, t.updated_at, t.sort_order,
                 ISNULL(STRING_AGG(tc.course_category, ', '), '') as course_categories,
                 ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', '), '') as preferred_courses
             FROM teachers t 
@@ -1883,7 +1883,7 @@ app.get('/api/teachers', async (req, res, next) => {
         
         // 移除預設排序，讓前端完全控制排序
         //         // 使用 sort_order 欄位進行排序
-        query += ' GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at';
+        query += ' GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at, t.sort_order';
         query += ' ORDER BY ISNULL(t.sort_order, 999999), t.id ASC';
         
         const result = await request.query(query);
@@ -1963,13 +1963,13 @@ app.get('/api/teachers/:id', async (req, res, next) => {
                 SELECT 
                     t.id, t.name, t.email, t.phone, t.available_days, 
                     t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
-                    t.created_at, t.updated_at,
+                    t.created_at, t.updated_at, t.sort_order,
                     ISNULL(STRING_AGG(tc.course_category, ', '), '') as course_categories,
                     ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', '), '') as preferred_courses
                 FROM teachers t 
                 LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
                 WHERE t.id = @id
-                GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at
+                GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at, t.sort_order
             `);
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: 'Teacher not found' });

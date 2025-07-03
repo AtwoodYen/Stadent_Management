@@ -6,13 +6,13 @@ PRINT N'=== 測試基本師資查詢（包含課程能力聚合） ===';
 SELECT 
     t.id, t.name, t.email, t.phone, t.available_days, 
     t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
-    t.created_at, t.updated_at,
+    t.created_at, t.updated_at, t.sort_order,
     ISNULL(STRING_AGG(tc.course_category, ', '), '') as course_categories,
     ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', '), '') as preferred_courses
 FROM teachers t 
 LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
 WHERE t.is_active = 1
-GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at
+GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at, t.sort_order
 ORDER BY ISNULL(t.sort_order, 999999), t.id ASC;
 
 -- 2. 測試課程分類篩選查詢
@@ -21,7 +21,7 @@ DECLARE @test_category NVARCHAR(100) = N'Python';
 SELECT 
     t.id, t.name, t.email, t.phone, t.available_days, 
     t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
-    t.created_at, t.updated_at,
+    t.created_at, t.updated_at, t.sort_order,
     ISNULL(STRING_AGG(tc.course_category, ', '), '') as course_categories,
     ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', '), '') as preferred_courses
 FROM teachers t 
@@ -32,7 +32,7 @@ WHERE t.is_active = 1
         WHERE tc2.teacher_id = t.id 
         AND tc2.course_category = @test_category
     )
-GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at
+GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at, t.sort_order
 ORDER BY ISNULL(t.sort_order, 999999), t.id ASC;
 
 -- 3. 測試單一師資查詢

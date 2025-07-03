@@ -9,8 +9,9 @@ interface Teacher {
   name: string;
   email: string;
   phone?: string;
-  specialties: string[];
   availableDays: string[];
+  courseCategories: string[];
+  preferredCourses: string[];
   hourly_rate: number;
   experience: number;
   bio?: string;
@@ -131,14 +132,23 @@ const SortableTeacherCard: React.FC<SortableTeacherCardProps> = ({
                 經驗 {teacher.experience} 年
               </Typography>
             </Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              專長：
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-              {teacher.specialties.map((specialty, idx) => (
-                <Chip key={idx} label={specialty} size="small" variant="outlined" />
-              ))}
-            </Box>
+                          {/* 顯示課程能力（優先顯示主力課程） */}
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                課程能力：
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                {teacher.preferredCourses && teacher.preferredCourses.length > 0 ? (
+                  teacher.preferredCourses.map((course, idx) => (
+                    <Chip key={idx} label={course} size="small" variant="outlined" color="primary" />
+                  ))
+                ) : teacher.courseCategories && teacher.courseCategories.length > 0 ? (
+                  teacher.courseCategories.map((course, idx) => (
+                    <Chip key={idx} label={course} size="small" variant="outlined" />
+                  ))
+                ) : (
+                  <Chip label="無課程能力" size="small" variant="outlined" />
+                )}
+              </Box>
             {teacher.bio && (
               <Typography variant="body2" color="text.secondary" sx={{
                 overflow: 'hidden',

@@ -62,8 +62,9 @@ interface Teacher {
   name: string;
   email: string;
   phone?: string;
-  specialties: string[];
   availableDays: string[];
+  courseCategories: string[];
+  preferredCourses: string[];
   hourly_rate: number;
   experience: number;
   bio?: string;
@@ -87,16 +88,16 @@ const TeachersPage: React.FC = () => {
   const { user } = useAuth(); // 獲取當前用戶資訊
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [stats, setStats] = useState<TeacherStats | null>(null);
-  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [courseCategories, setCourseCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
 
   // 篩選狀態
   const [filters, setFilters] = useState({
-    specialty: '',
+    courseCategory: '',
     status: '',
     min_rate: '',
     max_rate: '',
@@ -122,7 +123,6 @@ const TeachersPage: React.FC = () => {
     name: '',
     email: '',
     phone: '',
-    specialties: [] as string[],
     availableDays: [] as string[],
     hourlyRate: 1200,
     experience: 0,
@@ -134,7 +134,7 @@ const TeachersPage: React.FC = () => {
   useEffect(() => {
     fetchTeachers();
     fetchStats();
-    fetchSpecialties();
+    fetchCourseCategories();
   }, [filters]);
 
   const fetchTeachers = async () => {
@@ -171,15 +171,15 @@ const TeachersPage: React.FC = () => {
     }
   };
 
-  const fetchSpecialties = async () => {
+  const fetchCourseCategories = async () => {
     try {
-      const response = await fetch('/api/teachers/specialties');
-      if (!response.ok) throw new Error('載入專長列表失敗');
+      const response = await fetch('/api/teachers/course-categories');
+      if (!response.ok) throw new Error('載入課程分類失敗');
       
       const data = await response.json();
-      setSpecialties(data);
+      setCourseCategories(data);
     } catch (err) {
-      console.error('載入專長列表失敗:', err);
+      console.error('載入課程分類失敗:', err);
     }
   };
 
@@ -191,7 +191,6 @@ const TeachersPage: React.FC = () => {
         name: teacher.name,
         email: teacher.email,
         phone: teacher.phone || '',
-        specialties: teacher.specialties,
         availableDays: teacher.availableDays,
         hourlyRate: teacher.hourly_rate,
         experience: teacher.experience,
@@ -204,7 +203,6 @@ const TeachersPage: React.FC = () => {
         name: '',
         email: '',
         phone: '',
-        specialties: [],
         availableDays: [],
         hourlyRate: 1200,
         experience: 0,
@@ -242,7 +240,7 @@ const TeachersPage: React.FC = () => {
         const updatedTeacher = await response.json();
         setTeachers(prev => prev.map(t => 
           t.id === editingTeacher.id 
-            ? { ...t, ...updatedTeacher, specialties: updatedTeacher.specialties || [], availableDays: updatedTeacher.availableDays || [] }
+            ? { ...t, ...updatedTeacher, availableDays: updatedTeacher.availableDays || [] }
             : t
         ));
       } else {
@@ -524,11 +522,11 @@ const TeachersPage: React.FC = () => {
                 </Box>
 
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  專長：
+                  可授課日：
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                  {teacher.specialties.map((specialty, index) => (
-                    <Chip key={index} label={specialty} size="small" variant="outlined" />
+                  {teacher.availableDays.map((day, index) => (
+                    <Chip key={index} label={day} size="small" variant="outlined" />
                   ))}
                 </Box>
 
@@ -581,11 +579,11 @@ const TeachersPage: React.FC = () => {
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
                   <Typography variant="body2" color="text.secondary">
-                    專長：
+                    可授課日：
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {teacher.specialties.map((specialty, index) => (
-                      <Chip key={index} label={specialty} size="small" variant="outlined" />
+                    {teacher.availableDays.map((day, index) => (
+                      <Chip key={index} label={day} size="small" variant="outlined" />
                     ))}
                   </Box>
                 </Box>
@@ -825,16 +823,16 @@ const TeachersPage: React.FC = () => {
             },
             '& .MuiSelect-icon': { color: 'white' }
           }}>
-            <InputLabel>專長</InputLabel>
+            <InputLabel>課程類別</InputLabel>
             <Select
-              value={filters.specialty}
-              label="專長"
-              onChange={(e) => setFilters({ ...filters, specialty: e.target.value })}
+              value={filters.courseCategory}
+              label="課程類別"
+              onChange={(e) => setFilters({ ...filters, courseCategory: e.target.value })}
             >
               <MenuItem value="">全部</MenuItem>
-              {specialties.map((specialty) => (
-                <MenuItem key={specialty} value={specialty}>
-                  {specialty}
+              {courseCategories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
                 </MenuItem>
               ))}
             </Select>
@@ -1006,34 +1004,6 @@ const TeachersPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Box>
-            {/* 專長編輯 */}
-            <Autocomplete
-              multiple
-              options={specialties}
-              value={formData.specialties}
-              onChange={(_, newValue) => {
-                setFormData({ ...formData, specialties: newValue as string[] });
-              }}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    variant="outlined"
-                    label={option}
-                    {...getTagProps({ index })}
-                    key={index}
-                  />
-                ))
-              }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="專長"
-                  placeholder="選擇或輸入專長..."
-                  helperText="可多選或輸入新專長"
-                />
-              )}
-            />
-
             {/* 可授課日編輯 */}
             <Autocomplete
               multiple

@@ -1834,8 +1834,11 @@ app.get('/api/teachers', async (req, res, next) => {
             SELECT 
                 t.id, t.name, t.email, t.phone, t.available_days, 
                 t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
-                t.created_at, t.updated_at
+                t.created_at, t.updated_at,
+                STRING_AGG(tc.course_category, ', ') as course_categories,
+                STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', ') as preferred_courses
             FROM teachers t 
+            LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
             WHERE 1=1
         `;
         const request = pool.request();
@@ -1848,11 +1851,7 @@ app.get('/api/teachers', async (req, res, next) => {
         
         // 課程分類篩選
         if (specialty) {
-            query += ` AND EXISTS (
-                SELECT 1 FROM teacher_courses tc 
-                WHERE tc.teacher_id = t.id 
-                AND tc.course_category = @specialty
-            )`;
+            query += ` AND tc.course_category = @specialty`;
             request.input('specialty', sql.NVarChar, specialty);
         }
         
@@ -1880,14 +1879,17 @@ app.get('/api/teachers', async (req, res, next) => {
         
         // 移除預設排序，讓前端完全控制排序
         //         // 使用 sort_order 欄位進行排序
+        query += ' GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at';
         query += ' ORDER BY t.sort_order ASC, t.id ASC';
         
         const result = await request.query(query);
         
-        // 解析 JSON 字串為陣列
+        // 解析 JSON 字串為陣列，並處理課程能力資料
         const teachers = result.recordset.map(teacher => ({
             ...teacher,
-            availableDays: teacher.available_days ? JSON.parse(teacher.available_days) : []
+            availableDays: teacher.available_days ? JSON.parse(teacher.available_days) : [],
+            courseCategories: teacher.course_categories ? teacher.course_categories.split(', ') : [],
+            preferredCourses: teacher.preferred_courses ? teacher.preferred_courses.split(', ') : []
         }));
         
         res.json(teachers);
@@ -1957,17 +1959,23 @@ app.get('/api/teachers/:id', async (req, res, next) => {
                 SELECT 
                     t.id, t.name, t.email, t.phone, t.available_days, 
                     t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
-                    t.created_at, t.updated_at
+                    t.created_at, t.updated_at,
+                    STRING_AGG(tc.course_category, ', ') as course_categories,
+                    STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', ') as preferred_courses
                 FROM teachers t 
+                LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
                 WHERE t.id = @id
+                GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at
             `);
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: 'Teacher not found' });
         }
         
         const teacher = result.recordset[0];
-        // 解析 JSON 字串為陣列
+        // 解析 JSON 字串為陣列，並處理課程能力資料
         teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
+        teacher.courseCategories = teacher.course_categories ? teacher.course_categories.split(', ') : [];
+        teacher.preferredCourses = teacher.preferred_courses ? teacher.preferred_courses.split(', ') : [];
         
         res.json(teacher);
     } catch (err) {

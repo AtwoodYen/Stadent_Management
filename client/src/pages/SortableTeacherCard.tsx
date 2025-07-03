@@ -137,17 +137,26 @@ const SortableTeacherCard: React.FC<SortableTeacherCardProps> = ({
                 課程能力：
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                {teacher.preferredCourses && teacher.preferredCourses.length > 0 ? (
-                  teacher.preferredCourses.map((course, idx) => (
-                    <Chip key={idx} label={course} size="small" variant="outlined" color="primary" />
-                  ))
-                ) : teacher.courseCategories && teacher.courseCategories.length > 0 ? (
-                  teacher.courseCategories.map((course, idx) => (
-                    <Chip key={idx} label={course} size="small" variant="outlined" />
-                  ))
-                ) : (
-                  <Chip label="無課程能力" size="small" variant="outlined" />
-                )}
+                {(() => {
+                  console.log(`師資 ${teacher.name} 的課程能力資料:`, {
+                    preferredCourses: teacher.preferredCourses,
+                    courseCategories: teacher.courseCategories,
+                    preferredLength: teacher.preferredCourses?.length,
+                    categoriesLength: teacher.courseCategories?.length
+                  });
+                  
+                  if (teacher.preferredCourses && teacher.preferredCourses.length > 0) {
+                    return teacher.preferredCourses.map((course, idx) => (
+                      <Chip key={idx} label={course} size="small" variant="outlined" color="primary" />
+                    ));
+                  } else if (teacher.courseCategories && teacher.courseCategories.length > 0) {
+                    return teacher.courseCategories.map((course, idx) => (
+                      <Chip key={idx} label={course} size="small" variant="outlined" />
+                    ));
+                  } else {
+                    return <Chip label="無課程能力" size="small" variant="outlined" />;
+                  }
+                })()}
               </Box>
             {teacher.bio && (
               <Typography variant="body2" color="text.secondary" sx={{

@@ -1888,14 +1888,29 @@ app.get('/api/teachers', async (req, res, next) => {
         
         const result = await request.query(query);
         
-        // 解析 JSON 字串為陣列，並處理課程能力資料
-        const teachers = result.recordset.map(teacher => ({
-            ...teacher,
-            availableDays: teacher.available_days ? JSON.parse(teacher.available_days) : [],
-            courseCategories: teacher.course_categories && teacher.course_categories.trim() ? teacher.course_categories.split(', ') : [],
-            preferredCourses: teacher.preferred_courses && teacher.preferred_courses.trim() ? teacher.preferred_courses.split(', ') : []
-        }));
+        console.log('=== 師資列表查詢結果 ===');
+        console.log('查詢到的師資數量:', result.recordset.length);
         
+        // 解析 JSON 字串為陣列，並處理課程能力資料
+        const teachers = result.recordset.map(teacher => {
+            const courseCategories = teacher.course_categories && teacher.course_categories.trim() ? teacher.course_categories.split(', ') : [];
+            const preferredCourses = teacher.preferred_courses && teacher.preferred_courses.trim() ? teacher.preferred_courses.split(', ') : [];
+            
+            console.log(`師資 ${teacher.name} (ID: ${teacher.id}):`);
+            console.log(`  - course_categories 原始值: "${teacher.course_categories}"`);
+            console.log(`  - preferred_courses 原始值: "${teacher.preferred_courses}"`);
+            console.log(`  - 解析後 courseCategories:`, courseCategories);
+            console.log(`  - 解析後 preferredCourses:`, preferredCourses);
+            
+            return {
+                ...teacher,
+                availableDays: teacher.available_days ? JSON.parse(teacher.available_days) : [],
+                courseCategories,
+                preferredCourses
+            };
+        });
+        
+        console.log('=== 師資列表查詢完成 ===');
         res.json(teachers);
     } catch (err) {
         next(err);

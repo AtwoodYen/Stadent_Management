@@ -398,14 +398,40 @@ const TeachersPage: React.FC = () => {
   };
 
   // 拖曳排序
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (active.id !== over?.id) {
-      setTeachers((prev) => {
-        const oldIndex = prev.findIndex(t => t.id.toString() === active.id);
-        const newIndex = prev.findIndex(t => t.id.toString() === over.id);
-        return arrayMove(prev, oldIndex, newIndex);
-      });
+      const newTeachers = arrayMove(teachers, 
+        teachers.findIndex(t => t.id.toString() === active.id),
+        teachers.findIndex(t => t.id.toString() === over.id)
+      );
+      
+      setTeachers(newTeachers);
+      
+      // 將新的排序儲存到資料庫
+      try {
+        const teacherIds = newTeachers.map(t => t.id);
+        const response = await fetch('/api/teachers/reorder', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teacherIds })
+        });
+        
+        if (!response.ok) {
+          throw new Error('排序儲存失敗');
+        }
+        
+        // 可選：顯示成功訊息
+        console.log('排序已儲存到資料庫');
+      } catch (err) {
+        console.error('儲存排序失敗:', err);
+        // 可選：顯示錯誤訊息給用戶
+        setSnackbar({
+          open: true,
+          message: '排序儲存失敗，但已在前端更新',
+          severity: 'warning'
+        });
+      }
     }
   };
 

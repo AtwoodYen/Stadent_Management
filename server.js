@@ -1203,9 +1203,18 @@ app.get('/api/courses', async (req, res, next) => {
 // [GET] 取得課程分類列表 (必須放在 /api/courses/:id 之前)
 app.get('/api/courses/categories', async (req, res, next) => {
     try {
+        console.log('=== 取得課程分類列表 ===');
+        
         const result = await pool.request().query('SELECT DISTINCT category FROM courses WHERE is_active = 1 ORDER BY category');
-        res.json(result.recordset.map(row => row.category));
+        console.log('查詢結果筆數:', result.recordset.length);
+        console.log('查詢結果:', result.recordset);
+        
+        const categories = result.recordset.map(row => row.category);
+        console.log('返回的分類列表:', categories);
+        
+        res.json(categories);
     } catch (err) {
+        console.error('取得課程分類列表錯誤:', err);
         next(err);
     }
 });
@@ -1823,7 +1832,7 @@ app.get('/api/teachers', async (req, res, next) => {
         const { specialty, status, min_rate, max_rate, min_experience, available_day } = req.query;
         let query = `
             SELECT 
-                t.id, t.name, t.email, t.phone, t.specialties, t.available_days, 
+                t.id, t.name, t.email, t.phone, t.available_days, 
                 t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
                 t.created_at, t.updated_at
             FROM teachers t 
@@ -1837,10 +1846,14 @@ app.get('/api/teachers', async (req, res, next) => {
             request.input('status', sql.Bit, status === 'true' ? 1 : 0);
         }
         
-        // 專長篩選 (使用 LIKE 搜尋 JSON 字串)
+        // 課程分類篩選
         if (specialty) {
-            query += ' AND t.specialties LIKE @specialty';
-            request.input('specialty', sql.NVarChar, `%${specialty}%`);
+            query += ` AND EXISTS (
+                SELECT 1 FROM teacher_courses tc 
+                WHERE tc.teacher_id = t.id 
+                AND tc.course_category = @specialty
+            )`;
+            request.input('specialty', sql.NVarChar, specialty);
         }
         
         // 時薪範圍篩選
@@ -1866,14 +1879,14 @@ app.get('/api/teachers', async (req, res, next) => {
         }
         
         // 移除預設排序，讓前端完全控制排序
-        // query += ' ORDER BY t.is_active DESC, t.hourly_rate DESC, t.name';
+        //         // 使用 sort_order 欄位進行排序
+        query += ' ORDER BY t.sort_order ASC, t.id ASC';
         
         const result = await request.query(query);
         
         // 解析 JSON 字串為陣列
         const teachers = result.recordset.map(teacher => ({
             ...teacher,
-            specialties: teacher.specialties ? JSON.parse(teacher.specialties) : [],
             availableDays: teacher.available_days ? JSON.parse(teacher.available_days) : []
         }));
         
@@ -1903,30 +1916,20 @@ app.get('/api/teachers/stats', async (req, res, next) => {
     }
 });
 
-// [GET] 取得專長列表
-app.get('/api/teachers/specialties', async (req, res, next) => {
+// [GET] 取得課程分類列表（用於師資篩選）
+app.get('/api/teachers/course-categories', async (req, res, next) => {
     try {
-        // 從所有師資的專長中提取唯一值
+        // 從 teacher_courses 表提取所有課程分類
         const result = await pool.request().query(`
-            SELECT DISTINCT specialties 
-            FROM teachers 
-            WHERE is_active = 1 AND specialties IS NOT NULL
+            SELECT DISTINCT tc.course_category
+            FROM teacher_courses tc
+            INNER JOIN teachers t ON tc.teacher_id = t.id
+            WHERE t.is_active = 1
+            ORDER BY tc.course_category
         `);
         
-        const specialtiesSet = new Set();
-        result.recordset.forEach(row => {
-            if (row.specialties) {
-                try {
-                    const specialties = JSON.parse(row.specialties);
-                    specialties.forEach(specialty => specialtiesSet.add(specialty));
-                } catch (e) {
-                    // 忽略無效的 JSON
-                }
-            }
-        });
-        
-        const specialties = Array.from(specialtiesSet).sort();
-        res.json(specialties);
+        const categories = result.recordset.map(row => row.course_category);
+        res.json(categories);
     } catch (err) {
         next(err);
     }
@@ -1952,7 +1955,7 @@ app.get('/api/teachers/:id', async (req, res, next) => {
             .input('id', sql.Int, id)
             .query(`
                 SELECT 
-                    t.id, t.name, t.email, t.phone, t.specialties, t.available_days, 
+                    t.id, t.name, t.email, t.phone, t.available_days, 
                     t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
                     t.created_at, t.updated_at
                 FROM teachers t 
@@ -1964,7 +1967,6 @@ app.get('/api/teachers/:id', async (req, res, next) => {
         
         const teacher = result.recordset[0];
         // 解析 JSON 字串為陣列
-        teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
         teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
         
         res.json(teacher);
@@ -2052,7 +2054,7 @@ app.post(
     body('name').notEmpty().withMessage('師資姓名為必填'),
     body('email').isEmail().withMessage('無效的電子信箱格式'),
     body('phone').optional(),
-    body('specialties').isArray().withMessage('專長必須是陣列格式'),
+
     body('availableDays').isArray().withMessage('可授課日必須是陣列格式'),
     body('hourlyRate').isInt({ min: 0 }).withMessage('時薪必須是正整數'),
     body('experience').isInt({ min: 0 }).withMessage('經驗年資必須是正整數'),
@@ -2067,7 +2069,7 @@ app.post(
         }
 
         try {
-            const { name, email, phone, specialties, availableDays, hourlyRate, experience, bio, isActive } = req.body;
+            const { name, email, phone, availableDays, hourlyRate, experience, bio, isActive } = req.body;
             
             // 檢查 email 是否已被其他老師使用
             const emailCheckResult = await pool.request()
@@ -2082,21 +2084,20 @@ app.post(
                 .input('name', sql.NVarChar, name)
                 .input('email', sql.NVarChar, email)
                 .input('phone', sql.NVarChar, phone || null)
-                .input('specialties', sql.NVarChar, JSON.stringify(specialties))
+
                 .input('available_days', sql.NVarChar, JSON.stringify(availableDays))
                 .input('hourly_rate', sql.Int, hourlyRate)
                 .input('experience', sql.Int, experience)
                 .input('bio', sql.NVarChar, bio || null)
                 .input('is_active', sql.Bit, isActive)
                 .query(`
-                    INSERT INTO teachers (name, email, phone, specialties, available_days, hourly_rate, experience, bio, is_active) 
+                    INSERT INTO teachers (name, email, phone, available_days, hourly_rate, experience, bio, is_active) 
                     OUTPUT inserted.*
-                    VALUES (@name, @email, @phone, @specialties, @available_days, @hourly_rate, @experience, @bio, @is_active)
+                    VALUES (@name, @email, @phone, @available_days, @hourly_rate, @experience, @bio, @is_active)
                 `);
             
             const teacher = result.recordset[0];
             // 解析 JSON 字串為陣列
-            teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
             teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
             
             res.status(201).json(teacher);
@@ -2116,7 +2117,7 @@ app.put(
     body('name').notEmpty().withMessage('師資姓名為必填'),
     body('email').isEmail().withMessage('無效的電子信箱格式'),
     body('phone').optional(),
-    body('specialties').isArray().withMessage('專長必須是陣列格式'),
+
     body('availableDays').isArray().withMessage('可授課日必須是陣列格式'),
     body('hourlyRate').isInt({ min: 0 }).withMessage('時薪必須是正整數'),
     body('experience').isInt({ min: 0 }).withMessage('經驗年資必須是正整數'),
@@ -2227,6 +2228,43 @@ app.patch('/api/teachers/:id/toggle-status', async (req, res, next) => {
         teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
         
         res.json(teacher);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [UPDATE] 更新師資排序
+app.patch('/api/teachers/reorder', async (req, res, next) => {
+    try {
+        const { teacherIds } = req.body;
+        
+        if (!Array.isArray(teacherIds) || teacherIds.length === 0) {
+            return res.status(400).json({ error: '請提供有效的師資 ID 陣列' });
+        }
+        
+        // 使用事務來確保所有更新都成功
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        
+        try {
+            // 批量更新排序值
+            for (let i = 0; i < teacherIds.length; i++) {
+                await transaction.request()
+                    .input('id', sql.Int, teacherIds[i])
+                    .input('sortOrder', sql.Int, i + 1)
+                    .query('UPDATE teachers SET sort_order = @sortOrder WHERE id = @id');
+            }
+            
+            await transaction.commit();
+            
+            res.json({ 
+                message: '排序更新成功',
+                updatedCount: teacherIds.length 
+            });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
     } catch (err) {
         next(err);
     }

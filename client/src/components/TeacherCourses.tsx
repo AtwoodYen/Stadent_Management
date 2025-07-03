@@ -24,29 +24,31 @@ import {
   Chip,
   IconButton,
   Alert,
-  Snackbar
+  Snackbar,
+  Divider
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Star as StarIcon,
-  StarBorder as StarBorderIcon
+  StarBorder as StarBorderIcon,
+  Sync as SyncIcon
 } from '@mui/icons-material';
 import { getLevelColors } from '../utils/levelColors';
 
 // 型別定義
 interface TeacherCourse {
   id: number;
+  teacher_id: number;
   course_category: string;
   max_level: string;
   is_preferred: boolean;
   created_at: string;
-  updated_at?: string;
 }
 
 interface TeacherCoursesProps {
-  teacherId: number;
+  teacherId: number | undefined;
   teacherName: string;
   open: boolean;
   onClose: () => void;
@@ -85,6 +87,7 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
 
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [courseCategories, setCourseCategories] = useState<string[]>([]);
+  const [teacherSpecialties, setTeacherSpecialties] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<TeacherCourse | null>(null);
@@ -149,63 +152,139 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
     }
   };
 
-  // 載入可用的課程分類
+  // 載入師資專長資訊
+  const fetchTeacherSpecialties = async () => {
+    if (teacherId === undefined || teacherId === null) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/teachers/${teacherId}`);
+      if (!response.ok) throw new Error('載入師資資訊失敗');
+      
+      const teacherData = await response.json();
+      console.log('師資資料:', teacherData);
+      
+      // 解析 specialties 欄位
+      let specialties: string[] = [];
+      if (teacherData.specialties) {
+        if (Array.isArray(teacherData.specialties)) {
+          specialties = teacherData.specialties;
+        } else if (typeof teacherData.specialties === 'string') {
+          try {
+            specialties = JSON.parse(teacherData.specialties);
+          } catch (e) {
+            // 如果不是 JSON 格式，可能是逗號分隔的字串
+            specialties = teacherData.specialties.split(',').map((s: string) => s.trim());
+          }
+        }
+      }
+      
+      setTeacherSpecialties(specialties);
+      console.log('解析的專長:', specialties);
+    } catch (error) {
+      console.error('載入師資專長錯誤:', error);
+      setTeacherSpecialties([]);
+    }
+  };
+
+  // 載入課程分類
   const fetchCourseCategories = async () => {
     try {
-      console.log('開始載入課程分類...');
       const response = await fetch('/api/courses/categories');
-      console.log('API 回應狀態:', response.status);
-      console.log('API 回應 headers:', response.headers);
       
       if (!response.ok) {
-        throw new Error(`API 請求失敗: ${response.status} ${response.statusText}`);
+        throw new Error(`載入課程分類失敗: ${response.status}`);
       }
       
-      const categories = await response.json();
-      console.log('載入的課程分類:', categories);
-      console.log('課程分類類型:', typeof categories, '是否為陣列:', Array.isArray(categories));
+      const data = await response.json();
       
-      if (Array.isArray(categories) && categories.length > 0) {
-        setCourseCategories(categories);
-        console.log('課程分類設定成功');
+      if (Array.isArray(data) && data.length > 0) {
+        setCourseCategories(data);
       } else {
-        throw new Error('API 返回的資料格式不正確或為空');
+        // 使用預設課程分類
+        const defaultCategories = [
+          'Python', 'JavaScript', 'Java', 'C++', 'C#',
+          '網頁開發/APP/應用程式/遊戲', '資料科學', '機器學習',
+          'UI/UX設計', '遊戲開發', '演算法', '資料庫設計',
+          'DevOps', '雲端技術', 'iOS開發', 'Android開發'
+        ];
+        setCourseCategories(defaultCategories);
       }
     } catch (error) {
-      console.error('載入課程分類失敗:', error);
-      // 提供預設課程分類
+      console.error('載入課程分類錯誤:', error);
+      // 使用預設課程分類
       const defaultCategories = [
-        'AI工具運用', 'C/C++', 'Java', 'Python', 'Scratch',
-        '資料科學', '遊戲開發', '演算法', '網頁開發/APP/應用程式/遊戲', '機器學習'
+        'Python', 'JavaScript', 'Java', 'C++', 'C#',
+        '網頁開發/APP/應用程式/遊戲', '資料科學', '機器學習',
+        'UI/UX設計', '遊戲開發', '演算法', '資料庫設計',
+        'DevOps', '雲端技術', 'iOS開發', 'Android開發'
       ];
-      console.log('使用預設課程分類:', defaultCategories);
       setCourseCategories(defaultCategories);
-      
-      // 顯示錯誤訊息給用戶
+    }
+  };
+
+  // 同步專長到課程能力
+  const syncSpecialtiesToCourses = async () => {
+    if (teacherSpecialties.length === 0) {
       setSnackbar({
         open: true,
-        message: `載入課程分類失敗，使用預設分類: ${error instanceof Error ? error.message : '未知錯誤'}`,
+        message: '沒有專長資料可同步',
         severity: 'warning'
+      });
+      return;
+    }
+
+    try {
+      // 為每個專長建立課程能力記錄
+      for (const specialty of teacherSpecialties) {
+        // 檢查是否已存在該課程分類
+        const existingCourse = courses.find(c => 
+          c.course_category === specialty || 
+          normalizeCourseCategory(c.course_category) === normalizeCourseCategory(specialty)
+        );
+
+        if (!existingCourse) {
+          // 新增課程能力
+          const response = await fetch(`/api/teachers/${teacherId}/courses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              courseCategory: specialty,
+              maxLevel: '中級', // 預設中級
+              isPreferred: true // 預設為主力課程
+            })
+          });
+
+          if (!response.ok) {
+            console.warn(`新增課程能力失敗: ${specialty}`);
+          }
+        }
+      }
+
+      setSnackbar({
+        open: true,
+        message: '專長同步到課程能力完成',
+        severity: 'success'
+      });
+
+      // 重新載入課程能力
+      await fetchTeacherCourses();
+    } catch (error) {
+      console.error('同步專長錯誤:', error);
+      setSnackbar({
+        open: true,
+        message: '同步專長失敗',
+        severity: 'error'
       });
     }
   };
 
+  // 當對話框開啟時載入資料
   useEffect(() => {
-    console.log('=== TeacherCourses useEffect 觸發 ===');
-    console.log('open:', open);
-    console.log('teacherId:', teacherId);
-    console.log('teacherId 類型:', typeof teacherId);
-    console.log('條件檢查 - open && teacherId:', open && teacherId);
-    console.log('條件檢查 - open && teacherId !== undefined && teacherId !== null:', open && teacherId !== undefined && teacherId !== null);
-    console.log('========================================');
-    
-    if (open && teacherId !== undefined && teacherId !== null) {
-      console.log('條件滿足，開始載入課程能力和分類...');
+    if (open && teacherId) {
       fetchTeacherCourses();
-      fetchCourseCategories();
-    }
-    // 即使對話框未開啟也先載入課程分類
-    if (courseCategories.length === 0) {
+      fetchTeacherSpecialties();
       fetchCourseCategories();
     }
   }, [open, teacherId]);
@@ -215,7 +294,7 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
     if (course) {
       setEditingCourse(course);
       setFormData({
-        courseCategory: normalizeCourseCategory(course.course_category),
+        courseCategory: course.course_category,
         maxLevel: course.max_level,
         isPreferred: course.is_preferred
       });
@@ -230,7 +309,7 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
     setDialogOpen(true);
   };
 
-  // 關閉新增/編輯對話框
+  // 關閉對話框
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingCourse(null);
@@ -252,23 +331,12 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
       return;
     }
 
-    console.log('開始儲存課程能力:', formData);
-    console.log('teacherId:', teacherId, 'editingCourse:', editingCourse);
-
     try {
       const url = editingCourse 
         ? `/api/teachers/${teacherId}/courses/${editingCourse.id}`
         : `/api/teachers/${teacherId}/courses`;
       
       const method = editingCourse ? 'PUT' : 'POST';
-      
-      console.log('請求 URL:', url);
-      console.log('請求方法:', method);
-      console.log('請求資料:', {
-        courseCategory: formData.courseCategory,
-        maxLevel: formData.maxLevel,
-        isPreferred: formData.isPreferred
-      });
 
       const response = await fetch(url, {
         method,
@@ -280,17 +348,12 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
         })
       });
 
-      console.log('API 回應狀態:', response.status);
-      console.log('API 回應 headers:', response.headers);
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('API 錯誤回應:', errorData);
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log('儲存成功，回應資料:', result);
+      await response.json();
 
       setSnackbar({
         open: true,
@@ -299,16 +362,12 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
       });
 
       handleCloseDialog();
-      
-      // 重新從資料庫載入課程能力列表
-      console.log('重新載入課程能力列表...');
-      await fetchTeacherCourses();
-      
+      fetchTeacherCourses();
     } catch (error) {
-      console.error('儲存課程能力失敗:', error);
+      console.error('儲存課程能力錯誤:', error);
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : '儲存失敗',
+        message: `儲存失敗: ${error instanceof Error ? error.message : '未知錯誤'}`,
         severity: 'error'
       });
     }
@@ -352,7 +411,41 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
-            {/* 操作按鈕 */}
+            {/* 師資專長資訊 */}
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="h6" gutterBottom>
+                師資專長資訊
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  專長領域：
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {teacherSpecialties.length > 0 ? (
+                    teacherSpecialties.map((specialty, index) => (
+                      <Chip key={index} label={specialty} size="small" variant="outlined" />
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      無專長資料
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+              <Button
+                size="small"
+                startIcon={<SyncIcon />}
+                onClick={syncSpecialtiesToCourses}
+                variant="outlined"
+                disabled={teacherSpecialties.length === 0}
+              >
+                同步專長到課程能力
+              </Button>
+            </Box>
+
+            <Divider sx={{ mb: 3 }} />
+
+            {/* 課程能力管理 */}
             <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h6">
                 課程能力列表 ({courses.length})
@@ -391,41 +484,31 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
                     courses.map((course) => (
                       <TableRow key={course.id}>
                         <TableCell>
-                          <Typography fontWeight="medium">
-                            {normalizeCourseCategory(course.course_category)}
+                          <Typography variant="body2">
+                            {course.course_category}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip
-                            label={course.max_level}
-                            sx={{
-                              backgroundColor: getLevelColors(course.max_level).backgroundColor,
-                              color: getLevelColors(course.max_level).color,
-                              border: '1px solid',
-                              borderColor: getLevelColors(course.max_level).borderColor
-                            }}
-                            size="small"
+                          <Chip 
+                            label={course.max_level} 
+                            size="small" 
+                            color={
+                              course.max_level === '高級' ? 'success' :
+                              course.max_level === '中級' ? 'warning' : 'default'
+                            }
                           />
                         </TableCell>
                         <TableCell>
-                          {course.is_preferred ? (
-                            <Chip
-                              icon={<StarIcon />}
-                              label="主力課程"
-                              color="primary"
-                              size="small"
-                            />
-                          ) : (
-                            <Chip
-                              icon={<StarBorderIcon />}
-                              label="次要課程"
-                              variant="outlined"
-                              size="small"
-                            />
-                          )}
+                          <Chip 
+                            label={course.is_preferred ? '是' : '否'} 
+                            size="small" 
+                            color={course.is_preferred ? 'primary' : 'default'}
+                          />
                         </TableCell>
                         <TableCell>
-                          {new Date(course.created_at).toLocaleDateString('zh-TW')}
+                          <Typography variant="body2" color="text.secondary">
+                            {new Date(course.created_at).toLocaleDateString()}
+                          </Typography>
                         </TableCell>
                         <TableCell align="center">
                           <IconButton
@@ -469,30 +552,12 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
                 value={formData.courseCategory}
                 label="課程分類"
                 onChange={(e) => setFormData({ ...formData, courseCategory: e.target.value })}
-                onOpen={() => {
-                  console.log('Select 打開, courseCategories:', courseCategories);
-                  console.log('courseCategories.length:', courseCategories.length);
-                }}
               >
-                {(() => {
-                  console.log('渲染課程分類選項, courseCategories:', courseCategories);
-                  console.log('courseCategories 長度:', courseCategories.length);
-                  return null;
-                })()}
-                {courseCategories.length === 0 ? (
-                  <MenuItem disabled value="">
-                    <em>載入中...</em>
+                {courseCategories.map((category, index) => (
+                  <MenuItem key={category} value={category}>
+                    {category}
                   </MenuItem>
-                ) : (
-                  courseCategories.map((category, index) => {
-                    console.log(`渲染選項 ${index}:`, category);
-                    return (
-                      <MenuItem key={category} value={category}>
-                        {category}
-                      </MenuItem>
-                    );
-                  })
-                )}
+                ))}
               </Select>
             </FormControl>
 
@@ -520,22 +585,11 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
               }
               label="設為主力課程"
             />
-
-            <Alert severity="info" sx={{ mt: 1 }}>
-              <Typography variant="body2">
-                • <strong>教學水準</strong>：表示該師資能教授此課程的最高級別<br/>
-                • <strong>主力課程</strong>：標示為師資的核心專長，優先排課時會參考
-              </Typography>
-            </Alert>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>取消</Button>
-          <Button
-            onClick={handleSaveCourse}
-            variant="contained"
-            disabled={!formData.courseCategory}
-          >
+          <Button onClick={handleSaveCourse} variant="contained">
             {editingCourse ? '更新' : '新增'}
           </Button>
         </DialogActions>

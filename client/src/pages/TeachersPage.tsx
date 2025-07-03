@@ -22,10 +22,10 @@ import {
   CircularProgress,
   Snackbar,
   Autocomplete,
-
+  IconButton,
 } from '@mui/material';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import type { DropResult } from '@hello-pangea/dnd';
+
+
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -36,14 +36,27 @@ import {
   AttachMoney as MoneyIcon,
   School as SchoolIcon,
   Warning as WarningIcon,
-  DragIndicator as DragIcon,
   ViewList as ViewListIcon,
   ViewModule as ViewModuleIcon
 } from '@mui/icons-material';
 import TeacherCourses from '../components/TeacherCourses';
 import { useAuth } from '../context/AuthContext';
+import {
+  DndContext,
+  closestCenter
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // 型別定義
+
+
 interface Teacher {
   id: number;
   name: string;
@@ -365,41 +378,245 @@ const TeachersPage: React.FC = () => {
     setSelectedTeacherForCourses(null);
   };
 
-  // 處理拖拽結束
-  const handleDragEnd = (result: DropResult) => {
-    // 如果沒有有效的目標位置，則不做任何操作
-    if (!result.destination) {
-      console.log('拖拽取消：沒有有效的目標位置');
-      return;
+  // 拖曳排序
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      setTeachers((prev) => {
+        const oldIndex = prev.findIndex(t => t.id.toString() === active.id);
+        const newIndex = prev.findIndex(t => t.id.toString() === over.id);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
     }
+  };
 
-    // 如果拖拽到同一位置，則不做任何操作
-    if (result.source.index === result.destination.index) {
-      console.log('拖拽取消：位置沒有改變');
-      return;
-    }
-
-    console.log('拖拽操作：', {
-      從: result.source.index,
-      到: result.destination.index,
-      師資ID: result.draggableId
+  // Sortable Teacher Card
+  function SortableTeacherCard({ teacher, viewMode }: { teacher: Teacher, viewMode: 'grid' | 'list' }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: teacher.id.toString(),
     });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      zIndex: isDragging ? 1000 : 1,
+      opacity: isDragging ? 0.7 : 1,
+      boxShadow: isDragging ? '0px 4px 20px rgba(0,0,0,0.2)' : '0px 1px 4px rgba(0,0,0,0.08)',
+      width: viewMode === 'grid' ? '350px' : '100%',
+      minWidth: viewMode === 'grid' ? '350px' : '0',
+      maxWidth: viewMode === 'grid' ? '350px' : '100%',
+      margin: '0',
+      display: 'flex',
+      flexDirection: viewMode === 'list' ? 'row' : 'column',
+      height: viewMode === 'list' ? 'auto' : 'fit-content',
+      transitionDuration: isDragging ? '0s' : '0.2s',
+    } as React.CSSProperties;
+    return (
+      <Card ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <CardContent sx={{ 
+          flexGrow: 1, 
+          display: 'flex', 
+          flexDirection: viewMode === 'list' ? 'row' : 'column', 
+          alignItems: viewMode === 'list' ? 'center' : 'stretch', 
+          gap: viewMode === 'list' ? 3 : 0 
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            mb: viewMode === 'grid' ? 2 : 0, 
+            minWidth: viewMode === 'list' ? '200px' : 'auto' 
+          }}>
+            <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
+              <PersonIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" component="div">
+                {teacher.name}
+              </Typography>
+              <Chip
+                label={teacher.is_active ? '啟用' : '停用'}
+                color={teacher.is_active ? 'success' : 'default'}
+                size="small"
+              />
+            </Box>
+          </Box>
 
-    // 創建新的師資列表
-    const newTeachers = Array.from(teachers);
-    const [draggedTeacher] = newTeachers.splice(result.source.index, 1);
-    newTeachers.splice(result.destination.index, 0, draggedTeacher);
+          {viewMode === 'grid' ? (
+            // 區塊模式：垂直佈局
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                <Typography variant="body2" color="text.secondary">
+                  {teacher.email}
+                </Typography>
+              </Box>
 
-    // 更新狀態
-    setTeachers(newTeachers);
-    
-    console.log('拖拽完成：師資順序已更新');
-  };
+              {teacher.phone && (
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {teacher.phone}
+                  </Typography>
+                </Box>
+              )}
 
-  // 處理拖拽開始
-  const handleDragStart = (start: any) => {
-    console.log('開始拖拽:', start.draggableId);
-  };
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                <Typography variant="body2" color="text.secondary">
+                  時薪 ${teacher.hourly_rate}
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                <Typography variant="body2" color="text.secondary">
+                  經驗 {teacher.experience} 年
+                </Typography>
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                專長：
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                {teacher.specialties.map((specialty, index) => (
+                  <Chip key={index} label={specialty} size="small" variant="outlined" />
+                ))}
+              </Box>
+
+              {teacher.bio && (
+                <Typography variant="body2" color="text.secondary" sx={{ 
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical'
+                }}>
+                  {teacher.bio}
+                </Typography>
+              )}
+            </>
+          ) : (
+            // 列表模式：水平佈局
+            <>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '150px' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {teacher.email}
+                  </Typography>
+                </Box>
+                {teacher.phone && (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {teacher.phone}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    時薪 ${teacher.hourly_rate}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    經驗 {teacher.experience} 年
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  專長：
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {teacher.specialties.map((specialty, index) => (
+                    <Chip key={index} label={specialty} size="small" variant="outlined" />
+                  ))}
+                </Box>
+              </Box>
+
+              {teacher.bio && (
+                <Box sx={{ minWidth: '200px', maxWidth: '300px' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ 
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical'
+                  }}>
+                    {teacher.bio}
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+        </CardContent>
+
+        {viewMode === 'grid' && <Divider />}
+
+        <CardActions sx={{ 
+          justifyContent: viewMode === 'list' ? 'flex-end' : 'space-between', 
+          flexWrap: 'wrap', 
+          gap: 1,
+          flexDirection: 'row',
+          minWidth: viewMode === 'list' ? 'auto' : 'auto'
+        }}>
+          <Button
+            size="small"
+            startIcon={<EditIcon />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDialog(teacher);
+            }}
+            sx={{ pointerEvents: 'auto' }}
+          >
+            編輯
+          </Button>
+          <Button
+            size="small"
+            color="info"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenCourses(teacher);
+            }}
+            sx={{ pointerEvents: 'auto' }}
+          >
+            課程能力
+          </Button>
+          <Button
+            size="small"
+            color={teacher.is_active ? 'warning' : 'success'}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleStatus(teacher.id);
+            }}
+            sx={{ pointerEvents: 'auto' }}
+          >
+            {teacher.is_active ? '停用' : '啟用'}
+          </Button>
+          {user?.role === 'admin' && (
+            <Button
+              size="small"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteTeacher(teacher);
+              }}
+              sx={{ pointerEvents: 'auto' }}
+            >
+              刪除
+            </Button>
+          )}
+        </CardActions>
+      </Card>
+    );
+  }
 
   if (loading && teachers.length === 0) {
     return (
@@ -423,496 +640,236 @@ const TeachersPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
-        師資管理
-      </Typography>
+    <>
+      {/* Main content layout */}
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
+          師資管理
+        </Typography>
 
-      {/* 統計資訊 */}
-      {stats && (
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-          <Card sx={{ minWidth: 200 }}>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                總師資數
-              </Typography>
-              <Typography variant="h5" component="div">
-                {stats.total_teachers}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ minWidth: 200 }}>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                啟用師資
-              </Typography>
-              <Typography variant="h5" component="div">
-                {stats.active_teachers}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ minWidth: 200 }}>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                平均時薪
-              </Typography>
-              <Typography variant="h5" component="div">
-                ${Math.round(stats.avg_hourly_rate)}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ minWidth: 200 }}>
-            <CardContent>
-              <Typography color="text.secondary" gutterBottom>
-                平均經驗
-              </Typography>
-              <Typography variant="h5" component="div">
-                {Math.round(stats.avg_experience)} 年
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
+        {/* 統計資訊 */}
+        {stats && (
+          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+            <Card sx={{ minWidth: 200 }}>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  總師資數
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {stats.total_teachers}
+                </Typography>
+              </CardContent>
+            </Card>
+            <Card sx={{ minWidth: 200 }}>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  啟用師資
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {stats.active_teachers}
+                </Typography>
+              </CardContent>
+            </Card>
+            <Card sx={{ minWidth: 200 }}>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  平均時薪
+                </Typography>
+                <Typography variant="h5" component="div">
+                  ${Math.round(stats.avg_hourly_rate)}
+                </Typography>
+              </CardContent>
+            </Card>
+            <Card sx={{ minWidth: 200 }}>
+              <CardContent>
+                <Typography color="text.secondary" gutterBottom>
+                  平均經驗
+                </Typography>
+                <Typography variant="h5" component="div">
+                  {Math.round(stats.avg_experience)} 年
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+        )}
 
-      {/* 篩選和操作列 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-        <FormControl size="small" sx={{ 
-          minWidth: 120,
-          '& .MuiInputLabel-root': { 
-            color: 'white',
-            '&.Mui-focused': { color: 'white' }
-          },
-          '& .MuiOutlinedInput-root': {
-            color: 'white',
-            '& fieldset': { borderColor: 'white' },
-            '&:hover fieldset': { borderColor: 'white' },
-            '&.Mui-focused fieldset': { borderColor: 'white' }
-          },
-          '& .MuiSelect-icon': { color: 'white' }
-        }}>
-          <InputLabel>專長</InputLabel>
-          <Select
-            value={filters.specialty}
-            label="專長"
-            onChange={(e) => setFilters({ ...filters, specialty: e.target.value })}
-          >
-            <MenuItem value="">全部</MenuItem>
-            {specialties.map((specialty) => (
-              <MenuItem key={specialty} value={specialty}>
-                {specialty}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ 
-          minWidth: 120,
-          '& .MuiInputLabel-root': { 
-            color: 'white',
-            '&.Mui-focused': { color: 'white' }
-          },
-          '& .MuiOutlinedInput-root': {
-            color: 'white',
-            '& fieldset': { borderColor: 'white' },
-            '&:hover fieldset': { borderColor: 'white' },
-            '&.Mui-focused fieldset': { borderColor: 'white' }
-          },
-          '& .MuiSelect-icon': { color: 'white' }
-        }}>
-          <InputLabel>狀態</InputLabel>
-          <Select
-            value={filters.status}
-            label="狀態"
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          >
-            <MenuItem value="">全部</MenuItem>
-            <MenuItem value="true">啟用</MenuItem>
-            <MenuItem value="false">停用</MenuItem>
-          </Select>
-        </FormControl>
-
-        <TextField
-          size="small"
-          label="最低時薪"
-          type="number"
-          value={filters.min_rate}
-          onChange={(e) => setFilters({ ...filters, min_rate: e.target.value })}
-          sx={{ 
-            width: 120,
-            '& .MuiInputLabel-root': { 
-              color: 'white',
-              '&.Mui-focused': { color: 'white' }
-            },
-            '& .MuiOutlinedInput-root': {
-              color: 'white',
-              '& fieldset': { borderColor: 'white' },
-              '&:hover fieldset': { borderColor: 'white' },
-              '&.Mui-focused fieldset': { borderColor: 'white' }
-            }
-          }}
-        />
-
-        <TextField
-          size="small"
-          label="最高時薪"
-          type="number"
-          value={filters.max_rate}
-          onChange={(e) => setFilters({ ...filters, max_rate: e.target.value })}
-          sx={{ 
-            width: 120,
-            '& .MuiInputLabel-root': { 
-              color: 'white',
-              '&.Mui-focused': { color: 'white' }
-            },
-            '& .MuiOutlinedInput-root': {
-              color: 'white',
-              '& fieldset': { borderColor: 'white' },
-              '&:hover fieldset': { borderColor: 'white' },
-              '&.Mui-focused fieldset': { borderColor: 'white' }
-            }
-          }}
-        />
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* 顯示模式切換按鈕 */}
-        <Box sx={{ display: 'flex', gap: 1, mr: 2 }}>
-          <Button
-            variant={viewMode === 'grid' ? 'contained' : 'outlined'}
-            size="small"
-            startIcon={<ViewModuleIcon />}
-            onClick={() => setViewMode('grid')}
-            sx={{
-              minWidth: 'auto',
-              px: 2,
-              '&.MuiButton-contained': {
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                color: 'primary.main',
+        {/* 篩選和操作列 */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 顯示模式切換按鈕 */}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton
+              onClick={() => setViewMode('grid')}
+              aria-label="區塊模式"
+              sx={{
+                color: viewMode === 'grid' ? '#4caf50' : '#666666',
+                border: '2px solid',
+                borderColor: viewMode === 'grid' ? '#4caf50' : '#666666',
+                borderRadius: '8px',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 1)',
-                }
-              },
-              '&.MuiButton-outlined': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                color: 'white',
-                '&:hover': {
-                  borderColor: 'white',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }
-            }}
-          >
-            區塊
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'contained' : 'outlined'}
-            size="small"
-            startIcon={<ViewListIcon />}
-            onClick={() => setViewMode('list')}
-            sx={{
-              minWidth: 'auto',
-              px: 2,
-              '&.MuiButton-contained': {
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                color: 'primary.main',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 1)',
-                }
-              },
-              '&.MuiButton-outlined': {
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                color: 'white',
-                '&:hover': {
-                  borderColor: 'white',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }
-            }}
-          >
-            列表
-          </Button>
-        </Box>
-
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          新增師資
-        </Button>
-      </Box>
-
-      {/* 師資列表 */}
-      <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <Droppable droppableId="teachers" type="TEACHER">
-          {(provided, snapshot) => (
-            <Box
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              sx={{ 
-                display: viewMode === 'grid' ? 'grid' : 'flex',
-                flexDirection: viewMode === 'list' ? 'column' : 'row',
-                gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fit, minmax(350px, 1fr))' : 'none',
-                gap: 2,
-                width: '100%',
-                minHeight: snapshot.isDraggingOver ? '200px' : 'auto',
-                transition: 'min-height 0.2s ease',
-                position: 'relative',
-                alignItems: 'flex-start'
+                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                  borderColor: '#4caf50',
+                },
               }}
             >
-              {teachers.map((teacher, index) => (
-                <Draggable key={teacher.id} draggableId={teacher.id.toString()} index={index}>
-                  {(provided, snapshot) => (
-                    <Card
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      sx={{
-                        display: 'flex',
-                        flexDirection: viewMode === 'list' ? 'row' : 'column',
-                        height: viewMode === 'list' ? 'auto' : 'fit-content',
-                        width: '100%',
-                        position: snapshot.isDragging ? 'fixed' : 'relative',
-                        transform: snapshot.isDragging ? provided.draggableProps.style?.transform : 'none',
-                        boxShadow: snapshot.isDragging ? 8 : 2,
-                        opacity: snapshot.isDragging ? 0.9 : 1,
-                        zIndex: snapshot.isDragging ? 1000 : 1,
-                        transition: snapshot.isDragging ? 'none' : 'all 0.2s ease',
-                        cursor: 'default',
-                        '&:hover': {
-                          boxShadow: snapshot.isDragging ? 8 : 4,
-                        },
-                        ...provided.draggableProps.style
-                      }}
-                    >
-                      {/* 拖拽手柄區域 */}
-                      <Box
-                        {...provided.dragHandleProps}
-                        sx={{
-                          p: 1,
-                          backgroundColor: snapshot.isDragging ? 'rgba(25, 118, 210, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                          textAlign: 'center',
-                          cursor: 'grab',
-                          '&:active': { cursor: 'grabbing' },
-                          borderBottom: viewMode === 'grid' ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
-                          borderRight: viewMode === 'list' ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
-                          minWidth: viewMode === 'list' ? '50px' : 'auto',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <DragIcon fontSize="small" color={snapshot.isDragging ? 'primary' : 'action'} />
-                      </Box>
-                      
-                      <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: viewMode === 'list' ? 'row' : 'column', alignItems: viewMode === 'list' ? 'center' : 'stretch', gap: viewMode === 'list' ? 3 : 0 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: viewMode === 'grid' ? 2 : 0, minWidth: viewMode === 'list' ? '200px' : 'auto' }}>
-                          <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
-                            <PersonIcon />
-                          </Avatar>
-                          <Box>
-                            <Typography variant="h6" component="div">
-                              {teacher.name}
-                            </Typography>
-                            <Chip
-                              label={teacher.is_active ? '啟用' : '停用'}
-                              color={teacher.is_active ? 'success' : 'default'}
-                              size="small"
-                            />
-                          </Box>
-                        </Box>
-
-                        {viewMode === 'grid' ? (
-                          // 區塊模式：垂直佈局
-                          <>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                              <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                {teacher.email}
-                              </Typography>
-                            </Box>
-
-                            {teacher.phone && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">
-                                  {teacher.phone}
-                                </Typography>
-                              </Box>
-                            )}
-
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                              <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                時薪 ${teacher.hourly_rate}
-                              </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                              <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                              <Typography variant="body2" color="text.secondary">
-                                經驗 {teacher.experience} 年
-                              </Typography>
-                            </Box>
-
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                              專長：
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                              {teacher.specialties.map((specialty, index) => (
-                                <Chip key={index} label={specialty} size="small" variant="outlined" />
-                              ))}
-                            </Box>
-
-                            {teacher.bio && (
-                              <Typography variant="body2" color="text.secondary" sx={{ 
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical'
-                              }}>
-                                {teacher.bio}
-                              </Typography>
-                            )}
-                          </>
-                        ) : (
-                          // 列表模式：水平佈局
-                          <>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '150px' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">
-                                  {teacher.email}
-                                </Typography>
-                              </Box>
-                              {teacher.phone && (
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <PhoneIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                                  <Typography variant="body2" color="text.secondary">
-                                    {teacher.phone}
-                                  </Typography>
-                                </Box>
-                              )}
-                            </Box>
-
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">
-                                  時薪 ${teacher.hourly_rate}
-                                </Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <SchoolIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">
-                                  經驗 {teacher.experience} 年
-                                </Typography>
-                              </Box>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
-                              <Typography variant="body2" color="text.secondary">
-                                專長：
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {teacher.specialties.map((specialty, index) => (
-                                  <Chip key={index} label={specialty} size="small" variant="outlined" />
-                                ))}
-                              </Box>
-                            </Box>
-
-                            {teacher.bio && (
-                              <Box sx={{ minWidth: '200px', maxWidth: '300px' }}>
-                                <Typography variant="body2" color="text.secondary" sx={{ 
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical'
-                                }}>
-                                  {teacher.bio}
-                                </Typography>
-                              </Box>
-                            )}
-                          </>
-                        )}
-                      </CardContent>
-
-                      {viewMode === 'grid' && <Divider />}
-
-                      <CardActions sx={{ 
-                        justifyContent: viewMode === 'list' ? 'flex-end' : 'space-between', 
-                        flexWrap: 'wrap', 
-                        gap: 1,
-                        flexDirection: viewMode === 'list' ? 'row' : 'row',
-                        minWidth: viewMode === 'list' ? 'auto' : 'auto'
-                      }}>
-                        <Button
-                          size="small"
-                          startIcon={<EditIcon />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenDialog(teacher);
-                          }}
-                          sx={{ pointerEvents: 'auto' }}
-                        >
-                          編輯
-                        </Button>
-                        <Button
-                          size="small"
-                          color="info"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenCourses(teacher);
-                          }}
-                          sx={{ pointerEvents: 'auto' }}
-                        >
-                          課程能力
-                        </Button>
-                        <Button
-                          size="small"
-                          color={teacher.is_active ? 'warning' : 'success'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleStatus(teacher.id);
-                          }}
-                          sx={{ pointerEvents: 'auto' }}
-                        >
-                          {teacher.is_active ? '停用' : '啟用'}
-                        </Button>
-                        {user?.role === 'admin' && (
-                          <Button
-                            size="small"
-                            color="error"
-                            startIcon={<DeleteIcon />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteTeacher(teacher);
-                            }}
-                            sx={{ pointerEvents: 'auto' }}
-                          >
-                            刪除
-                          </Button>
-                        )}
-                      </CardActions>
-                    </Card>
-                  )}
-                </Draggable>
+              <ViewModuleIcon />
+            </IconButton>
+            <IconButton
+              onClick={() => setViewMode('list')}
+              aria-label="列表模式"
+              sx={{
+                color: viewMode === 'list' ? '#4caf50' : '#666666',
+                border: '2px solid',
+                borderColor: viewMode === 'list' ? '#4caf50' : '#666666',
+                borderRadius: '8px',
+                '&:hover': {
+                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                  borderColor: '#4caf50',
+                },
+              }}
+            >
+              <ViewListIcon />
+            </IconButton>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            新增師資
+          </Button>
+          <FormControl size="small" sx={{ 
+            minWidth: 120,
+            '& .MuiInputLabel-root': { 
+              color: 'white',
+              '&.Mui-focused': { color: 'white' }
+            },
+            '& .MuiOutlinedInput-root': {
+              color: 'white',
+              '& fieldset': { borderColor: 'white' },
+              '&:hover fieldset': { borderColor: 'white' },
+              '&.Mui-focused fieldset': { borderColor: 'white' }
+            },
+            '& .MuiSelect-icon': { color: 'white' }
+          }}>
+            <InputLabel>專長</InputLabel>
+            <Select
+              value={filters.specialty}
+              label="專長"
+              onChange={(e) => setFilters({ ...filters, specialty: e.target.value })}
+            >
+              <MenuItem value="">全部</MenuItem>
+              {specialties.map((specialty) => (
+                <MenuItem key={specialty} value={specialty}>
+                  {specialty}
+                </MenuItem>
               ))}
-              {provided.placeholder}
-            </Box>
-          )}
-        </Droppable>
-      </DragDropContext>
+            </Select>
+          </FormControl>
 
-      {teachers.length === 0 && !loading && (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="h6" color="text.secondary">
-            沒有找到符合條件的師資
-          </Typography>
+          <FormControl size="small" sx={{ 
+            minWidth: 120,
+            '& .MuiInputLabel-root': { 
+              color: 'white',
+              '&.Mui-focused': { color: 'white' }
+            },
+            '& .MuiOutlinedInput-root': {
+              color: 'white',
+              '& fieldset': { borderColor: 'white' },
+              '&:hover fieldset': { borderColor: 'white' },
+              '&.Mui-focused fieldset': { borderColor: 'white' }
+            },
+            '& .MuiSelect-icon': { color: 'white' }
+          }}>
+            <InputLabel>狀態</InputLabel>
+            <Select
+              value={filters.status}
+              label="狀態"
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            >
+              <MenuItem value="">全部</MenuItem>
+              <MenuItem value="true">啟用</MenuItem>
+              <MenuItem value="false">停用</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            size="small"
+            label="最低時薪"
+            type="number"
+            value={filters.min_rate}
+            onChange={(e) => setFilters({ ...filters, min_rate: e.target.value })}
+            sx={{ 
+              width: 120,
+              '& .MuiInputLabel-root': { 
+                color: 'white',
+                '&.Mui-focused': { color: 'white' }
+              },
+              '& .MuiOutlinedInput-root': {
+                color: 'white',
+                '& fieldset': { borderColor: 'white' },
+                '&:hover fieldset': { borderColor: 'white' },
+                '&.Mui-focused fieldset': { borderColor: 'white' }
+              }
+            }}
+          />
+
+          <TextField
+            size="small"
+            label="最高時薪"
+            type="number"
+            value={filters.max_rate}
+            onChange={(e) => setFilters({ ...filters, max_rate: e.target.value })}
+            sx={{ 
+              width: 120,
+              '& .MuiInputLabel-root': { 
+                color: 'white',
+                '&.Mui-focused': { color: 'white' }
+              },
+              '& .MuiOutlinedInput-root': {
+                color: 'white',
+                '& fieldset': { borderColor: 'white' },
+                '&:hover fieldset': { borderColor: 'white' },
+                '&.Mui-focused fieldset': { borderColor: 'white' }
+              }
+            }}
+          />
+
+          <Box sx={{ flexGrow: 1 }} />
         </Box>
-      )}
+
+        {/* 師資列表 */}
+        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={teachers.map(t => t.id.toString())}
+            strategy={viewMode === 'grid' ? horizontalListSortingStrategy : verticalListSortingStrategy}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: viewMode === 'grid' ? 'row' : 'column',
+                flexWrap: viewMode === 'grid' ? 'wrap' : 'nowrap',
+                gap: 2,
+                width: '100%',
+                position: 'relative',
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+              }}
+            >
+              {teachers.map((teacher) => (
+                <SortableTeacherCard key={teacher.id} teacher={teacher} viewMode={viewMode} />
+              ))}
+            </Box>
+          </SortableContext>
+        </DndContext>
+
+        {teachers.length === 0 && !loading && (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" color="text.secondary">
+              沒有找到符合條件的師資
+            </Typography>
+          </Box>
+        )}
+      </Box>
 
       {/* 新增/編輯對話框 */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
@@ -1137,8 +1094,8 @@ const TeachersPage: React.FC = () => {
           onClose={handleCloseCourses}
         />
       )}
-    </Box>
+    </>
   );
 };
 
-export default TeachersPage; 
+export default TeachersPage;

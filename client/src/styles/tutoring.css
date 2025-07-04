@@ -1197,130 +1197,7 @@ body {
   }
 }
 
-/* 模態框樣式 */
-.modal-overlay {
-  position: fixed;  /* 蓋滿視窗 */
-  inset: 0;  /* 等於 top: 0; left: 0; right: 0; bottom: 0; */
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-/* 通用模態框樣式 */
-.modal-content {
-  background: white;
-  color: #000000;
-  padding: 24px 32px;  
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  max-width: 1550px;
-  max-height: 600px;
-  width: min(90%, 1550px);
-  height: auto;
-  min-height: 400px;
-  overflow-y: auto;
-  animation: modalSlideIn 0.3s ease-out;
-  margin-left: 125px; /* 增加20px：105px + 20px = 125px，整體向右移 */
-  margin-top: 20px; /* 整體向下移20px */
-  box-sizing: border-box; /* padding 不再額外計算 */
-}
-
-/* 學校管理刪除視窗專用樣式 */
-.modal-content-school-delete {
-  background: white;
-  color: #000000;
-  padding: 24px 32px;  
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  max-width: 775px;
-  max-height: 450px;
-  width: min(90%, 775px);
-  height: auto;
-  min-height: 250px;
-  overflow-y: auto;
-  animation: modalSlideIn 0.3s ease-out;
-  margin-left: 125px;
-  margin-top: 20px;
-  box-sizing: border-box;
-}
-
-/* 大型模態框樣式 - 用於學生詳情視窗 */
-.modal-content-large {
-  background: white;
-  color: #000000;
-  padding: 0; /* FormContainer 會處理內邊距 */
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  max-width: 900px;
-  max-height: 85vh;
-  width: min(95%, 900px);
-  height: auto;
-  overflow-y: auto;
-  animation: modalSlideIn 0.3s ease-out;
-  margin-left: 125px; /* 保持與現有模態框一致的位置 */
-  margin-top: 20px;
-  box-sizing: border-box;
-}
-
-/* 標題與表單區塊留一些距離（可依需求微調） */
-.modal-content h3 {
-  margin: 0 0 16px 0;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 30px; /* 增加左右內邊距 */
-  border-bottom: 1px solid #e2e8f0;
-  background: linear-gradient(45deg, #4299e1, #3182ce);
-  color: white;
-  border-radius: 12px 12px 0 0;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background-color 0.2s ease;
-}
-
-.modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.modal-body {
-  padding: 20px 30px; /* 增加左右內邊距，讓內容不貼邊 */
-}
-
+/* 表單按鈕區域樣式 */
 .modal-actions {
   display: flex;
   gap: 12px;
@@ -1441,37 +1318,8 @@ body {
 
 /* 響應式設計 */
 @media (max-width: 768px) {
-  .modal-overlay {
-    padding: 45px 15px 15px 15px; /* 手機版：上45px(30px+15px) 右15px 下15px 左15px */
-  }
-  
-  .modal-content {
-    width: calc(100% - 30px); /* 扣除左右邊距 */
-    max-height: calc(100vh - 60px); /* 手機版扣除上下邊距：100vh - 45px - 15px = 60px */
-    margin: 0; /* 手機版清除桌面版的margin設定 */
-    margin-left: 0 !important; /* 手機版強制取消左邊距偏移 */
-    margin-top: 0 !important; /* 手機版強制取消上邊距偏移 */
-  }
-  
-  .modal-content-large {
-    width: calc(100% - 30px); /* 扣除左右邊距 */
-    max-height: calc(100vh - 60px); /* 手機版扣除上下邊距 */
-    margin: 0; /* 手機版清除桌面版的margin設定 */
-    margin-left: 0 !important; /* 手機版強制取消左邊距偏移 */
-    margin-top: 0 !important; /* 手機版強制取消上邊距偏移 */
-    padding: 0; /* FormContainer 會處理內邊距 */
-  }
-  
   .form-row {
     grid-template-columns: 1fr;
-  }
-  
-  .modal-header {
-    padding: 16px 20px;
-  }
-  
-  .modal-body {
-    padding: 16px 20px; /* 手機版保持適當的左右邊距 */
   }
   
   .modal-actions {

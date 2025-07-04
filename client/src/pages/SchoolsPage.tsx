@@ -8,7 +8,8 @@ import {
   Typography,
   Alert,
   TextField,
-  Box
+  Box,
+  Chip
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { getEducationLevelColors } from '../utils/educationLevelColors';
@@ -532,23 +533,20 @@ const SchoolsPage: React.FC = () => {
       </div>
 
       {/* 編輯模態框 */}
-      {showEditModal && (
-        <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{selectedSchool ? '編輯學校' : '新增學校'}</h3>
-              <button className="modal-close" onClick={closeModals}>×</button>
-            </div>
-            <div className="modal-body">
-              <SchoolEditForm 
-                school={selectedSchool} 
-                onSave={handleSaveSchool} 
-                onCancel={closeModals}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showEditModal} onClose={closeModals} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {selectedSchool ? '編輯學校' : '新增學校'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <SchoolEditForm 
+              school={selectedSchool} 
+              onSave={handleSaveSchool} 
+              onCancel={closeModals}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       {/* 刪除確認模態框 */}
       <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
@@ -572,67 +570,61 @@ const SchoolsPage: React.FC = () => {
       </Dialog>
 
       {/* 詳情模態框 */}
-      {showDetailModal && selectedSchool && (
-        <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>學校詳情</h3>
-              <button className="modal-close" onClick={closeModals}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="school-detail">
-                <div className="detail-row">
-                  <label>學校全名：</label>
-                  <span>{selectedSchool.school_name}</span>
-                </div>
-                <div className="detail-row">
-                  <label>簡稱：</label>
-                  <span>{selectedSchool.short_name}</span>
-                </div>
-                <div className="detail-row">
-                  <label>學校性質：</label>
-                  <span className="badge badge-school">{selectedSchool.school_type}</span>
-                </div>
-                <div className="detail-row">
-                  <label>行政區：</label>
-                  <span className="badge badge-grade">{selectedSchool.district}</span>
-                </div>
-                <div className="detail-row">
-                  <label>學制：</label>
-                  <span 
-                    className={`badge badge-education-level education-level-${selectedSchool.education_level || '未設定'}`}
-                    style={{
+      <Dialog open={showDetailModal} onClose={closeModals} maxWidth="md" fullWidth>
+        <DialogTitle>學校詳情</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            {selectedSchool && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">學校全名：</Typography>
+                  <Typography variant="body1">{selectedSchool.school_name}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">簡稱：</Typography>
+                  <Typography variant="body1">{selectedSchool.short_name}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">學校性質：</Typography>
+                  <Chip label={selectedSchool.school_type} size="small" color="primary" />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">行政區：</Typography>
+                  <Chip label={selectedSchool.district} size="small" color="secondary" />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">學制：</Typography>
+                  <Chip 
+                    label={selectedSchool.education_level || '未設定'}
+                    size="small"
+                    sx={{
                       backgroundColor: getEducationLevelColors(selectedSchool.education_level).backgroundColor,
                       color: getEducationLevelColors(selectedSchool.education_level).color,
                       border: '1px solid',
                       borderColor: getEducationLevelColors(selectedSchool.education_level).borderColor
                     }}
-                  >
-                    {selectedSchool.education_level || '未設定'}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <label>電話：</label>
-                  <span>{selectedSchool.phone || '未提供'}</span>
-                </div>
-                <div className="detail-row">
-                  <label>地址：</label>
-                  <span>{selectedSchool.address || '未提供'}</span>
-                </div>
-                <div className="detail-row">
-                  <label>我們的學生數：</label>
-                  <span className="badge badge-gender">{selectedSchool.our_student_count}人</span>
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button className="btn btn-secondary" onClick={closeModals}>
-                  關閉
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">電話：</Typography>
+                  <Typography variant="body1">{selectedSchool.phone || '未提供'}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">地址：</Typography>
+                  <Typography variant="body1">{selectedSchool.address || '未提供'}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">我們的學生數：</Typography>
+                  <Chip label={`${selectedSchool.our_student_count}人`} size="small" color="info" />
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModals}>關閉</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 管理員密碼驗證模態框 */}
       <Dialog open={showPasswordModal} onClose={closeModals} maxWidth="sm" fullWidth>

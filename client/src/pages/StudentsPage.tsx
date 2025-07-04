@@ -710,19 +710,21 @@ const StudentsPage: React.FC = () => {
       </div>
 
       {/* 編輯模態框 */}
-      {showEditModal && (
-        <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>{selectedStudent ? '編輯學生' : '新增學生'}</h3>
+      <Dialog open={showEditModal} onClose={closeModals} maxWidth="lg" fullWidth>
+        <DialogTitle>
+          {selectedStudent ? '編輯學生' : '新增學生'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
             <StudentEditForm
               student={selectedStudent}
               onSave={handleSaveStudent}
               onCancel={closeModals}
               isLoading={isSaving}
             />
-          </div>
-        </div>
-      )}
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       {/* 刪除確認模態框 */}
       <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
@@ -746,17 +748,20 @@ const StudentsPage: React.FC = () => {
       </Dialog>
 
       {/* 詳情模態框 */}
-      {showDetailModal && selectedStudent && (
-        <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
-            <StudentDetailView
-              student={selectedStudent}
-              onEdit={handleEditFromDetail}
-              onClose={closeModals}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={showDetailModal} onClose={closeModals} maxWidth="lg" fullWidth>
+        <DialogTitle>學生詳情</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            {selectedStudent && (
+              <StudentDetailView
+                student={selectedStudent}
+                onEdit={handleEditFromDetail}
+                onClose={closeModals}
+              />
+            )}
+          </Box>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

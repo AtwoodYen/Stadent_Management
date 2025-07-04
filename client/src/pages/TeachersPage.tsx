@@ -395,6 +395,12 @@ const TeachersPage: React.FC = () => {
     setSelectedTeacherForCourses(null);
   };
 
+  // 課程能力更新後重新載入師資列表
+  const handleCoursesUpdated = () => {
+    console.log('課程能力已更新，重新載入師資列表');
+    fetchTeachers();
+  };
+
   // 拖曳排序
   const handleDragEnd = async (event: any) => {
     const { active, over } = event;
@@ -1184,6 +1190,7 @@ const TeachersPage: React.FC = () => {
           teacherName={selectedTeacherForCourses.name}
           open={coursesDialogOpen}
           onClose={handleCloseCourses}
+          onCoursesUpdated={handleCoursesUpdated}
         />
       )}
     </>

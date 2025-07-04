@@ -52,6 +52,7 @@ interface TeacherCoursesProps {
   teacherName: string;
   open: boolean;
   onClose: () => void;
+  onCoursesUpdated?: () => void; // 新增：課程能力更新時的回調函數
 }
 
 interface FormData {
@@ -70,7 +71,8 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
   teacherId,
   teacherName,
   open,
-  onClose
+  onClose,
+  onCoursesUpdated
 }) => {
   // 課程分類名稱映射表（處理歷史資料不一致問題）
   const courseCategoryMapping: { [key: string]: string } = {
@@ -275,6 +277,11 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
 
       // 重新載入課程能力
       await fetchTeacherCourses();
+      
+      // 通知父組件課程能力已更新
+      if (onCoursesUpdated) {
+        onCoursesUpdated();
+      }
     } catch (error) {
       console.error('同步專長錯誤:', error);
       setSnackbar({
@@ -376,7 +383,12 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
       });
 
       handleCloseDialog();
-      fetchTeacherCourses();
+      await fetchTeacherCourses();
+      
+      // 通知父組件課程能力已更新
+      if (onCoursesUpdated) {
+        onCoursesUpdated();
+      }
     } catch (error) {
       console.error('儲存課程能力錯誤:', error);
       setSnackbar({
@@ -406,6 +418,11 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
 
       // 重新從資料庫載入課程能力列表
       await fetchTeacherCourses();
+      
+      // 通知父組件課程能力已更新
+      if (onCoursesUpdated) {
+        onCoursesUpdated();
+      }
 
     } catch (error) {
       setSnackbar({

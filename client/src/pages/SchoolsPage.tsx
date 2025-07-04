@@ -1,4 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Alert,
+  TextField,
+  Box
+} from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { getEducationLevelColors } from '../utils/educationLevelColors';
 import '../styles/education-level-colors.css';
@@ -540,28 +551,25 @@ const SchoolsPage: React.FC = () => {
       )}
 
       {/* 刪除確認模態框 */}
-      {showDeleteModal && selectedSchool && (
-        <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>確認刪除</h3>
-              <button className="modal-close" onClick={closeModals}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>您確定要刪除學校「{selectedSchool.school_name}」嗎？</p>
-              <p className="warning-text">此操作無法復原！</p>
-              <div className="modal-actions">
-                <button className="btn btn-danger" onClick={confirmDeleteSchool}>
-                  確認刪除
-                </button>
-                <button className="btn btn-secondary" onClick={closeModals}>
-                  取消
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
+        <DialogTitle>確認刪除</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              您確定要刪除學校「{selectedSchool?.school_name}」嗎？
+            </Typography>
+            <Alert severity="warning">
+              此操作無法復原！
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModals}>取消</Button>
+          <Button onClick={confirmDeleteSchool} color="error" variant="contained">
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 詳情模態框 */}
       {showDetailModal && selectedSchool && (
@@ -627,56 +635,47 @@ const SchoolsPage: React.FC = () => {
       )}
 
       {/* 管理員密碼驗證模態框 */}
-      {showPasswordModal && selectedSchool && (
-        <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>🔐 管理員身份驗證</h3>
-              <button className="modal-close" onClick={closeModals}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="password-verification">
-                <p><strong>即將刪除學校：</strong>{selectedSchool.school_name}</p>
-                <p className="warning-text">⚠️ 此操作無法復原，請謹慎操作！</p>
-                
-                <div className="form-group">
-                  <label>請輸入管理員密碼：</label>
-                  <input
-                    type="password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="輸入您的管理員密碼"
-                    style={{ color: '#000', backgroundColor: '#fff' }}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        verifyPasswordAndDelete();
-                      }
-                    }}
-                  />
-                  {passwordError && (
-                    <div className="error-message" style={{ color: '#e53e3e', marginTop: '10px' }}>
-                      {passwordError}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="modal-actions">
-                <button 
-                  className="btn btn-danger" 
-                  onClick={verifyPasswordAndDelete}
-                  disabled={!adminPassword}
-                >
-                  確認刪除
-                </button>
-                <button className="btn btn-secondary" onClick={closeModals}>
-                  取消
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showPasswordModal} onClose={closeModals} maxWidth="sm" fullWidth>
+        <DialogTitle>🔐 管理員身份驗證</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              <strong>即將刪除學校：</strong>{selectedSchool?.school_name}
+            </Typography>
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              ⚠️ 此操作無法復原，請謹慎操作！
+            </Alert>
+            
+            <TextField
+              fullWidth
+              type="password"
+              label="請輸入管理員密碼"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              placeholder="輸入您的管理員密碼"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  verifyPasswordAndDelete();
+                }
+              }}
+              error={!!passwordError}
+              helperText={passwordError || '請輸入您的管理員密碼'}
+              sx={{ mb: 2 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModals}>取消</Button>
+          <Button 
+            onClick={verifyPasswordAndDelete}
+            color="error" 
+            variant="contained"
+            disabled={!adminPassword}
+          >
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

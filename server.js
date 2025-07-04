@@ -18,9 +18,12 @@ const port = 3000; // 您可以選擇任何未被佔用的 port
 app.use(cors()); // 允許所有跨域請求
 app.use(express.json()); // 解析傳入的 JSON 請求
 
-// 新增：請求日誌中介軟體
+// 新增：請求日誌中介軟體（只記錄重要請求）
 app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+    // 只記錄非靜態資源的重要請求
+    if (!req.originalUrl.startsWith('/uploads/') && !req.originalUrl.includes('.')) {
+        logger.info(`${req.method} ${req.originalUrl}`);
+    }
     next();
 });
 
@@ -166,7 +169,6 @@ app.post('/api/auth/login', async (req, res, next) => {
                     SET is_locked = 0, unlock_time = NULL 
                     WHERE username = @username
                 `);
-            logger.info(`Account auto-unlocked: ${username}`);
         }
 
         // 驗證密碼
@@ -246,7 +248,7 @@ app.post('/api/auth/login', async (req, res, next) => {
             email_verified: user.email_verified
         };
         
-        logger.info(`User ${username} logged in successfully`);
+        // 登入成功
         res.json({
             message: '登入成功',
             token,
@@ -322,7 +324,7 @@ app.get('/api/auth/lock-status/:username', async (req, res, next) => {
                         SET is_locked = 0, unlock_time = NULL 
                         WHERE username = @username
                     `);
-                logger.info(`Account auto-unlocked: ${username}`);
+                // 帳號自動解鎖
             }
             
             // 檢查記憶體中的失敗次數
@@ -341,7 +343,7 @@ app.get('/api/auth/lock-status/:username', async (req, res, next) => {
     }
 });
 
-// [POST] 驗證管理員密碼
+// [POST] 驗證管理員密碼（需要認證）
 app.post('/api/auth/verify-admin', authenticateToken, async (req, res, next) => {
     try {
         const { password } = req.body;
@@ -381,6 +383,45 @@ app.post('/api/auth/verify-admin', authenticateToken, async (req, res, next) => 
         
     } catch (err) {
         logger.error(`Admin password verification error: ${err.message}`);
+        next(err);
+    }
+});
+
+// [POST] 驗證管理員密碼（不需要認證，用於刪除確認）
+app.post('/api/auth/validate-admin', async (req, res, next) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ message: '請提供密碼' });
+        }
+        
+        // 從資料庫查詢管理員用戶
+        const result = await pool.request()
+            .input('username', sql.NVarChar, 'admin')
+            .query(`
+                SELECT id, username, password_hash, full_name, role
+                FROM users 
+                WHERE username = @username AND role = 'admin' AND is_active = 1
+            `);
+
+        const admin = result.recordset[0];
+        
+        if (!admin) {
+            return res.status(403).json({ message: '找不到管理員帳號' });
+        }
+
+        // 驗證管理員密碼
+        const isPasswordValid = await bcrypt.compare(password, admin.password_hash);
+        
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: '管理員密碼錯誤' });
+        }
+        
+        res.json({ message: '密碼驗證成功' });
+        
+    } catch (err) {
+        logger.error(`Admin password validation error: ${err.message}`);
         next(err);
     }
 });
@@ -430,7 +471,7 @@ app.post('/api/auth/unlock-account', authenticateToken, async (req, res, next) =
         // 清除記憶體中的失敗記錄
         loginAttempts.delete(username);
         
-        logger.info(`Account manually unlocked by admin ${req.user.username}: ${username}`);
+        // 管理員手動解鎖帳號
         res.json({ message: `帳號 ${username} 已成功解鎖` });
         
     } catch (err) {
@@ -1203,18 +1244,11 @@ app.get('/api/courses', async (req, res, next) => {
 // [GET] 取得課程分類列表 (必須放在 /api/courses/:id 之前)
 app.get('/api/courses/categories', async (req, res, next) => {
     try {
-        console.log('=== 取得課程分類列表 ===');
-        
         const result = await pool.request().query('SELECT DISTINCT category FROM courses WHERE is_active = 1 ORDER BY category');
-        console.log('查詢結果筆數:', result.recordset.length);
-        console.log('查詢結果:', result.recordset);
-        
         const categories = result.recordset.map(row => row.category);
-        console.log('返回的分類列表:', categories);
-        
         res.json(categories);
     } catch (err) {
-        console.error('取得課程分類列表錯誤:', err);
+        logger.error('取得課程分類列表錯誤:', err);
         next(err);
     }
 });
@@ -1234,7 +1268,7 @@ app.get('/api/courses/count', async (req, res, next) => {
         
         res.json({ count: result.recordset[0].count });
     } catch (err) {
-        console.error('取得課程數量錯誤:', err);
+        logger.error('取得課程數量錯誤:', err);
         next(err);
     }
 });
@@ -1910,19 +1944,14 @@ app.get('/api/teachers', async (req, res, next) => {
         
         const result = await request.query(query);
         
-        console.log('=== 師資列表查詢結果 ===');
-        console.log('查詢到的師資數量:', result.recordset.length);
+        // 師資列表查詢結果
         
         // 解析 JSON 字串為陣列，並處理課程能力資料
         const teachers = result.recordset.map(teacher => {
             const courseCategories = teacher.course_categories && teacher.course_categories.trim() ? teacher.course_categories.split(', ') : [];
             const preferredCourses = teacher.preferred_courses && teacher.preferred_courses.trim() ? teacher.preferred_courses.split(', ') : [];
             
-            console.log(`師資 ${teacher.name} (ID: ${teacher.id}):`);
-            console.log(`  - course_categories 原始值: "${teacher.course_categories}"`);
-            console.log(`  - preferred_courses 原始值: "${teacher.preferred_courses}"`);
-            console.log(`  - 解析後 courseCategories:`, courseCategories);
-            console.log(`  - 解析後 preferredCourses:`, preferredCourses);
+            // 解析師資課程能力資料
             
             return {
                 ...teacher,
@@ -1932,7 +1961,7 @@ app.get('/api/teachers', async (req, res, next) => {
             };
         });
         
-        console.log('=== 師資列表查詢完成 ===');
+        // 師資列表查詢完成
         res.json(teachers);
     } catch (err) {
         next(err);
@@ -2226,7 +2255,7 @@ app.get('/api/teachers/:id', async (req, res, next) => {
 // [GET] 取得所有師資的課程能力（用於管理頁面）
 app.get('/api/teacher-courses', async (req, res, next) => {
     try {
-        console.log('=== 取得所有師資課程能力 ===');
+        // 取得所有師資課程能力
         
         const result = await pool.request()
             .query(`
@@ -2234,23 +2263,22 @@ app.get('/api/teacher-courses', async (req, res, next) => {
                     tc.id,
                     tc.teacher_id,
                     t.name as teacher_name,
-                    cc.category_name as course_category,
+                    tc.course_category,
                     tc.max_level,
                     tc.is_preferred,
                     tc.sort_order,
                     tc.created_at
                 FROM teacher_courses tc
                 INNER JOIN teachers t ON tc.teacher_id = t.id
-                INNER JOIN courses_categories cc ON tc.category_id = cc.id
                 WHERE t.is_deleted = 0
-                ORDER BY t.name, tc.sort_order, tc.is_preferred DESC, cc.category_name
+                ORDER BY t.name, tc.sort_order, tc.is_preferred DESC, tc.course_category
             `);
             
-        console.log('查詢結果筆數:', result.recordset.length);
+        // 查詢完成
         res.json(result.recordset);
         
     } catch (err) {
-        console.error('取得所有師資課程能力錯誤:', err);
+        logger.error('取得所有師資課程能力錯誤:', err);
         next(err);
     }
 });
@@ -2259,9 +2287,7 @@ app.get('/api/teacher-courses', async (req, res, next) => {
 app.get('/api/teachers/:id/courses', async (req, res, next) => {
     try {
         const { id } = req.params;
-        console.log('=== 師資課程能力查詢 DEBUG ===');
-        console.log('師資 ID:', id);
-        console.log('ID 類型:', typeof id);
+        // 師資課程能力查詢
         
         // 先檢查師資是否存在且未刪除
         const teacherCheck = await pool.request()
@@ -2269,11 +2295,8 @@ app.get('/api/teachers/:id/courses', async (req, res, next) => {
             .query('SELECT id, name FROM teachers WHERE id = @teacherId AND is_deleted = 0');
             
         if (teacherCheck.recordset.length === 0) {
-            console.log('師資不存在');
             return res.status(404).json({ error: '師資不存在' });
         }
-        
-        console.log('師資存在:', teacherCheck.recordset[0]);
         
         // 簡化的查詢語句
         const result = await pool.request()
@@ -2282,31 +2305,21 @@ app.get('/api/teachers/:id/courses', async (req, res, next) => {
                 SELECT 
                     tc.id,
                     tc.teacher_id,
-                    cc.category_name as course_category,
+                    tc.course_category,
                     tc.max_level,
                     tc.is_preferred,
                     tc.sort_order,
                     tc.created_at
                 FROM teacher_courses tc
-                INNER JOIN courses_categories cc ON tc.category_id = cc.id
                 WHERE tc.teacher_id = @teacherId 
-                ORDER BY tc.sort_order, tc.is_preferred DESC, cc.category_name
+                ORDER BY tc.sort_order, tc.is_preferred DESC, tc.course_category
             `);
             
-        console.log('查詢結果筆數:', result.recordset.length);
-        console.log('查詢結果:', result.recordset);
-        console.log('=========================');
+        // 查詢完成
         
         res.json(result.recordset);
     } catch (err) {
-        console.error('師資課程能力查詢錯誤:', err);
-        console.error('錯誤詳細:', {
-            message: err.message,
-            number: err.number,
-            state: err.state,
-            severity: err.severity,
-            stack: err.stack
-        });
+        logger.error('師資課程能力查詢錯誤:', err);
         next(err);
     }
 });
@@ -2399,35 +2412,20 @@ app.put(
             const { id } = req.params;
             const { name, email, phone, availableDays, hourlyRate, experience, bio, isActive } = req.body;
             
-            // 調試：記錄實際收到的資料
-            console.log('=== 師資更新調試資訊 ===');
-            console.log('師資ID:', id);
-            console.log('收到的email:', email);
-            console.log('收到的姓名:', name);
-            console.log('========================');
-            
-            // ID為0是合法的師資ID，不需要特殊處理
-            console.log('正在更新師資ID:', id);
-            
             // 檢查 email 是否已被其他老師使用（排除當前編輯的老師）
-            console.log('檢查email衝突，排除ID:', id);
             const emailCheckResult = await pool.request()
                 .input('email', sql.NVarChar, email)
                 .input('id', sql.Int, id)
                 .query('SELECT id, name FROM teachers WHERE email = @email AND id != @id AND is_deleted = 0');
                 
-            console.log('email檢查結果:', emailCheckResult.recordset);
-            
             if (emailCheckResult.recordset.length > 0) {
                 const conflictTeacher = emailCheckResult.recordset[0];
-                console.log('發現email衝突:', conflictTeacher);
                 return res.status(400).json({ 
                     error: `此電子信箱已被其他老師使用：${conflictTeacher.name} (ID: ${conflictTeacher.id})` 
                 });
             }
             
-            console.log('準備執行UPDATE語句...');
-            console.log('UPDATE參數:', { id, name, email, phone, hourlyRate, experience, isActive });
+            // 執行更新
             
             const result = await pool.request()
                 .input('id', sql.Int, id)
@@ -2449,7 +2447,7 @@ app.put(
                     SELECT * FROM teachers WHERE id = @id;
                 `);
                 
-            console.log('UPDATE執行成功，影響行數:', result.rowsAffected);
+            // 更新成功
             if (result.recordset.length === 0) {
                 return res.status(404).json({ error: 'Teacher not found' });
             }
@@ -2585,26 +2583,35 @@ app.post(
             const { id } = req.params;
             const { courseCategory, maxLevel, isPreferred } = req.body;
             
+            // 調試：記錄接收到的資料
+            logger.info(`新增師資課程能力 - 師資ID: ${id}, 課程分類: ${courseCategory}, 難度: ${maxLevel}, 主力: ${isPreferred}`);
+            
+            // 驗證必要欄位
+            if (!courseCategory || !maxLevel) {
+                return res.status(400).json({ error: '課程分類和難度為必填欄位' });
+            }
+            
             // 先查詢課程分類的 ID
             const categoryResult = await pool.request()
                 .input('category_name', sql.NVarChar, courseCategory)
-                .query('SELECT id FROM courses_categories WHERE category_name = @category_name AND is_active = 1');
+                .query('SELECT id FROM courses_categories WHERE category_name = @category_name');
             
             if (categoryResult.recordset.length === 0) {
-                return res.status(400).json({ error: '課程分類不存在或已停用' });
+                return res.status(400).json({ error: '指定的課程分類不存在' });
             }
             
             const categoryId = categoryResult.recordset[0].id;
             
             const result = await pool.request()
                 .input('teacher_id', sql.Int, id)
+                .input('course_category', sql.NVarChar, courseCategory)
                 .input('category_id', sql.Int, categoryId)
                 .input('max_level', sql.NVarChar, maxLevel)
                 .input('is_preferred', sql.Bit, isPreferred)
                 .query(`
-                    INSERT INTO teacher_courses (teacher_id, category_id, max_level, is_preferred) 
+                    INSERT INTO teacher_courses (teacher_id, course_category, category_id, max_level, is_preferred) 
                     OUTPUT inserted.*
-                    VALUES (@teacher_id, @category_id, @max_level, @is_preferred)
+                    VALUES (@teacher_id, @course_category, @category_id, @max_level, @is_preferred)
                 `);
             res.status(201).json(result.recordset[0]);
         } catch (err) {
@@ -2637,10 +2644,10 @@ app.put(
             // 先查詢課程分類的 ID
             const categoryResult = await pool.request()
                 .input('category_name', sql.NVarChar, courseCategory)
-                .query('SELECT id FROM courses_categories WHERE category_name = @category_name AND is_active = 1');
+                .query('SELECT id FROM courses_categories WHERE category_name = @category_name');
             
             if (categoryResult.recordset.length === 0) {
-                return res.status(400).json({ error: '課程分類不存在或已停用' });
+                return res.status(400).json({ error: '指定的課程分類不存在' });
             }
             
             const categoryId = categoryResult.recordset[0].id;
@@ -2648,13 +2655,14 @@ app.put(
             const result = await pool.request()
                 .input('id', sql.Int, courseId)
                 .input('teacher_id', sql.Int, teacherId)
+                .input('course_category', sql.NVarChar, courseCategory)
                 .input('category_id', sql.Int, categoryId)
                 .input('max_level', sql.NVarChar, maxLevel)
                 .input('is_preferred', sql.Bit, isPreferred)
                 .query(`
                     UPDATE teacher_courses 
-                    SET category_id = @category_id, max_level = @max_level, 
-                        is_preferred = @is_preferred
+                    SET course_category = @course_category, category_id = @category_id, 
+                        max_level = @max_level, is_preferred = @is_preferred
                     WHERE id = @id AND teacher_id = @teacher_id;
                     SELECT * FROM teacher_courses WHERE id = @id;
                 `);
@@ -2770,12 +2778,12 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
     try {
         await pool.connect();
-        console.log('資料庫連線成功！');
+        logger.info('資料庫連線成功！');
         app.listen(port, () => {
-            console.log(`後端伺服器正在 http://localhost:${port} 上運行`);
+            logger.info(`後端伺服器正在 http://localhost:${port} 上運行`);
         });
     } catch (err) {
-        console.error('資料庫連線失敗:', err);
+        logger.error('資料庫連線失敗:', err);
         process.exit(1);
     }
 };

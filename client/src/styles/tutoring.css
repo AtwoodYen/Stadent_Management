@@ -1208,7 +1208,27 @@ body {
   z-index: 1000;
 }
 
+/* 通用模態框樣式 */
 .modal-content {
+  background: white;
+  color: #000000;
+  padding: 24px 32px;  
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 1550px;
+  max-height: 600px;
+  width: min(90%, 1550px);
+  height: auto;
+  min-height: 400px;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+  margin-left: 125px; /* 增加20px：105px + 20px = 125px，整體向右移 */
+  margin-top: 20px; /* 整體向下移20px */
+  box-sizing: border-box; /* padding 不再額外計算 */
+}
+
+/* 學校管理刪除視窗專用樣式 */
+.modal-content-school-delete {
   background: white;
   color: #000000;
   padding: 24px 32px;  
@@ -1221,9 +1241,9 @@ body {
   min-height: 250px;
   overflow-y: auto;
   animation: modalSlideIn 0.3s ease-out;
-  margin-left: 125px; /* 增加20px：105px + 20px = 125px，整體向右移 */
-  margin-top: 20px; /* 整體向下移20px */
-  box-sizing: border-box; /* padding 不再額外計算 */
+  margin-left: 125px;
+  margin-top: 20px;
+  box-sizing: border-box;
 }
 
 /* 大型模態框樣式 - 用於學生詳情視窗 */

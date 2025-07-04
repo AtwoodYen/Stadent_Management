@@ -38,7 +38,8 @@ import {
   Delete as DeleteIcon,
   School as SchoolIcon,
   Star as StarIcon,
-  StarBorder as StarBorderIcon
+  StarBorder as StarBorderIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import { getLevelColors } from '../utils/levelColors';
 
@@ -99,6 +100,12 @@ const TeacherCoursesManagementPage: React.FC = () => {
     message: '',
     severity: 'info'
   });
+
+  // 刪除確認視窗狀態
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<TeacherCourse | null>(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // 搜尋和篩選狀態
   const [searchTeacher, setSearchTeacher] = useState('');
@@ -265,13 +272,52 @@ const TeacherCoursesManagementPage: React.FC = () => {
   };
 
   // 刪除課程能力
-  const handleDeleteCourse = async (course: TeacherCourse) => {
-    if (!confirm(`確定要刪除「${course.teacher_name}」的「${course.course_category}」課程能力嗎？`)) {
+  // 開啟刪除確認視窗
+  const handleOpenDeleteDialog = (course: TeacherCourse) => {
+    setCourseToDelete(course);
+    setAdminPassword('');
+    setPasswordError('');
+    setDeleteDialogOpen(true);
+  };
+
+  // 關閉刪除確認視窗
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setCourseToDelete(null);
+    setAdminPassword('');
+    setPasswordError('');
+  };
+
+  // 驗證管理員密碼
+  const validateAdminPassword = async (password: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/validate-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('密碼驗證錯誤:', error);
+      return false;
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete || !adminPassword.trim()) {
+      setPasswordError('請輸入管理員密碼');
       return;
     }
 
     try {
-      const response = await fetch(`/api/teachers/${course.teacher_id}/courses/${course.id}`, {
+      // 驗證管理員密碼
+      const isValidPassword = await validateAdminPassword(adminPassword);
+      if (!isValidPassword) {
+        setPasswordError('管理員密碼錯誤');
+        return;
+      }
+
+      const response = await fetch(`/api/teachers/${courseToDelete.teacher_id}/courses/${courseToDelete.id}`, {
         method: 'DELETE'
       });
 
@@ -283,6 +329,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
         severity: 'success'
       });
 
+      handleCloseDeleteDialog();
       await fetchTeacherCourses();
 
     } catch (error) {
@@ -669,7 +716,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
                     </IconButton>
                     <IconButton
                       size="small"
-                      onClick={() => handleDeleteCourse(course)}
+                      onClick={() => handleOpenDeleteDialog(course)}
                       color="error"
                     >
                       <DeleteIcon />
@@ -756,6 +803,63 @@ const TeacherCoursesManagementPage: React.FC = () => {
             disabled={!formData.teacherId || !formData.courseCategory}
           >
             {editingCourse ? '更新' : '新增'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 刪除確認視窗 */}
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+          <WarningIcon color="error" />
+          確認刪除課程能力
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" gutterBottom>
+              您確定要刪除以下課程能力嗎？
+            </Typography>
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>師資：</strong>{courseToDelete?.teacher_name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>課程分類：</strong>{courseToDelete?.course_category}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>教學水準：</strong>{courseToDelete?.max_level}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>主力課程：</strong>{courseToDelete?.is_preferred ? '是' : '否'}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+              此操作無法復原，請謹慎操作。
+            </Typography>
+            <TextField
+              fullWidth
+              type="password"
+              label="管理員密碼"
+              value={adminPassword}
+              onChange={(e) => {
+                setAdminPassword(e.target.value);
+                setPasswordError('');
+              }}
+              error={!!passwordError}
+              helperText={passwordError}
+              margin="normal"
+              autoFocus
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog}>取消</Button>
+          <Button 
+            onClick={handleDeleteCourse} 
+            variant="contained" 
+            color="error"
+            disabled={!adminPassword.trim()}
+          >
+            確認刪除
           </Button>
         </DialogActions>
       </Dialog>

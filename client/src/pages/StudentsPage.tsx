@@ -1,4 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Alert,
+  Box
+} from '@mui/material';
 import StudentFormOptimized from '../components/StudentFormOptimized';
 import StudentDetailView from '../components/StudentDetailView';
 import { getLevelColors } from '../utils/levelColors';
@@ -715,22 +725,25 @@ const StudentsPage: React.FC = () => {
       )}
 
       {/* 刪除確認模態框 */}
-      {showDeleteModal && (
-        <div className="modal-overlay" onClick={closeModals}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>確認刪除</h3>
-            <p>確定要刪除學生「{selectedStudent?.chinese_name}」嗎？</p>
-            <div className="modal-actions">
-              <button className="btn btn-danger" onClick={confirmDeleteStudent}>
-                確認刪除
-              </button>
-              <button className="btn btn-secondary" onClick={closeModals}>
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
+        <DialogTitle>確認刪除</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              確定要刪除學生「{selectedStudent?.chinese_name}」嗎？
+            </Typography>
+            <Alert severity="warning">
+              此操作無法復原！
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModals}>取消</Button>
+          <Button onClick={confirmDeleteStudent} color="error" variant="contained">
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 詳情模態框 */}
       {showDetailModal && selectedStudent && (

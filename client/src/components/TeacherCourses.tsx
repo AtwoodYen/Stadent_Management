@@ -608,10 +608,12 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
                           <Chip 
                             label={course.max_level} 
                             size="small" 
-                            color={
-                              course.max_level === '高級' ? 'success' :
-                              course.max_level === '中級' ? 'warning' : 'default'
-                            }
+                            sx={{
+                              backgroundColor: getLevelColors(course.max_level).backgroundColor,
+                              color: getLevelColors(course.max_level).color,
+                              border: '1px solid',
+                              borderColor: getLevelColors(course.max_level).borderColor
+                            }}
                           />
                         </TableCell>
                         <TableCell>

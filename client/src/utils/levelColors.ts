@@ -52,6 +52,12 @@ export const getLevelColors = (level: string): LevelColorConfig => {
         color: '#1565c0',
         borderColor: '#2196f3'
       };
+    case '高級':
+      return {
+        backgroundColor: '#d32f2f', // 紅色背景
+        color: '#ffffff', // 白色文字
+        borderColor: '#d32f2f'
+      };
     default:
       return {
         backgroundColor: '#f5f5f5', // 預設灰色

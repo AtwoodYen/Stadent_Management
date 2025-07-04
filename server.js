@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 // --- 請求速率限制中介軟體 ---
 const apiLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 分鐘
-	max: 100, // 在一個 windowMs 時間內，限制每個 IP 最多 100 次請求
+	max: 1000, // 暫時增加到 1000 次請求以解決登入問題
 	standardHeaders: true, // 在回應的標頭中回傳速率限制資訊
 	legacyHeaders: false, // 禁用舊的 'X-RateLimit-*' 標頭
     message: { error: '請求過於頻繁，請在 15 分鐘後再試！' } // 超出限制時回傳的訊息
@@ -1860,7 +1860,7 @@ app.get('/api/teachers', async (req, res, next) => {
             FROM teachers t 
             LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
             LEFT JOIN courses_categories cc ON tc.category_id = cc.id
-            WHERE 1=1
+            WHERE t.is_deleted = 0
         `;
         const request = pool.request();
         
@@ -1952,6 +1952,7 @@ app.get('/api/teachers/stats', async (req, res, next) => {
                 MIN(hourly_rate) as min_hourly_rate,
                 MAX(hourly_rate) as max_hourly_rate
             FROM teachers
+            WHERE is_deleted = 0
         `);
         res.json(result.recordset[0]);
     } catch (err) {
@@ -2203,7 +2204,7 @@ app.get('/api/teachers/:id', async (req, res, next) => {
                 FROM teachers t 
                 LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
                 LEFT JOIN courses_categories cc ON tc.category_id = cc.id
-                WHERE t.id = @id
+                WHERE t.id = @id AND t.is_deleted = 0
                 GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at, t.sort_order
             `);
         if (result.recordset.length === 0) {
@@ -2241,6 +2242,7 @@ app.get('/api/teacher-courses', async (req, res, next) => {
                 FROM teacher_courses tc
                 INNER JOIN teachers t ON tc.teacher_id = t.id
                 INNER JOIN courses_categories cc ON tc.category_id = cc.id
+                WHERE t.is_deleted = 0
                 ORDER BY t.name, tc.sort_order, tc.is_preferred DESC, cc.category_name
             `);
             
@@ -2261,10 +2263,10 @@ app.get('/api/teachers/:id/courses', async (req, res, next) => {
         console.log('師資 ID:', id);
         console.log('ID 類型:', typeof id);
         
-        // 先檢查師資是否存在
+        // 先檢查師資是否存在且未刪除
         const teacherCheck = await pool.request()
             .input('teacherId', sql.Int, id)
-            .query('SELECT id, name FROM teachers WHERE id = @teacherId');
+            .query('SELECT id, name FROM teachers WHERE id = @teacherId AND is_deleted = 0');
             
         if (teacherCheck.recordset.length === 0) {
             console.log('師資不存在');
@@ -2333,10 +2335,10 @@ app.post(
         try {
             const { name, email, phone, availableDays, hourlyRate, experience, bio, isActive } = req.body;
             
-            // 檢查 email 是否已被其他老師使用
+            // 檢查 email 是否已被其他老師使用（只檢查未刪除的師資）
             const emailCheckResult = await pool.request()
                 .input('email', sql.NVarChar, email)
-                .query('SELECT id FROM teachers WHERE email = @email');
+                .query('SELECT id FROM teachers WHERE email = @email AND is_deleted = 0');
                 
             if (emailCheckResult.recordset.length > 0) {
                 return res.status(400).json({ error: '此電子信箱已被其他老師使用#1' });
@@ -2395,7 +2397,7 @@ app.put(
 
         try {
             const { id } = req.params;
-            const { name, email, phone, specialties, availableDays, hourlyRate, experience, bio, isActive } = req.body;
+            const { name, email, phone, availableDays, hourlyRate, experience, bio, isActive } = req.body;
             
             // 調試：記錄實際收到的資料
             console.log('=== 師資更新調試資訊 ===');
@@ -2412,7 +2414,7 @@ app.put(
             const emailCheckResult = await pool.request()
                 .input('email', sql.NVarChar, email)
                 .input('id', sql.Int, id)
-                .query('SELECT id, name FROM teachers WHERE email = @email AND id != @id');
+                .query('SELECT id, name FROM teachers WHERE email = @email AND id != @id AND is_deleted = 0');
                 
             console.log('email檢查結果:', emailCheckResult.recordset);
             
@@ -2432,7 +2434,6 @@ app.put(
                 .input('name', sql.NVarChar, name)
                 .input('email', sql.NVarChar, email)
                 .input('phone', sql.NVarChar, phone || null)
-                .input('specialties', sql.NVarChar, JSON.stringify(specialties))
                 .input('available_days', sql.NVarChar, JSON.stringify(availableDays))
                 .input('hourly_rate', sql.Int, hourlyRate)
                 .input('experience', sql.Int, experience)
@@ -2441,7 +2442,7 @@ app.put(
                 .query(`
                     UPDATE teachers 
                     SET name = @name, email = @email, phone = @phone, 
-                        specialties = @specialties, available_days = @available_days,
+                        available_days = @available_days,
                         hourly_rate = @hourly_rate, experience = @experience, 
                         bio = @bio, is_active = @is_active, updated_at = GETDATE()
                     WHERE id = @id;
@@ -2455,7 +2456,6 @@ app.put(
             
             const teacher = result.recordset[0];
             // 解析 JSON 字串為陣列
-            teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
             teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
             
             res.json(teacher);
@@ -2486,7 +2486,6 @@ app.patch('/api/teachers/:id/toggle-status', async (req, res, next) => {
         
         const teacher = result.recordset[0];
         // 解析 JSON 字串為陣列
-        teacher.specialties = teacher.specialties ? JSON.parse(teacher.specialties) : [];
         teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
         
         res.json(teacher);
@@ -2536,12 +2535,32 @@ app.patch('/api/teachers/reorder', async (req, res, next) => {
 app.delete('/api/teachers/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
-        const result = await pool.request()
+        
+        // 先檢查師資是否存在且未刪除
+        const checkResult = await pool.request()
             .input('id', sql.Int, id)
-            .query('UPDATE teachers SET is_active = 0, updated_at = GETDATE() WHERE id = @id AND is_active = 1');
-        if (result.rowsAffected[0] === 0) {
+            .query('SELECT id, name, is_active, is_deleted FROM teachers WHERE id = @id');
+            
+        if (checkResult.recordset.length === 0) {
             return res.status(404).json({ error: 'Teacher not found' });
         }
+        
+        const teacher = checkResult.recordset[0];
+        
+        // 檢查是否已經被軟刪除
+        if (teacher.is_deleted) {
+            return res.status(400).json({ error: 'Teacher is already deleted' });
+        }
+        
+        // 執行軟刪除（設定 is_deleted = 1 和 is_active = 0）
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('UPDATE teachers SET is_deleted = 1, is_active = 0, updated_at = GETDATE() WHERE id = @id');
+            
+        if (result.rowsAffected[0] === 0) {
+            return res.status(500).json({ error: 'Delete operation failed' });
+        }
+        
         res.status(204).send();
     } catch (err) {
         next(err);

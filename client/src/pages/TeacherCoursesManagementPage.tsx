@@ -50,6 +50,7 @@ interface TeacherCourse {
   course_category: string;
   max_level: string;
   is_preferred: boolean;
+  sort_order: number;
   created_at: string;
   updated_at?: string;
 }
@@ -72,7 +73,7 @@ interface SnackbarState {
   severity: 'success' | 'error' | 'warning' | 'info';
 }
 
-type SortField = 'teacher_name' | 'course_category' | 'max_level' | 'is_preferred' | 'created_at';
+type SortField = 'teacher_name' | 'course_category' | 'max_level' | 'is_preferred' | 'created_at' | 'sort_order';
 type SortDirection = 'asc' | 'desc';
 
 interface SortState {
@@ -167,7 +168,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
   // 載入課程分類
   const fetchCourseCategories = async () => {
     try {
-      const response = await fetch('/api/courses/categories');
+      const response = await fetch('/api/teachers/course-categories');
       if (!response.ok) throw new Error('載入課程分類失敗');
       const data = await response.json();
       setCourseCategories(data);
@@ -328,6 +329,12 @@ const TeacherCoursesManagementPage: React.FC = () => {
           // 日期排序
           aValue = new Date(aValue).getTime();
           bValue = new Date(bValue).getTime();
+          break;
+        
+        case 'sort_order':
+          // 排序值排序
+          aValue = Number(aValue);
+          bValue = Number(bValue);
           break;
         
         default:
@@ -584,13 +591,22 @@ const TeacherCoursesManagementPage: React.FC = () => {
                   建立時間
                 </TableSortLabel>
               </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortState.field === 'sort_order'}
+                  direction={sortState.field === 'sort_order' ? sortState.direction : 'asc'}
+                  onClick={() => handleSort('sort_order')}
+                >
+                  排序值
+                </TableSortLabel>
+              </TableCell>
               <TableCell align="center">操作</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filteredAndSortedCourses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   <Typography color="text.secondary">
                     沒有找到符合條件的課程能力記錄
                   </Typography>
@@ -636,6 +652,11 @@ const TeacherCoursesManagementPage: React.FC = () => {
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
                       {new Date(course.created_at).toLocaleDateString('zh-TW')}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {course.sort_order}
                     </Typography>
                   </TableCell>
                   <TableCell align="center">

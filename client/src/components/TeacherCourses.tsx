@@ -25,7 +25,9 @@ import {
   IconButton,
   Alert,
   Snackbar,
-  Divider
+  Divider,
+  Autocomplete,
+  TableSortLabel
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -44,6 +46,7 @@ interface TeacherCourse {
   course_category: string;
   max_level: string;
   is_preferred: boolean;
+  sort_order: number;
   created_at: string;
 }
 
@@ -108,6 +111,43 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
 
   const levels = ['初級', '中級', '高級'];
 
+  // 排序狀態
+  const [sortState, setSortState] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'sort_order', direction: 'asc' });
+
+  // 排序函數
+  const sortCourses = (courses: TeacherCourse[]) => {
+    if (!sortState.field) return courses;
+    return [...courses].sort((a, b) => {
+      let aValue: any = a[sortState.field as keyof TeacherCourse];
+      let bValue: any = b[sortState.field as keyof TeacherCourse];
+      // 特殊處理
+      if (sortState.field === 'max_level') {
+        const levelOrder = { '初級': 1, '中級': 2, '高級': 3 };
+        aValue = levelOrder[String(aValue) as keyof typeof levelOrder] || 0;
+        bValue = levelOrder[String(bValue) as keyof typeof levelOrder] || 0;
+      } else if (sortState.field === 'is_preferred') {
+        aValue = aValue ? 1 : 0;
+        bValue = bValue ? 1 : 0;
+      } else if (sortState.field === 'created_at') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+      if (aValue < bValue) return sortState.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortState.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const handleSort = (field: string) => {
+    setSortState(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
   // 載入師資課程能力
   const fetchTeacherCourses = async () => {
     if (teacherId === undefined || teacherId === null) {
@@ -140,7 +180,9 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
       console.log('課程能力數量:', data?.length);
       
       if (Array.isArray(data)) {
-        setCourses(data);
+        // 按照排序值排序
+        const sortedData = data.sort((a: TeacherCourse, b: TeacherCourse) => a.sort_order - b.sort_order);
+        setCourses(sortedData);
         console.log('課程能力設定成功，數量:', data.length);
       } else {
         console.error('API 返回的資料格式不正確:', data);
@@ -198,7 +240,7 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
   // 載入課程分類
   const fetchCourseCategories = async () => {
     try {
-      const response = await fetch('/api/courses/categories');
+      const response = await fetch('/api/teachers/course-categories');
       
       if (!response.ok) {
         throw new Error(`載入課程分類失敗: ${response.status}`);
@@ -291,6 +333,8 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
       });
     }
   };
+
+
 
   // 當對話框開啟時載入資料
   useEffect(() => {
@@ -495,24 +539,65 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>課程分類</TableCell>
-                    <TableCell>教學水準</TableCell>
-                    <TableCell>主力課程</TableCell>
-                    <TableCell>新增時間</TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortState.field === 'course_category'}
+                        direction={sortState.field === 'course_category' ? sortState.direction : 'asc'}
+                        onClick={() => handleSort('course_category')}
+                      >
+                        課程分類
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortState.field === 'max_level'}
+                        direction={sortState.field === 'max_level' ? sortState.direction : 'asc'}
+                        onClick={() => handleSort('max_level')}
+                      >
+                        教學水準
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortState.field === 'is_preferred'}
+                        direction={sortState.field === 'is_preferred' ? sortState.direction : 'asc'}
+                        onClick={() => handleSort('is_preferred')}
+                      >
+                        主力課程
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortState.field === 'sort_order'}
+                        direction={sortState.field === 'sort_order' ? sortState.direction : 'asc'}
+                        onClick={() => handleSort('sort_order')}
+                      >
+                        排序值
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortState.field === 'created_at'}
+                        direction={sortState.field === 'created_at' ? sortState.direction : 'asc'}
+                        onClick={() => handleSort('created_at')}
+                      >
+                        新增時間
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell align="center">操作</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {courses.length === 0 ? (
+                  {sortCourses(courses).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography color="text.secondary">
                           尚未新增任何課程能力
                         </Typography>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    courses.map((course) => (
+                    sortCourses(courses).map((course) => (
                       <TableRow key={course.id}>
                         <TableCell>
                           <Typography variant="body2">
@@ -535,6 +620,11 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
                             size="small" 
                             color={course.is_preferred ? 'primary' : 'default'}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {course.sort_order}
+                          </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="text.secondary">
@@ -577,20 +667,26 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>課程分類</InputLabel>
-              <Select
-                value={formData.courseCategory}
-                label="課程分類"
-                onChange={(e) => setFormData({ ...formData, courseCategory: e.target.value })}
-              >
-                {courseCategories.map((category, index) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              freeSolo
+              options={courseCategories}
+              value={formData.courseCategory}
+              onChange={(event, newValue) => {
+                setFormData(prev => ({ ...prev, courseCategory: newValue || '' }));
+              }}
+              onInputChange={(event, newInputValue) => {
+                setFormData(prev => ({ ...prev, courseCategory: newInputValue }));
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="課程分類"
+                  placeholder="選擇或輸入課程分類"
+                  helperText="可以從現有分類中選擇，或輸入新的課程分類名稱"
+                  margin="normal"
+                />
+              )}
+            />
 
             <FormControl fullWidth>
               <InputLabel>教學水準</InputLabel>

@@ -15,6 +15,7 @@ import TutorManagerPage from './pages/TutorManagerPage';
 import CoursesPage from './pages/CoursesPage';
 import TeachersPage from './pages/TeachersPage';
 import TeacherCoursesManagementPage from './pages/TeacherCoursesManagementPage';
+import CourseCategoriesPage from './pages/CourseCategoriesPage';
 import UsersPage from './pages/UsersPage';
 import DevTools from './components/DevTools';
 import './App.css';
@@ -75,6 +76,7 @@ const AppContent = () => {
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/teachers" element={<TeachersPage />} />
           <Route path="/teacher-courses" element={<TeacherCoursesManagementPage />} />
+          <Route path="/course-categories" element={<CourseCategoriesPage />} />
           <Route path="/users" element={<UsersPage />} />
         </Routes>
       </Layout>

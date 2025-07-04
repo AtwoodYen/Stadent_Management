@@ -1219,6 +1219,26 @@ app.get('/api/courses/categories', async (req, res, next) => {
     }
 });
 
+// [GET] 取得特定課程分類的課程數量
+app.get('/api/courses/count', async (req, res, next) => {
+    try {
+        const { category } = req.query;
+        
+        if (!category) {
+            return res.status(400).json({ error: '課程分類參數為必填' });
+        }
+        
+        const result = await pool.request()
+            .input('category', sql.NVarChar, category)
+            .query('SELECT COUNT(*) as count FROM courses WHERE category = @category AND is_active = 1');
+        
+        res.json({ count: result.recordset[0].count });
+    } catch (err) {
+        console.error('取得課程數量錯誤:', err);
+        next(err);
+    }
+});
+
 // [READ] 取得單一課程
 app.get('/api/courses/:id', async (req, res, next) => {
     try {
@@ -1835,10 +1855,11 @@ app.get('/api/teachers', async (req, res, next) => {
                 t.id, t.name, t.email, t.phone, t.available_days, 
                 t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
                 t.created_at, t.updated_at, t.sort_order,
-                ISNULL(STRING_AGG(tc.course_category, ', '), '') as course_categories,
-                ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', '), '') as preferred_courses
+                ISNULL(STRING_AGG(cc.category_name, ', '), '') as course_categories,
+                ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN cc.category_name END, ', '), '') as preferred_courses
             FROM teachers t 
             LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
+            LEFT JOIN courses_categories cc ON tc.category_id = cc.id
             WHERE 1=1
         `;
         const request = pool.request();
@@ -1853,8 +1874,9 @@ app.get('/api/teachers', async (req, res, next) => {
         if (specialty) {
             query += ` AND EXISTS (
                 SELECT 1 FROM teacher_courses tc2 
+                INNER JOIN courses_categories cc2 ON tc2.category_id = cc2.id
                 WHERE tc2.teacher_id = t.id 
-                AND tc2.course_category = @specialty
+                AND cc2.category_name = @specialty
             )`;
             request.input('specialty', sql.NVarChar, specialty);
         }
@@ -1940,17 +1962,214 @@ app.get('/api/teachers/stats', async (req, res, next) => {
 // [GET] 取得課程分類列表（用於師資篩選）
 app.get('/api/teachers/course-categories', async (req, res, next) => {
     try {
-        // 從 teacher_courses 表提取所有課程分類
+        // 從 courses_categories 表提取所有啟用的課程分類
         const result = await pool.request().query(`
-            SELECT DISTINCT tc.course_category
-            FROM teacher_courses tc
-            INNER JOIN teachers t ON tc.teacher_id = t.id
-            WHERE t.is_active = 1
-            ORDER BY tc.course_category
+            SELECT cc.category_name
+            FROM courses_categories cc
+            WHERE cc.is_active = 1
+            ORDER BY cc.sort_order, cc.category_name
         `);
         
-        const categories = result.recordset.map(row => row.course_category);
+        const categories = result.recordset.map(row => row.category_name);
         res.json(categories);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得所有課程分類（用於管理頁面）
+app.get('/api/course-categories', async (req, res, next) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                cc.id,
+                cc.category_code,
+                cc.category_name,
+                cc.description,
+                cc.is_active,
+                cc.sort_order,
+                vcm.course_count,
+                vcm.teacher_count,
+                vcm.student_count
+            FROM courses_categories cc
+            LEFT JOIN view_course_categories_management vcm ON cc.id = vcm.id
+            ORDER BY cc.sort_order, cc.category_name
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [GET] 取得單一課程分類
+app.get('/api/course-categories/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT 
+                    cc.id,
+                    cc.category_code,
+                    cc.category_name,
+                    cc.description,
+                    cc.is_active,
+                    cc.sort_order
+                FROM courses_categories cc
+                WHERE cc.id = @id
+            `);
+        
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Course category not found' });
+        }
+        
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [POST] 新增課程分類
+app.post('/api/course-categories', async (req, res, next) => {
+    try {
+        const { category_name, description, sort_order, is_active } = req.body;
+        
+        // 檢查課程分類是否已存在
+        const existingResult = await pool.request()
+            .input('category_name', sql.NVarChar, category_name)
+            .query('SELECT id FROM courses_categories WHERE category_name = @category_name');
+        
+        if (existingResult.recordset.length > 0) {
+            return res.status(400).json({ error: '課程分類名稱已存在' });
+        }
+        
+        // 生成分類代碼
+        const category_code = category_name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+        
+        const result = await pool.request()
+            .input('category_code', sql.NVarChar, category_code)
+            .input('category_name', sql.NVarChar, category_name)
+            .input('description', sql.NVarChar, description || '')
+            .input('sort_order', sql.Int, sort_order || 0)
+            .input('is_active', sql.Bit, is_active !== false)
+            .query(`
+                INSERT INTO courses_categories (category_code, category_name, description, sort_order, is_active)
+                OUTPUT inserted.*
+                VALUES (@category_code, @category_name, @description, @sort_order, @is_active)
+            `);
+        
+        res.status(201).json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [PUT] 更新課程分類
+app.put('/api/course-categories/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { category_name, description, sort_order, is_active } = req.body;
+        
+        // 檢查課程分類是否存在
+        const existingResult = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT category_name FROM courses_categories WHERE id = @id');
+        
+        if (existingResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Course category not found' });
+        }
+        
+        // 如果修改了名稱，檢查新名稱是否與其他分類衝突
+        if (category_name && category_name !== existingResult.recordset[0].category_name) {
+            const conflictResult = await pool.request()
+                .input('category_name', sql.NVarChar, category_name)
+                .input('id', sql.Int, id)
+                .query('SELECT id FROM courses_categories WHERE category_name = @category_name AND id != @id');
+            
+            if (conflictResult.recordset.length > 0) {
+                return res.status(400).json({ error: '課程分類名稱已存在' });
+            }
+        }
+        
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .input('category_name', sql.NVarChar, category_name)
+            .input('description', sql.NVarChar, description || '')
+            .input('sort_order', sql.Int, sort_order)
+            .input('is_active', sql.Bit, is_active)
+            .query(`
+                UPDATE courses_categories 
+                SET category_name = @category_name, description = @description, 
+                    sort_order = @sort_order, is_active = @is_active, updated_at = GETDATE()
+                WHERE id = @id;
+                SELECT * FROM courses_categories WHERE id = @id;
+            `);
+        
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [PATCH] 切換課程分類啟用狀態
+app.patch('/api/course-categories/:id/toggle', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { is_active } = req.body;
+        
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .input('is_active', sql.Bit, is_active)
+            .query(`
+                UPDATE courses_categories 
+                SET is_active = @is_active, updated_at = GETDATE()
+                WHERE id = @id;
+                SELECT * FROM courses_categories WHERE id = @id;
+            `);
+        
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Course category not found' });
+        }
+        
+        res.json(result.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [DELETE] 刪除課程分類
+app.delete('/api/course-categories/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        
+        // 檢查是否有師資或課程使用此分類
+        const usageResult = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT 
+                    (SELECT COUNT(*) FROM teacher_courses WHERE category_id = @id) as teacher_count,
+                    (SELECT COUNT(*) FROM courses WHERE category_id = @id) as course_count
+            `);
+        
+        const { teacher_count, course_count } = usageResult.recordset[0];
+        
+        if (teacher_count > 0 || course_count > 0) {
+            return res.status(400).json({ 
+                error: '無法刪除課程分類，因為還有師資或課程在使用此分類',
+                teacher_count,
+                course_count
+            });
+        }
+        
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM courses_categories WHERE id = @id');
+        
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Course category not found' });
+        }
+        
+        res.status(204).send();
     } catch (err) {
         next(err);
     }
@@ -1979,10 +2198,11 @@ app.get('/api/teachers/:id', async (req, res, next) => {
                     t.id, t.name, t.email, t.phone, t.available_days, 
                     t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url,
                     t.created_at, t.updated_at, t.sort_order,
-                    ISNULL(STRING_AGG(tc.course_category, ', '), '') as course_categories,
-                    ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN tc.course_category END, ', '), '') as preferred_courses
+                    ISNULL(STRING_AGG(cc.category_name, ', '), '') as course_categories,
+                    ISNULL(STRING_AGG(CASE WHEN tc.is_preferred = 1 THEN cc.category_name END, ', '), '') as preferred_courses
                 FROM teachers t 
                 LEFT JOIN teacher_courses tc ON t.id = tc.teacher_id
+                LEFT JOIN courses_categories cc ON tc.category_id = cc.id
                 WHERE t.id = @id
                 GROUP BY t.id, t.name, t.email, t.phone, t.available_days, t.hourly_rate, t.experience, t.bio, t.is_active, t.avatar_url, t.created_at, t.updated_at, t.sort_order
             `);
@@ -2013,13 +2233,15 @@ app.get('/api/teacher-courses', async (req, res, next) => {
                     tc.id,
                     tc.teacher_id,
                     t.name as teacher_name,
-                    tc.course_category,
+                    cc.category_name as course_category,
                     tc.max_level,
                     tc.is_preferred,
+                    tc.sort_order,
                     tc.created_at
                 FROM teacher_courses tc
                 INNER JOIN teachers t ON tc.teacher_id = t.id
-                ORDER BY t.name, tc.is_preferred DESC, tc.course_category
+                INNER JOIN courses_categories cc ON tc.category_id = cc.id
+                ORDER BY t.name, tc.sort_order, tc.is_preferred DESC, cc.category_name
             `);
             
         console.log('查詢結果筆數:', result.recordset.length);
@@ -2054,7 +2276,20 @@ app.get('/api/teachers/:id/courses', async (req, res, next) => {
         // 簡化的查詢語句
         const result = await pool.request()
             .input('teacherId', sql.Int, id)
-            .query('SELECT * FROM teacher_courses WHERE teacher_id = @teacherId ORDER BY is_preferred DESC, course_category');
+            .query(`
+                SELECT 
+                    tc.id,
+                    tc.teacher_id,
+                    cc.category_name as course_category,
+                    tc.max_level,
+                    tc.is_preferred,
+                    tc.sort_order,
+                    tc.created_at
+                FROM teacher_courses tc
+                INNER JOIN courses_categories cc ON tc.category_id = cc.id
+                WHERE tc.teacher_id = @teacherId 
+                ORDER BY tc.sort_order, tc.is_preferred DESC, cc.category_name
+            `);
             
         console.log('查詢結果筆數:', result.recordset.length);
         console.log('查詢結果:', result.recordset);
@@ -2331,15 +2566,26 @@ app.post(
             const { id } = req.params;
             const { courseCategory, maxLevel, isPreferred } = req.body;
             
+            // 先查詢課程分類的 ID
+            const categoryResult = await pool.request()
+                .input('category_name', sql.NVarChar, courseCategory)
+                .query('SELECT id FROM courses_categories WHERE category_name = @category_name AND is_active = 1');
+            
+            if (categoryResult.recordset.length === 0) {
+                return res.status(400).json({ error: '課程分類不存在或已停用' });
+            }
+            
+            const categoryId = categoryResult.recordset[0].id;
+            
             const result = await pool.request()
                 .input('teacher_id', sql.Int, id)
-                .input('course_category', sql.NVarChar, courseCategory)
+                .input('category_id', sql.Int, categoryId)
                 .input('max_level', sql.NVarChar, maxLevel)
                 .input('is_preferred', sql.Bit, isPreferred)
                 .query(`
-                    INSERT INTO teacher_courses (teacher_id, course_category, max_level, is_preferred) 
+                    INSERT INTO teacher_courses (teacher_id, category_id, max_level, is_preferred) 
                     OUTPUT inserted.*
-                    VALUES (@teacher_id, @course_category, @max_level, @is_preferred)
+                    VALUES (@teacher_id, @category_id, @max_level, @is_preferred)
                 `);
             res.status(201).json(result.recordset[0]);
         } catch (err) {
@@ -2369,15 +2615,26 @@ app.put(
             const { teacherId, courseId } = req.params;
             const { courseCategory, maxLevel, isPreferred } = req.body;
             
+            // 先查詢課程分類的 ID
+            const categoryResult = await pool.request()
+                .input('category_name', sql.NVarChar, courseCategory)
+                .query('SELECT id FROM courses_categories WHERE category_name = @category_name AND is_active = 1');
+            
+            if (categoryResult.recordset.length === 0) {
+                return res.status(400).json({ error: '課程分類不存在或已停用' });
+            }
+            
+            const categoryId = categoryResult.recordset[0].id;
+            
             const result = await pool.request()
                 .input('id', sql.Int, courseId)
                 .input('teacher_id', sql.Int, teacherId)
-                .input('course_category', sql.NVarChar, courseCategory)
+                .input('category_id', sql.Int, categoryId)
                 .input('max_level', sql.NVarChar, maxLevel)
                 .input('is_preferred', sql.Bit, isPreferred)
                 .query(`
                     UPDATE teacher_courses 
-                    SET course_category = @course_category, max_level = @max_level, 
+                    SET category_id = @category_id, max_level = @max_level, 
                         is_preferred = @is_preferred
                     WHERE id = @id AND teacher_id = @teacher_id;
                     SELECT * FROM teacher_courses WHERE id = @id;
@@ -2395,6 +2652,32 @@ app.put(
     }
 );
 
+// [GET] 取得特定師資的課程能力
+app.get('/api/teachers/:id/courses', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT 
+                    tc.id,
+                    tc.teacher_id,
+                    cc.category_name as course_category,
+                    tc.max_level,
+                    tc.is_preferred,
+                    tc.sort_order,
+                    tc.created_at
+                FROM teacher_courses tc
+                INNER JOIN courses_categories cc ON tc.category_id = cc.id
+                WHERE tc.teacher_id = @id
+                ORDER BY tc.sort_order, tc.is_preferred DESC, cc.category_name
+            `);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
 // [DELETE] 刪除師資課程能力
 app.delete('/api/teachers/:teacherId/courses/:courseId', async (req, res, next) => {
     try {
@@ -2407,6 +2690,47 @@ app.delete('/api/teachers/:teacherId/courses/:courseId', async (req, res, next) 
             return res.status(404).json({ error: 'Teacher course not found' });
         }
         res.status(204).send();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [PATCH] 更新師資課程能力的排序
+app.patch('/api/teachers/:teacherId/courses/:courseId/sort', async (req, res, next) => {
+    try {
+        const { teacherId, courseId } = req.params;
+        const { sort_order } = req.body;
+        
+        if (typeof sort_order !== 'number') {
+            return res.status(400).json({ error: '排序值必須是數字' });
+        }
+        
+        const result = await pool.request()
+            .input('teacherId', sql.Int, teacherId)
+            .input('courseId', sql.Int, courseId)
+            .input('sortOrder', sql.Int, sort_order)
+            .query('UPDATE teacher_courses SET sort_order = @sortOrder WHERE teacher_id = @teacherId AND id = @courseId');
+            
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: '課程能力不存在' });
+        }
+        
+        res.json({ message: '排序更新成功' });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [POST] 重新排序師資的課程能力
+app.post('/api/teachers/:teacherId/courses/reorder', async (req, res, next) => {
+    try {
+        const { teacherId } = req.params;
+        
+        const result = await pool.request()
+            .input('teacherId', sql.Int, teacherId)
+            .query('EXEC sp_reorder_teacher_courses @teacher_id = @teacherId');
+            
+        res.json({ message: '課程能力重新排序成功' });
     } catch (err) {
         next(err);
     }

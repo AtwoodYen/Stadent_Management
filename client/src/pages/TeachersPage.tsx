@@ -477,10 +477,10 @@ const TeachersPage: React.FC = () => {
               display: 'flex', 
               alignItems: 'center', 
               mb: viewMode === 'grid' ? 2 : 0, 
-              minWidth: viewMode === 'list' ? '200px' : 'auto' 
+              minWidth: viewMode === 'list' ? '160px' : 'auto' 
             }}>
-              <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500' }}>
-                <PersonIcon />
+              <Avatar sx={{ mr: 2, bgcolor: teacher.is_active ? 'primary.main' : 'grey.500', width: 32, height: 32 }}>
+                <PersonIcon sx={{ fontSize: 16 }} />
               </Avatar>
               <Box>
                 <Typography variant="h6" component="div">
@@ -578,7 +578,7 @@ const TeachersPage: React.FC = () => {
             ) : (
               // 列表模式：水平佈局
               <>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '150px' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '200px' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <EmailIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
@@ -595,7 +595,7 @@ const TeachersPage: React.FC = () => {
                   )}
                 </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '120px' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '140px', ml: 8 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
@@ -610,40 +610,8 @@ const TeachersPage: React.FC = () => {
                   </Box>
                 </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    課程能力：
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {(() => {
-                      if (teacher.preferredCourses && teacher.preferredCourses.length > 0) {
-                        return teacher.preferredCourses.map((course, idx) => (
-                          <Chip key={idx} label={course} size="small" variant="outlined" color="primary" />
-                        ));
-                      } else if (teacher.courseCategories && teacher.courseCategories.length > 0) {
-                        return teacher.courseCategories.map((course, idx) => (
-                          <Chip key={idx} label={course} size="small" variant="outlined" />
-                        ));
-                      } else {
-                        return <Chip label="無課程能力" size="small" variant="outlined" />;
-                      }
-                    })()}
-                  </Box>
-                </Box>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexGrow: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    可授課日：
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {teacher.availableDays.map((day, index) => (
-                      <Chip key={index} label={day} size="small" variant="outlined" />
-                    ))}
-                  </Box>
-                </Box>
-
-                {teacher.bio && (
-                  <Box sx={{ minWidth: '200px', maxWidth: '300px' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '300px', ml: 8 }}>
+                  {teacher.bio && (
                     <Typography variant="body2" color="text.secondary" sx={{ 
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -653,8 +621,8 @@ const TeachersPage: React.FC = () => {
                     }}>
                       {teacher.bio}
                     </Typography>
-                  </Box>
-                )}
+                  )}
+                </Box>
               </>
                           )}
             </CardContent>

@@ -9,6 +9,7 @@ import SchoolIcon from '@mui/icons-material/AccountBalance';
 import BookIcon from '@mui/icons-material/MenuBook';
 import TeacherIcon from '@mui/icons-material/School';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import CategoryIcon from '@mui/icons-material/Category';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,6 +22,7 @@ const menuItems = [
   { text: '課程管理', icon: <BookIcon />, path: '/courses' },
   { text: '師資管理', icon: <TeacherIcon />, path: '/teachers' },
   { text: '課程能力', icon: <AssignmentIcon />, path: '/teacher-courses' },
+  { text: '課程分類', icon: <CategoryIcon />, path: '/course-categories' },
   { text: '統計報表', icon: <DashboardIcon />, path: '/' },
   { text: '用戶管理', icon: <ManageAccountsIcon />, path: '/users' },
 ];

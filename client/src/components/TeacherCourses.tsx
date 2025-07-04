@@ -293,7 +293,7 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
     console.log('teacherId 類型:', typeof teacherId);
     console.log('teacherId 是否為真值:', !!teacherId);
     
-    if (open && teacherId) {
+    if (open && (teacherId !== undefined && teacherId !== null)) {
       console.log('開始載入資料...');
       fetchTeacherCourses();
       fetchTeacherSpecialties();

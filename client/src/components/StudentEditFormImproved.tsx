@@ -7,7 +7,8 @@ import {
   Box, 
   Typography,
   Divider,
-  ListSubheader
+  ListSubheader,
+  Autocomplete
 } from '@mui/material';
 import FormRow from './FormRow';
 import FormContainer from './FormContainer';
@@ -30,6 +31,7 @@ interface Student {
   gender: string;
   level_type: string;
   class_type: string;
+  enrollment_status: string;
   notes: string;
 }
 
@@ -68,10 +70,12 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
     gender: student?.gender || '',
     level_type: student?.level_type || '',
     class_type: student?.class_type || '',
+    enrollment_status: student?.enrollment_status || '進行中',
     notes: student?.notes || ''
   });
 
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
+  const [schools, setSchools] = useState<string[]>([]);
 
   // 載入班別資料
   useEffect(() => {
@@ -90,6 +94,25 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
     };
 
     fetchClassTypes();
+  }, []);
+
+  // 載入學校資料
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const response = await fetch('/api/students/schools');
+        if (response.ok) {
+          const data = await response.json();
+          setSchools(data);
+        } else {
+          console.error('無法載入學校資料');
+        }
+      } catch (error) {
+        console.error('載入學校資料時發生錯誤:', error);
+      }
+    };
+
+    fetchSchools();
   }, []);
 
   const handleChange = (field: keyof Student, value: string) => {
@@ -144,12 +167,26 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
           {/* 第二行：學校和年級 */}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, mb: 1 }}>
             <FormRow label="學校" required labelWidth={80}>
-              <TextField
-                size="small"
+              <Autocomplete
+                options={schools}
                 value={formData.school}
-                onChange={(e) => handleChange('school', e.target.value)}
-                required
-                fullWidth
+                onChange={(event, newValue) => handleChange('school', newValue || '')}
+                onInputChange={(event, newInputValue) => {
+                  // 如果輸入的值不在選項中，也更新表單資料
+                  if (!schools.includes(newInputValue)) {
+                    handleChange('school', newInputValue);
+                  }
+                }}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="請輸入或選擇學校"
+                    required
+                    fullWidth
+                  />
+                )}
               />
             </FormRow>
             
@@ -186,8 +223,8 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
             </FormRow>
           </Box>
 
-          {/* 第三行：性別、程度、班別 */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
+          {/* 第三行：性別、程度、班別、就讀狀態 */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 2 }}>
             <FormRow label="性別" required labelWidth={60}>
               <Select
                 size="small"
@@ -209,7 +246,7 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
                 onChange={(e) => handleChange('level_type', e.target.value)}
                 fullWidth
               >
-                <MenuItem value="">選擇</MenuItem>
+                <MenuItem value="">選擇程度</MenuItem>
                 <MenuItem value="新手">新手</MenuItem>
                 <MenuItem value="入門">入門</MenuItem>
                 <MenuItem value="進階">進階</MenuItem>
@@ -218,19 +255,33 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
               </Select>
             </FormRow>
             
-            <FormRow label="班別" labelWidth={60}>
+            <FormRow label="班別" required labelWidth={60}>
               <Select
                 size="small"
                 value={formData.class_type}
                 onChange={(e) => handleChange('class_type', e.target.value)}
                 fullWidth
+                required
               >
-                <MenuItem value="">選擇</MenuItem>
+                <MenuItem value="">選擇班別</MenuItem>
                 {classTypes.map((classType) => (
                   <MenuItem key={classType.class_code} value={classType.class_code}>
                     {classType.class_name}
                   </MenuItem>
                 ))}
+              </Select>
+            </FormRow>
+
+            <FormRow label="就讀狀態" labelWidth={80}>
+              <Select
+                size="small"
+                value={formData.enrollment_status}
+                onChange={(e) => handleChange('enrollment_status', e.target.value)}
+                fullWidth
+              >
+                <MenuItem value="進行中">進行中</MenuItem>
+                <MenuItem value="暫停中">暫停中</MenuItem>
+                <MenuItem value="已畢業">已畢業</MenuItem>
               </Select>
             </FormRow>
           </Box>

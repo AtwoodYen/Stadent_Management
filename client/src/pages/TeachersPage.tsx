@@ -1141,6 +1141,14 @@ const TeachersPage: React.FC = () => {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{
+          top: '50% !important',
+          left: '50% !important',
+          transform: 'translate(-50%, -50%) !important',
+          bottom: 'auto !important',
+          right: 'auto !important'
+        }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}

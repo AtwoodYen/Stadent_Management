@@ -84,6 +84,10 @@ const UsersPage: React.FC = () => {
     is_active: true,
     password: ''
   });
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // 載入用戶資料
   const fetchUsers = async () => {
@@ -265,22 +269,58 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('確定要刪除此用戶嗎？')) {
-      try {
-        const response = await fetch(`/api/users/${id}`, {
-          method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-          throw new Error('刪除用戶失敗');
-        }
-        
-        setUsers(prev => prev.filter(user => user.id !== id));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '刪除失敗');
-      }
+  const handleDelete = (user: User) => {
+    setUserToDelete(user);
+    setShowPasswordModal(true);
+    setPasswordError('');
+    setAdminPassword('');
+  };
+
+  const verifyPasswordAndDelete = async () => {
+    if (!userToDelete || !adminPassword) {
+      setPasswordError('請輸入管理員密碼');
+      return;
     }
+
+    try {
+      // 先驗證管理員密碼
+      const verifyResponse = await fetch('/api/auth/validate-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: adminPassword })
+      });
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json();
+        setPasswordError(errorData.message || '密碼驗證失敗');
+        return;
+      }
+
+      // 密碼驗證成功，執行刪除
+      const deleteResponse = await fetch(`/api/users/${userToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!deleteResponse.ok) {
+        throw new Error('刪除用戶失敗');
+      }
+      
+      setUsers(prev => prev.filter(user => user.id !== userToDelete.id));
+      setShowPasswordModal(false);
+      setUserToDelete(null);
+      setAdminPassword('');
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : '刪除失敗');
+    }
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setUserToDelete(null);
+    setAdminPassword('');
+    setPasswordError('');
   };
 
   const toggleUserStatus = async (id: number) => {
@@ -434,7 +474,7 @@ const UsersPage: React.FC = () => {
                   </IconButton>
                   <IconButton
                     size="small"
-                    onClick={() => handleDelete(user.id)}
+                    onClick={() => handleDelete(user)}
                     disabled={user.role === 'admin' && user.id === 1}
                   >
                     <DeleteIcon />
@@ -541,6 +581,46 @@ const UsersPage: React.FC = () => {
             disabled={!formData.full_name || !formData.username || !formData.email || (!editingUser && !formData.password)}
           >
             {editingUser ? '更新' : '新增'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 管理員密碼驗證模態框 */}
+      <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
+        <DialogTitle>管理員密碼驗證</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              ⚠️ 您即將刪除用戶：<strong>{userToDelete?.full_name}</strong>
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 3 }}>
+              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+            </Typography>
+            <TextField
+              fullWidth
+              type="password"
+              label="管理員密碼"
+              value={adminPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+              error={!!passwordError}
+              helperText={passwordError}
+              onKeyPress={(e: React.KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                  verifyPasswordAndDelete();
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closePasswordModal}>取消</Button>
+          <Button 
+            onClick={verifyPasswordAndDelete} 
+            color="error" 
+            variant="contained"
+            disabled={!adminPassword.trim()}
+          >
+            確認刪除
           </Button>
         </DialogActions>
       </Dialog>

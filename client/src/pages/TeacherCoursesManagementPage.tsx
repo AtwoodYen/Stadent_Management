@@ -92,7 +92,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     teacherId: '',
     courseCategory: '',
-    maxLevel: '初級',
+    maxLevel: '新手',
     isPreferred: false
   });
   const [snackbar, setSnackbar] = useState<SnackbarState>({
@@ -119,7 +119,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
     direction: 'asc'
   });
 
-  const levels = ['初級', '中級', '高級'];
+      const levels = ['新手', '入門', '進階', '高階', '精英'];
 
   // 載入所有資料
   useEffect(() => {
@@ -200,7 +200,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
       setFormData({
         teacherId: '',
         courseCategory: '',
-        maxLevel: '初級',
+        maxLevel: '新手',
         isPreferred: false
       });
     }
@@ -214,7 +214,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
     setFormData({
       teacherId: '',
       courseCategory: '',
-      maxLevel: '初級',
+      maxLevel: '新手',
       isPreferred: false
     });
   };
@@ -361,7 +361,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
       switch (sortState.field) {
         case 'max_level':
           // 教學水準排序：初級 < 中級 < 高級
-          const levelOrder = { '初級': 1, '中級': 2, '高級': 3 };
+          const levelOrder = { '新手': 1, '入門': 2, '進階': 3, '高階': 4, '精英': 5 };
           aValue = levelOrder[aValue as keyof typeof levelOrder] || 0;
           bValue = levelOrder[bValue as keyof typeof levelOrder] || 0;
           break;
@@ -869,6 +869,14 @@ const TeacherCoursesManagementPage: React.FC = () => {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{
+          top: '50% !important',
+          left: '50% !important',
+          transform: 'translate(-50%, -50%) !important',
+          bottom: 'auto !important',
+          right: 'auto !important'
+        }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}

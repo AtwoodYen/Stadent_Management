@@ -211,7 +211,7 @@ export default function SchedulePage() {
         const formattedStudents = data.map((student: any) => ({
           id: student.id,
           name: student.name,
-          level: student.level || '初級'
+          level: student.level || '新手'
         }));
         setStudents(formattedStudents);
       }

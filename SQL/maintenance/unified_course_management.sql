@@ -32,6 +32,7 @@ BEGIN
     PRINT N'已建立 courses_categories 資料表';
 END
 
+GO
 -- 插入課程內容分類資料
 IF NOT EXISTS (SELECT 1 FROM courses_categories WHERE category_code = 'PYTHON')
 BEGIN
@@ -55,6 +56,7 @@ BEGIN
     PRINT N'已插入課程內容分類資料';
 END
 
+GO
 -- =====================================================
 -- 2. 更新 courses 表，使用外鍵關聯
 -- =====================================================
@@ -66,6 +68,7 @@ BEGIN
     PRINT N'已新增 category_id 欄位到 courses 表';
 END
 
+GO
 -- 建立外鍵約束
 IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_courses_category_id')
 BEGIN
@@ -75,6 +78,7 @@ BEGIN
     PRINT N'已建立 courses 表的外鍵約束';
 END
 
+GO
 -- =====================================================
 -- 3. 更新 teacher_courses 表，使用外鍵關聯
 -- =====================================================
@@ -86,6 +90,7 @@ BEGIN
     PRINT N'已新增 category_id 欄位到 teacher_courses 表';
 END
 
+GO
 -- 建立外鍵約束
 IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_teacher_courses_category_id')
 BEGIN
@@ -95,6 +100,7 @@ BEGIN
     PRINT N'已建立 teacher_courses 表的外鍵約束';
 END
 
+GO
 -- =====================================================
 -- 4. 建立管理視圖
 -- =====================================================
@@ -118,6 +124,7 @@ SELECT
      WHERE ct.class_name LIKE '%' + cc.category_name + '%' AND s.is_active = 1) as student_count
 FROM courses_categories cc;
 
+GO
 -- 師資教學能力詳細視圖
 CREATE OR ALTER VIEW [dbo].[view_teacher_capabilities] AS
 SELECT 
@@ -139,6 +146,7 @@ INNER JOIN courses_categories cc ON tc.category_id = cc.id
 WHERE t.is_active = 1 AND cc.is_active = 1
 ORDER BY t.name, cc.sort_order, level_numeric DESC;
 
+GO
 -- =====================================================
 -- 5. 建立管理 API 查詢
 -- =====================================================

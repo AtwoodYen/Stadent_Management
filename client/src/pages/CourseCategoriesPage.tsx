@@ -201,6 +201,10 @@ const CourseCategoriesPage: React.FC = () => {
     message: '',
     severity: 'success'
   });
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<CourseCategory | null>(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -315,7 +319,7 @@ const CourseCategoriesPage: React.FC = () => {
   };
 
   // 刪除課程分類
-  const handleDeleteCategory = async (category: CourseCategory) => {
+  const handleDeleteCategory = (category: CourseCategory) => {
     if (category.teacher_count > 0 || category.course_count > 0) {
       setSnackbar({
         open: true,
@@ -325,16 +329,40 @@ const CourseCategoriesPage: React.FC = () => {
       return;
     }
 
-    if (!confirm(`確定要刪除「${category.category_name}」課程分類嗎？`)) {
+    setCategoryToDelete(category);
+    setShowPasswordModal(true);
+    setPasswordError('');
+    setAdminPassword('');
+  };
+
+  const verifyPasswordAndDelete = async () => {
+    if (!categoryToDelete || !adminPassword) {
+      setPasswordError('請輸入管理員密碼');
       return;
     }
 
     try {
-      const response = await fetch(`/api/course-categories/${category.id}`, {
+      // 先驗證管理員密碼
+      const verifyResponse = await fetch('/api/auth/validate-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: adminPassword })
+      });
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json();
+        setPasswordError(errorData.message || '密碼驗證失敗');
+        return;
+      }
+
+      // 密碼驗證成功，執行刪除
+      const deleteResponse = await fetch(`/api/course-categories/${categoryToDelete.id}`, {
         method: 'DELETE'
       });
 
-      if (!response.ok) throw new Error('刪除失敗');
+      if (!deleteResponse.ok) throw new Error('刪除失敗');
 
       setSnackbar({
         open: true,
@@ -342,14 +370,20 @@ const CourseCategoriesPage: React.FC = () => {
         severity: 'success'
       });
 
+      setShowPasswordModal(false);
+      setCategoryToDelete(null);
+      setAdminPassword('');
       fetchCategories();
     } catch (error) {
-      setSnackbar({
-        open: true,
-        message: error instanceof Error ? error.message : '刪除失敗',
-        severity: 'error'
-      });
+      setPasswordError(error instanceof Error ? error.message : '刪除失敗');
     }
+  };
+
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setCategoryToDelete(null);
+    setAdminPassword('');
+    setPasswordError('');
   };
 
   // 切換啟用狀態
@@ -554,15 +588,64 @@ const CourseCategoriesPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* 管理員密碼驗證模態框 */}
+      <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
+        <DialogTitle>管理員密碼驗證</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              ⚠️ 您即將刪除課程分類：<strong>{categoryToDelete?.category_name}</strong>
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 3 }}>
+              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+            </Typography>
+            <TextField
+              fullWidth
+              type="password"
+              label="管理員密碼"
+              value={adminPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+              error={!!passwordError}
+              helperText={passwordError}
+              onKeyPress={(e: React.KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                  verifyPasswordAndDelete();
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closePasswordModal}>取消</Button>
+          <Button 
+            onClick={verifyPasswordAndDelete} 
+            color="error" 
+            variant="contained"
+            disabled={!adminPassword.trim()}
+          >
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 訊息提示 */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{
+          top: '50% !important',
+          left: '50% !important',
+          transform: 'translate(-50%, -50%) !important',
+          bottom: 'auto !important',
+          right: 'auto !important'
+        }}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
+          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>

@@ -54,6 +54,49 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* 全局樣式調整 */
+
+/* 調整 Material-UI Dialog 位置到畫面中央 */
+.MuiDialog-root .MuiDialog-paper {
+  margin: 0 !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* 調整 Material-UI Snackbar 位置到畫面中央 */
+.MuiSnackbar-root {
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  bottom: auto !important;
+  right: auto !important;
+}
+
+/* 確保 Snackbar 內容在中央 */
+.MuiSnackbar-root .MuiAlert-root {
+  min-width: 300px;
+  max-width: 500px;
+}
+
+/* 調整瀏覽器 alert 的樣式（如果可能的話） */
+/* 注意：瀏覽器的 alert 無法通過 CSS 調整位置，建議改用自定義的 Dialog */
+
+/* 確保所有 Dialog 都在畫面中央 */
+.MuiDialog-container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+}
+
+/* 調整 Dialog 內容的最大高度 */
+.MuiDialog-paper {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

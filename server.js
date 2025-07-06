@@ -513,7 +513,7 @@ app.get('/api/auth/locked-accounts', authenticateToken, async (req, res, next) =
 // [READ] 取得所有學生資料
 app.get('/api/students', async (req, res, next) => {
     try {
-        const { school, grade, level_type, gender, class_type } = req.query;
+        const { school, grade, level_type, gender, class_type, enrollment_status } = req.query;
         let query = 'SELECT * FROM students WHERE is_active = 1';
         const request = pool.request();
         
@@ -536,6 +536,10 @@ app.get('/api/students', async (req, res, next) => {
         if (class_type) {
             query += ' AND class_type = @class_type';
             request.input('class_type', sql.NVarChar, class_type);
+        }
+        if (enrollment_status) {
+            query += ' AND enrollment_status = @enrollment_status';
+            request.input('enrollment_status', sql.NVarChar, enrollment_status);
         }
         
         query += ' ORDER BY school, grade, class_type, chinese_name';
@@ -643,11 +647,12 @@ app.post(
     body('school').notEmpty().withMessage('學校為必填'),
     body('grade').notEmpty().withMessage('年級為必填'),
     body('gender').isIn(['男', '女']).withMessage('無效的性別'),
-    body('level_type').isIn(['初級', '中級', '進階']).withMessage('無效的程度'),
+    body('level_type').isIn(['新手', '入門', '進階', '高階', '精英']).withMessage('無效的程度'),
     body('class_type').notEmpty().withMessage('班別為必填'),
-    body('student_email').optional().isEmail().withMessage('無效的學生電子信箱格式'),
+    body('student_email').notEmpty().withMessage('學生電子信箱為必填').isEmail().withMessage('無效的學生電子信箱格式'),
     body('father_email').optional().isEmail().withMessage('無效的父親電子信箱格式'),
     body('mother_email').optional().isEmail().withMessage('無效的母親電子信箱格式'),
+    body('enrollment_status').optional().isIn(['進行中', '已畢業', '暫停中']).withMessage('無效的就讀狀態'),
     // --- 路由處理器 ---
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -661,7 +666,7 @@ app.post(
                 chinese_name, english_name, student_phone, student_email, student_line,
                 father_name, father_phone, father_line,
                 mother_name, mother_phone, mother_line,
-                school, grade, gender, level_type, class_type, notes
+                school, grade, gender, level_type, class_type, enrollment_status, notes
             } = req.body;
             
             const result = await pool.request()
@@ -681,21 +686,23 @@ app.post(
                 .input('gender', sql.NVarChar, gender)
                 .input('level_type', sql.NVarChar, level_type)
                 .input('class_type', sql.NVarChar, class_type)
+                .input('enrollment_status', sql.NVarChar, enrollment_status || '進行中')
                 .input('notes', sql.NVarChar, notes || null)
                 .query(`
                     INSERT INTO students (
                         chinese_name, english_name, student_phone, student_email, student_line,
                         father_name, father_phone, father_line,
                         mother_name, mother_phone, mother_line,
-                        school, grade, gender, level_type, class_type, notes
+                        school, grade, gender, level_type, class_type, enrollment_status, notes
                     ) 
-                    OUTPUT inserted.* 
                     VALUES (
                         @chinese_name, @english_name, @student_phone, @student_email, @student_line,
                         @father_name, @father_phone, @father_line,
                         @mother_name, @mother_phone, @mother_line,
-                        @school, @grade, @gender, @level_type, @class_type, @notes
-                    )
+                        @school, @grade, @gender, @level_type, @class_type, @enrollment_status, @notes
+                    );
+                    
+                    SELECT * FROM students WHERE id = SCOPE_IDENTITY() AND is_active = 1;
                 `);
             res.status(201).json(result.recordset[0]);
         } catch (err) {
@@ -713,9 +720,10 @@ app.put(
     body('school').notEmpty().withMessage('學校為必填'),
     body('grade').notEmpty().withMessage('年級為必填'),
     body('gender').isIn(['男', '女']).withMessage('無效的性別'),
-    body('level_type').isIn(['初級', '中級', '進階']).withMessage('無效的程度'),
+    body('level_type').isIn(['新手', '入門', '進階', '高階', '精英']).withMessage('無效的程度'),
     body('class_type').notEmpty().withMessage('班別為必填'),
-    body('student_email').optional().isEmail().withMessage('無效的學生電子信箱格式'),
+    body('student_email').notEmpty().withMessage('學生電子信箱為必填').isEmail().withMessage('無效的學生電子信箱格式'),
+    body('enrollment_status').optional().isIn(['進行中', '已畢業', '暫停中']).withMessage('無效的就讀狀態'),
     // --- 路由處理器 ---
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -730,7 +738,7 @@ app.put(
                 chinese_name, english_name, student_phone, student_email, student_line,
                 father_name, father_phone, father_line,
                 mother_name, mother_phone, mother_line,
-                school, grade, gender, level_type, class_type, notes
+                school, grade, gender, level_type, class_type, enrollment_status, notes
             } = req.body;
             
             const result = await pool.request()
@@ -751,6 +759,7 @@ app.put(
                 .input('gender', sql.NVarChar, gender)
                 .input('level_type', sql.NVarChar, level_type)
                 .input('class_type', sql.NVarChar, class_type)
+                .input('enrollment_status', sql.NVarChar, enrollment_status || '進行中')
                 .input('notes', sql.NVarChar, notes || null)
                 .query(`
                     UPDATE students 
@@ -759,7 +768,7 @@ app.put(
                         father_name = @father_name, father_phone = @father_phone, father_line = @father_line,
                         mother_name = @mother_name, mother_phone = @mother_phone, mother_line = @mother_line,
                         school = @school, grade = @grade, gender = @gender, 
-                        level_type = @level_type, class_type = @class_type, notes = @notes, updated_at = GETDATE()
+                        level_type = @level_type, class_type = @class_type, enrollment_status = @enrollment_status, notes = @notes, updated_at = GETDATE()
                     WHERE id = @id AND is_active = 1;
                     SELECT * FROM students WHERE id = @id AND is_active = 1;
                 `);
@@ -1295,7 +1304,7 @@ app.post(
     // --- 驗證規則 ---
     body('name').notEmpty().withMessage('課程名稱為必填'),
     body('category').notEmpty().withMessage('課程分類為必填'),
-    body('level').isIn(['初級', '中級', '高級']).withMessage('無效的難度等級'),
+    body('level').isIn(['新手', '入門', '進階', '高階', '精英']).withMessage('無效的難度等級'),
     body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
     body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
     body('description').optional(),
@@ -1335,7 +1344,7 @@ app.put(
     // --- 驗證規則 ---
     body('name').notEmpty().withMessage('課程名稱為必填'),
     body('category').notEmpty().withMessage('課程分類為必填'),
-    body('level').isIn(['初級', '中級', '高級']).withMessage('無效的難度等級'),
+    body('level').isIn(['新手', '入門', '進階', '高階', '精英']).withMessage('無效的難度等級'),
     body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
     body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
     body('description').optional(),
@@ -2570,7 +2579,7 @@ app.post(
     '/api/teachers/:id/courses',
     // --- 驗證規則 ---
     body('courseCategory').notEmpty().withMessage('課程分類為必填'),
-    body('maxLevel').isIn(['初級', '中級', '高級']).withMessage('無效的課程難度'),
+    body('maxLevel').isIn(['新手', '入門', '進階', '高階', '精英']).withMessage('無效的課程難度'),
     body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
     // --- 路由處理器 ---
     async (req, res, next) => {
@@ -2628,7 +2637,7 @@ app.put(
     '/api/teachers/:teacherId/courses/:courseId',
     // --- 驗證規則 ---
     body('courseCategory').notEmpty().withMessage('課程分類為必填'),
-    body('maxLevel').isIn(['初級', '中級', '高級']).withMessage('無效的課程難度'),
+    body('maxLevel').isIn(['新手', '入門', '進階', '高階', '精英']).withMessage('無效的課程難度'),
     body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
     // --- 路由處理器 ---
     async (req, res, next) => {

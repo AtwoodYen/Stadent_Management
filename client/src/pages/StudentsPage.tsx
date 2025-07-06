@@ -7,10 +7,12 @@ import {
   Button,
   Typography,
   Alert,
-  Box
+  Box,
+  TextField
 } from '@mui/material';
 import StudentFormOptimized from '../components/StudentFormOptimized';
 import StudentDetailView from '../components/StudentDetailView';
+import CustomAlert from '../components/CustomAlert';
 import { getLevelColors } from '../utils/levelColors';
 import { getGenderColors } from '../utils/genderColors';
 import '../styles/improved-student-form.css';
@@ -35,6 +37,7 @@ interface Student {
   gender: string;
   level_type: string;
   class_type: string;
+  enrollment_status: string;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -61,7 +64,8 @@ const StudentsPage: React.FC = () => {
     grade: '',
     level: '',
     gender: '',
-    classType: ''
+    classType: '',
+    enrollmentStatus: ''
   });
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: 'chinese_name',
@@ -77,8 +81,33 @@ const StudentsPage: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 自定義 Alert 狀態
+  const [customAlert, setCustomAlert] = useState({
+    open: false,
+    message: '',
+    type: 'info' as 'info' | 'warning' | 'error' | 'success',
+    title: ''
+  });
+
+  // 顯示自定義 Alert 的函數
+  const showAlert = (message: string, type: 'info' | 'warning' | 'error' | 'success' = 'info', title?: string) => {
+    setCustomAlert({
+      open: true,
+      message,
+      type,
+      title: title || ''
+    });
+  };
+
+  const closeAlert = () => {
+    setCustomAlert(prev => ({ ...prev, open: false }));
+  };
 
   // 取得學生資料
   const fetchStudents = async () => {
@@ -90,6 +119,7 @@ const StudentsPage: React.FC = () => {
       if (sortOptions.level) params.append('level_type', sortOptions.level);
       if (sortOptions.gender) params.append('gender', sortOptions.gender);
       if (sortOptions.classType) params.append('class_type', sortOptions.classType);
+      if (sortOptions.enrollmentStatus) params.append('enrollment_status', sortOptions.enrollmentStatus);
       
       const response = await fetch(`/api/students?${params}`);
       if (!response.ok) {
@@ -278,25 +308,55 @@ const StudentsPage: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const confirmDeleteStudent = async () => {
+  const confirmDeleteStudent = () => {
     if (!selectedStudent) return;
     
+    // 顯示密碼驗證模態框
+    setShowDeleteModal(false);
+    setShowPasswordModal(true);
+    setPasswordError('');
+    setAdminPassword('');
+  };
+
+  const verifyPasswordAndDelete = async () => {
+    if (!selectedStudent || !adminPassword) {
+      setPasswordError('請輸入管理員密碼');
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/students/${selectedStudent.id}`, {
+      // 先驗證管理員密碼
+      const verifyResponse = await fetch('/api/auth/validate-admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: adminPassword })
+      });
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json();
+        setPasswordError(errorData.message || '密碼驗證失敗');
+        return;
+      }
+
+      // 密碼驗證成功，執行刪除
+      const deleteResponse = await fetch(`/api/students/${selectedStudent.id}`, {
         method: 'DELETE'
       });
       
-      if (!response.ok) {
+      if (!deleteResponse.ok) {
         throw new Error('刪除學生失敗');
       }
       
       // 重新載入資料
       fetchStudents();
-      setShowDeleteModal(false);
+      setShowPasswordModal(false);
       setSelectedStudent(null);
-      alert('學生已成功刪除');
+      setAdminPassword('');
+      showAlert('學生已成功刪除', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : '刪除失敗');
+      setPasswordError(err instanceof Error ? err.message : '刪除失敗');
     }
   };
 
@@ -335,9 +395,9 @@ const StudentsPage: React.FC = () => {
       fetchStudents();
       setShowEditModal(false);
       setSelectedStudent(null);
-      alert(selectedStudent ? '學生資料已更新' : '學生已新增');
+      showAlert(selectedStudent ? '學生資料已更新' : '學生已新增', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : '儲存失敗');
+      showAlert(err instanceof Error ? err.message : '儲存失敗', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -347,7 +407,10 @@ const StudentsPage: React.FC = () => {
     setShowEditModal(false);
     setShowDeleteModal(false);
     setShowDetailModal(false);
+    setShowPasswordModal(false);
     setSelectedStudent(null);
+    setAdminPassword('');
+    setPasswordError('');
     setIsSaving(false);
   };
 
@@ -566,6 +629,17 @@ const StudentsPage: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                  
+                  <select 
+                    value={sortOptions.enrollmentStatus} 
+                    onChange={(e) => handleSortChange('enrollmentStatus', e.target.value)}
+                    className="sort-select"
+                  >
+                    <option value="">就讀狀態</option>
+                    <option value="進行中">進行中</option>
+                    <option value="暫停中">暫停中</option>
+                    <option value="已畢業">已畢業</option>
+                  </select>
                 </div>
               </div>
               <div className="calendar-controls">
@@ -621,6 +695,12 @@ const StudentsPage: React.FC = () => {
                     >
                       班別<span className="sort-icon">{getSortIcon('class_type_name')}</span>
                     </th>
+                    <th 
+                      className={`sortable-header ${sortConfig.key === 'enrollment_status' ? 'active' : ''}`}
+                      onClick={() => handleSort('enrollment_status')}
+                    >
+                      就讀狀態<span className="sort-icon">{getSortIcon('enrollment_status')}</span>
+                    </th>
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -659,6 +739,7 @@ const StudentsPage: React.FC = () => {
                                    student.class_type === 'APCS_A' ? '#fff3e0' : // 淺橙色 - APCS A
                                    student.class_type === 'APCS_P' ? '#fce4ec' : // 淺粉色 - APCS P
                                    student.class_type === 'ANIMATION' ? '#f1f8e9' : // 淺青綠色 - 動畫美術
+                                   student.class_type === 'PYTHON' ? '#fff8e1' : // 淺黃色 - Python
                                    '#f5f5f5', // 預設灰色
                             color: student.class_type === 'CPP' ? '#1976d2' : // 深藍色
                                    student.class_type === 'PROJECT' ? '#7b1fa2' : // 深紫色
@@ -666,6 +747,7 @@ const StudentsPage: React.FC = () => {
                                    student.class_type === 'APCS_A' ? '#f57c00' : // 深橙色
                                    student.class_type === 'APCS_P' ? '#c2185b' : // 深粉色
                                    student.class_type === 'ANIMATION' ? '#689f38' : // 深青綠色
+                                   student.class_type === 'PYTHON' ? '#f57f17' : // 深黃色 - Python
                                    '#757575', // 預設深灰色
                             border: student.class_type ? '1px solid' : 'none',
                             borderColor: student.class_type === 'CPP' ? '#1976d2' :
@@ -674,10 +756,33 @@ const StudentsPage: React.FC = () => {
                                         student.class_type === 'APCS_A' ? '#f57c00' :
                                         student.class_type === 'APCS_P' ? '#c2185b' :
                                         student.class_type === 'ANIMATION' ? '#689f38' :
+                                        student.class_type === 'PYTHON' ? '#f57f17' :
                                         'transparent'
                           }}
                         >
                           {getClassTypeName(student.class_type)}
+                        </span>
+                      </td>
+                      <td>
+                        <span 
+                          className="badge badge-enrollment-status"
+                          style={{
+                            backgroundColor: student.enrollment_status === '進行中' ? '#e8f5e8' : // 淺綠色
+                                   student.enrollment_status === '暫停中' ? '#fff3e0' : // 淺橙色
+                                   student.enrollment_status === '已畢業' ? '#f3e5f5' : // 淺紫色
+                                   '#f5f5f5', // 預設灰色
+                            color: student.enrollment_status === '進行中' ? '#388e3c' : // 深綠色
+                                   student.enrollment_status === '暫停中' ? '#f57c00' : // 深橙色
+                                   student.enrollment_status === '已畢業' ? '#7b1fa2' : // 深紫色
+                                   '#757575', // 預設深灰色
+                            border: student.enrollment_status ? '1px solid' : 'none',
+                            borderColor: student.enrollment_status === '進行中' ? '#388e3c' :
+                                        student.enrollment_status === '暫停中' ? '#f57c00' :
+                                        student.enrollment_status === '已畢業' ? '#7b1fa2' :
+                                        'transparent'
+                          }}
+                        >
+                          {student.enrollment_status || '未設定'}
                         </span>
                       </td>
                       <td className="student-actions">
@@ -710,7 +815,18 @@ const StudentsPage: React.FC = () => {
       </div>
 
       {/* 編輯模態框 */}
-      <Dialog open={showEditModal} onClose={closeModals} maxWidth="lg" fullWidth>
+      <Dialog 
+        open={showEditModal} 
+        onClose={closeModals} 
+        maxWidth={false}
+        fullWidth
+        PaperProps={{
+          sx: {
+            maxWidth: '1460px',
+            width: '90vw'
+          }
+        }}
+      >
         <DialogTitle>
           {selectedStudent ? '編輯學生' : '新增學生'}
         </DialogTitle>
@@ -747,6 +863,46 @@ const StudentsPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* 管理員密碼驗證模態框 */}
+      <Dialog open={showPasswordModal} onClose={closeModals} maxWidth="sm" fullWidth>
+        <DialogTitle>管理員密碼驗證</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              ⚠️ 您即將刪除學生：<strong>{selectedStudent?.chinese_name}</strong>
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 3 }}>
+              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+            </Typography>
+            <TextField
+              fullWidth
+              type="password"
+              label="管理員密碼"
+              value={adminPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+              error={!!passwordError}
+              helperText={passwordError}
+              onKeyPress={(e: React.KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                  verifyPasswordAndDelete();
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModals}>取消</Button>
+          <Button 
+            onClick={verifyPasswordAndDelete} 
+            color="error" 
+            variant="contained"
+            disabled={!adminPassword.trim()}
+          >
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 詳情模態框 */}
       <Dialog open={showDetailModal} onClose={closeModals} maxWidth="lg" fullWidth>
         <DialogTitle>學生詳情</DialogTitle>
@@ -762,6 +918,15 @@ const StudentsPage: React.FC = () => {
           </Box>
         </DialogContent>
       </Dialog>
+
+      {/* 自定義 Alert 組件 */}
+      <CustomAlert
+        open={customAlert.open}
+        onClose={closeAlert}
+        message={customAlert.message}
+        type={customAlert.type}
+        title={customAlert.title}
+      />
     </>
   );
 };

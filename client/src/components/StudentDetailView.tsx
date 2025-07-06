@@ -29,6 +29,7 @@ interface Student {
   gender: string;
   level_type: string;
   class_type: string;
+  enrollment_status: string;
   notes: string;
   created_at?: string;
   updated_at?: string;
@@ -131,6 +132,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                        student.class_type === 'APCS_A' ? '#fff3e0' : // 淺橙色 - APCS A
                        student.class_type === 'APCS_P' ? '#fce4ec' : // 淺粉色 - APCS P
                        student.class_type === 'ANIMATION' ? '#f1f8e9' : // 淺青綠色 - 動畫美術
+                       student.class_type === 'PYTHON' ? '#fff8e1' : // 淺黃色 - Python
                        '#f5f5f5', // 預設灰色
                 color: student.class_type === 'CPP' ? '#1976d2' : // 深藍色
                        student.class_type === 'PROJECT' ? '#7b1fa2' : // 深紫色
@@ -138,6 +140,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                        student.class_type === 'APCS_A' ? '#f57c00' : // 深橙色
                        student.class_type === 'APCS_P' ? '#c2185b' : // 深粉色
                        student.class_type === 'ANIMATION' ? '#689f38' : // 深青綠色
+                       student.class_type === 'PYTHON' ? '#f57f17' : // 深黃色 - Python
                        '#757575', // 預設深灰色
                 border: student.class_type ? '1px solid' : 'none',
                 borderColor: student.class_type === 'CPP' ? '#1976d2' :
@@ -146,6 +149,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                             student.class_type === 'APCS_A' ? '#f57c00' :
                             student.class_type === 'APCS_P' ? '#c2185b' :
                             student.class_type === 'ANIMATION' ? '#689f38' :
+                            student.class_type === 'PYTHON' ? '#f57f17' :
                             'transparent'
               }}
             />
@@ -186,7 +190,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
           </FormRow>
         </Box>
 
-        {/* 第三行：程度 */}
+        {/* 第三行：程度、就讀狀態 */}
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
           <FormRow label="程度" labelWidth={80}>
             <Chip 
@@ -201,7 +205,28 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
             />
           </FormRow>
           
-          <div></div> {/* 空白佔位 */}
+          <FormRow label="就讀狀態" labelWidth={80}>
+            <Chip 
+              label={student.enrollment_status || '未設定'} 
+              size="small"
+              sx={{
+                backgroundColor: student.enrollment_status === '進行中' ? '#e8f5e8' : // 淺綠色
+                       student.enrollment_status === '暫停中' ? '#fff3e0' : // 淺橙色
+                       student.enrollment_status === '已畢業' ? '#f3e5f5' : // 淺紫色
+                       '#f5f5f5', // 預設灰色
+                color: student.enrollment_status === '進行中' ? '#388e3c' : // 深綠色
+                       student.enrollment_status === '暫停中' ? '#f57c00' : // 深橙色
+                       student.enrollment_status === '已畢業' ? '#7b1fa2' : // 深紫色
+                       '#757575', // 預設深灰色
+                border: student.enrollment_status ? '1px solid' : 'none',
+                borderColor: student.enrollment_status === '進行中' ? '#388e3c' :
+                            student.enrollment_status === '暫停中' ? '#f57c00' :
+                            student.enrollment_status === '已畢業' ? '#7b1fa2' :
+                            'transparent'
+              }}
+            />
+          </FormRow>
+          
           <div></div> {/* 空白佔位 */}
         </Box>
       </Box>

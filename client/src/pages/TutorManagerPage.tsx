@@ -34,13 +34,16 @@ interface Student {
 }
 
 const TutorManagerPage: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'月' | '週' | '日'>('月');
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentView, setCurrentView] = useState<'月' | '週' | '日'>('月');
   
+  // 新增：分頁選單狀態
+  const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'stats'>('schedule');
+
   // 取得課表資料
   const fetchSchedules = async () => {
     try {
@@ -417,262 +420,366 @@ const TutorManagerPage: React.FC = () => {
 
       {/* 主要容器 */}
       <div className="container">        
-
-        {/* ---------- 內容區 ---------- */}
+        {/* 內容區 */}
         <div className="main-content">
-          {/* 側邊欄 */}
-          <div className="sidebar">
-            <div className="stats-bar">
-              <div className="stat-item">
-                <div className="stat-number">{totalStudents}</div>
-                <div className="stat-label">學生</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">{students.filter(s => !s.is_active).length || 0}</div>
-                <div className="stat-label">停用學生</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">{getCurrentWeekSchedules()}</div>
-                <div className="stat-label">本週課程</div>
-              </div>
-            </div>
-
-            <div className="student-list">
-              <h3>📋 學生管理</h3>
-              <div id="studentList">
-                {students.slice(0, 5).map((student) => (
-                  <div key={student.id} className="student-item">
-                    <div className="student-item-details">
-                      <div className="student-name">{student.chinese_name}</div>
-                      <div className="student-info">{student.school} - {student.grade}</div>
-                      <div className="student-info">{student.level_type}</div>
-                    </div>
-                  </div>
-                ))}
-                {students.length > 5 && (
-                  <div className="student-item">
-                    <div className="student-item-details">
-                      <div className="student-name">還有 {students.length - 5} 位學生...</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button className="btn" style={{ marginTop: 10 }}>➕ 新增學生</button>
-            </div>
+          {/* 分頁選單 */}
+          <div className="tab-navigation" style={{
+            display: 'flex',
+            borderBottom: '2px solid #e0e0e0',
+            marginBottom: '20px',
+            backgroundColor: '#fff',
+            borderRadius: '8px 8px 0 0',
+            overflow: 'hidden'
+          }}>
+            <button
+              className={`tab-button ${activeTab === 'schedule' ? 'active' : ''}`}
+              onClick={() => setActiveTab('schedule')}
+              style={{
+                flex: 1,
+                padding: '15px 20px',
+                border: 'none',
+                backgroundColor: activeTab === 'schedule' ? '#1976d2' : '#f5f5f5',
+                color: activeTab === 'schedule' ? 'white' : '#333',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: activeTab === 'schedule' ? 'bold' : 'normal',
+                transition: 'all 0.3s ease',
+                borderRight: '1px solid #e0e0e0'
+              }}
+            >
+              📅 課程排程
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'students' ? 'active' : ''}`}
+              onClick={() => setActiveTab('students')}
+              style={{
+                flex: 1,
+                padding: '15px 20px',
+                border: 'none',
+                backgroundColor: activeTab === 'students' ? '#1976d2' : '#f5f5f5',
+                color: activeTab === 'students' ? 'white' : '#333',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: activeTab === 'students' ? 'bold' : 'normal',
+                transition: 'all 0.3s ease',
+                borderRight: '1px solid #e0e0e0'
+              }}
+            >
+              👥 學生列表
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'stats' ? 'active' : ''}`}
+              onClick={() => setActiveTab('stats')}
+              style={{
+                flex: 1,
+                padding: '15px 20px',
+                border: 'none',
+                backgroundColor: activeTab === 'stats' ? '#1976d2' : '#f5f5f5',
+                color: activeTab === 'stats' ? 'white' : '#333',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: activeTab === 'stats' ? 'bold' : 'normal',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              📊 統計資料
+            </button>
           </div>
 
-          {/* 日曆區域 */}
-          <div className="calendar-section">
-            <div className="calendar-header">
-              <div className="calendar-nav">
-                <button 
-                  className="btn"
-                  onClick={() => {
-                    if (currentView === '月') {
-                      setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-                    } else if (currentView === '週') {
-                      setCurrentDate(prev => new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000));
-                    } else {
-                      setCurrentDate(prev => new Date(prev.getTime() - 24 * 60 * 60 * 1000));
-                    }
-                  }}
-                >
-                  ‹ {navText.prev}
-                </button>
-                <div className="calendar-title">{getCurrentTitle()}</div>
-                <button 
-                  className="btn"
-                  onClick={() => {
-                    if (currentView === '月') {
-                      setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-                    } else if (currentView === '週') {
-                      setCurrentDate(prev => new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000));
-                    } else {
-                      setCurrentDate(prev => new Date(prev.getTime() + 24 * 60 * 60 * 1000));
-                    }
-                  }}
-                >
-                  {navText.next} ›
-                </button>                                
-              </div>
-
-              <div className="calendar-controls">
-                
-                {/* 視圖切換按鈕移到導航右側 */}
-                <div className="btn-group view-switcher" id="viewSwitcher" style={{ transform: 'translateX(-50px)' }}>
+          {/* 課程排程區域 */}
+          {activeTab === 'schedule' && (
+            <div className="calendar-section">
+              <div className="calendar-header">
+                <div className="calendar-nav">
                   <button 
-                    className={`btn ${currentView === '月' ? 'btn-active' : ''}`}
-                    onClick={() => setCurrentView('月')}
+                    className="btn"
+                    onClick={() => {
+                      if (currentView === '月') {
+                        setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+                      } else if (currentView === '週') {
+                        setCurrentDate(prev => new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000));
+                      } else {
+                        setCurrentDate(prev => new Date(prev.getTime() - 24 * 60 * 60 * 1000));
+                      }
+                    }}
                   >
-                    月
+                    ‹ {navText.prev}
                   </button>
+                  <div className="calendar-title">{getCurrentTitle()}</div>
                   <button 
-                    className={`btn ${currentView === '週' ? 'btn-active' : ''}`}
-                    onClick={() => setCurrentView('週')}
+                    className="btn"
+                    onClick={() => {
+                      if (currentView === '月') {
+                        setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+                      } else if (currentView === '週') {
+                        setCurrentDate(prev => new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000));
+                      } else {
+                        setCurrentDate(prev => new Date(prev.getTime() + 24 * 60 * 60 * 1000));
+                      }
+                    }}
                   >
-                    週
-                  </button>
-                  <button 
-                    className={`btn ${currentView === '日' ? 'btn-active' : ''}`}
-                    onClick={() => setCurrentView('日')}
-                  >
-                    日
-                  </button>
+                    {navText.next} ›
+                  </button>                                
                 </div>
 
-                <button 
-                  className="btn btn-secondary"
-                  onClick={() => setCurrentDate(new Date())}
-                >
-                  今天
-                </button>
-
-                <button className="btn" style={{ marginLeft: 10 }}>➕ 新增課程</button>
-              </div>
-            </div>
-
-            {/* 月視圖 */}
-            {currentView === '月' && (
-              <div className="month-view">
-                {/* 星期標題 */}
-                <div className="month-header">
-                  {['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'].map((day, index) => (
-                    <div 
-                      key={day} 
-                      className={`month-day-header ${index === 0 || index === 6 ? 'weekend' : ''}`}
+                <div className="calendar-controls">
+                  {/* 視圖切換按鈕移到導航右側 */}
+                  <div className="btn-group view-switcher" id="viewSwitcher" style={{ transform: 'translateX(-50px)' }}>
+                    <button 
+                      className={`btn ${currentView === '月' ? 'btn-active' : ''}`}
+                      onClick={() => setCurrentView('月')}
                     >
-                      {day}
-                    </div>
-                  ))}
-                </div>
+                      月
+                    </button>
+                    <button 
+                      className={`btn ${currentView === '週' ? 'btn-active' : ''}`}
+                      onClick={() => setCurrentView('週')}
+                    >
+                      週
+                    </button>
+                    <button 
+                      className={`btn ${currentView === '日' ? 'btn-active' : ''}`}
+                      onClick={() => setCurrentView('日')}
+                    >
+                      日
+                    </button>
+                  </div>
 
-                {/* 日期格子 */}
-                <div className="month-dates">
-                  {monthCalendar.map((day, index) => {
-                    const dayOfWeek = getDayOfWeek(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date));
-                    const daySchedules = getSchedulesForDay(dayOfWeek);
-                    
-                    return (
-                      <div 
-                        key={index} 
-                        className={`month-day ${!day.isCurrentMonth ? 'other-month' : ''} ${day.isToday ? 'today' : ''}`}
-                      >
-                        <div className="day-number">{day.date}</div>
-                        <div className="day-schedules">
-                          {daySchedules.slice(0, 3).map((schedule) => {
-                            const displayTime = schedule.start_time ? 
-                              schedule.start_time.split('T')[1].substring(0, 5) : 
-                              ['09:00', '10:30', '14:00', '15:30', '19:00', '20:30'][schedule.student_id % 6];
-                            return (
-                              <div key={schedule.id} className="schedule-dot">
-                                <span className="schedule-time">{displayTime}</span>
-                                <span className="schedule-student">{schedule.student_name}</span>
-                              </div>
-                            );
-                          })}
-                          {daySchedules.length > 3 && (
-                            <div className="schedule-more">+{daySchedules.length - 3}</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setCurrentDate(new Date())}
+                  >
+                    今天
+                  </button>
+
+                  <button className="btn" style={{ marginLeft: 10 }}>➕ 新增課程</button>
                 </div>
               </div>
-            )}
 
-            {/* 週視圖 */}
-            {currentView === '週' && (
-              <div className="week-view">
-                <div className="week-header">
-                  <div className="time-column-header">時間</div>
-                  {['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'].map((day, index) => {
-                    const today = new Date();
-                    const todayDayOfWeek = today.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-                    const isToday = index === todayDayOfWeek;
-                    
-                    return (
+              {/* 月視圖 */}
+              {currentView === '月' && (
+                <div className="month-view">
+                  {/* 星期標題 */}
+                  <div className="month-header">
+                    {['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'].map((day, index) => (
                       <div 
                         key={day} 
-                        className={`week-day-header ${isToday ? 'today' : ''}`}
+                        className={`month-day-header ${index === 0 || index === 6 ? 'weekend' : ''}`}
                       >
                         {day}
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+
+                  {/* 日期格子 */}
+                  <div className="month-dates">
+                    {monthCalendar.map((day, index) => {
+                      const dayOfWeek = getDayOfWeek(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date));
+                      const daySchedules = getSchedulesForDay(dayOfWeek);
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className={`month-day ${!day.isCurrentMonth ? 'other-month' : ''} ${day.isToday ? 'today' : ''}`}
+                        >
+                          <div className="day-number">{day.date}</div>
+                          <div className="day-schedules">
+                            {daySchedules.slice(0, 3).map((schedule) => {
+                              const displayTime = schedule.start_time ? 
+                                schedule.start_time.split('T')[1].substring(0, 5) : 
+                                ['09:00', '10:30', '14:00', '15:30', '19:00', '20:30'][schedule.student_id % 6];
+                              return (
+                                <div key={schedule.id} className="schedule-dot">
+                                  <span className="schedule-time">{displayTime}</span>
+                                  <span className="schedule-student">{schedule.student_name}</span>
+                                </div>
+                              );
+                            })}
+                            {daySchedules.length > 3 && (
+                              <div className="schedule-more">+{daySchedules.length - 3}</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                
-                <div className="week-grid">
-                  {timeSlots.map((timeSlot) => (
-                    <div key={timeSlot} className="week-time-row">
-                      <div className="time-label">{timeSlot}</div>
-                      {['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'].map((day) => {
-                        const daySchedules = getSchedulesForTime(day, timeSlot);
+              )}
+
+              {/* 週視圖 */}
+              {currentView === '週' && (
+                <div className="week-view">
+                  <div className="week-header">
+                    <div className="time-column-header">時間</div>
+                    {['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'].map((day, index) => {
+                      const today = new Date();
+                      const todayDayOfWeek = today.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+                      const isToday = index === todayDayOfWeek;
+                      
+                      return (
+                        <div 
+                          key={day} 
+                          className={`week-day-header ${isToday ? 'today' : ''}`}
+                        >
+                          {day}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="week-body">
+                    <div className="time-column">
+                      {generateTimeSlots().map((timeSlot) => (
+                        <div key={timeSlot} className="time-slot">
+                          {timeSlot}
+                        </div>
+                      ))}
+                    </div>
+                    {['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'].map((day, dayIndex) => (
+                      <div key={day} className="week-day-column">
+                        {generateTimeSlots().map((timeSlot) => {
+                          const schedules = getSchedulesForTime(day, timeSlot);
+                          return (
+                            <div key={timeSlot} className="time-slot">
+                              {schedules.map((schedule) => (
+                                <div key={schedule.id} className="schedule-item">
+                                  {renderScheduleInfo(schedule)}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 日視圖 */}
+              {currentView === '日' && (
+                <div className="day-view">
+                  <div className="day-header">
+                    <div className="time-column-header">時間</div>
+                    <div className="day-column-header">
+                      {getCurrentTitle()}
+                    </div>
+                  </div>
+                  <div className="day-body">
+                    <div className="time-column">
+                      {generateTimeSlots().map((timeSlot) => (
+                        <div key={timeSlot} className="time-slot">
+                          {timeSlot}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="day-column">
+                      {generateTimeSlots().map((timeSlot) => {
+                        const schedules = getSchedulesForDayView(getDayOfWeek(currentDate));
+                        const timeSchedules = schedules.filter(schedule => {
+                          const scheduleTime = schedule.start_time ? 
+                            schedule.start_time.split('T')[1].substring(0, 5) : 
+                            '09:00';
+                          return scheduleTime === timeSlot;
+                        });
+                        
                         return (
-                          <div key={day} className="week-time-cell">
-                            {daySchedules.map((schedule) => renderScheduleInfo(schedule))}
+                          <div key={timeSlot} className="time-slot">
+                            {timeSchedules.map((schedule) => (
+                              <div key={schedule.id} className="schedule-item day-schedule">
+                                {renderScheduleInfo(schedule)}
+                              </div>
+                            ))}
                           </div>
                         );
                       })}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
-            {/* 日視圖 */}
-            {currentView === '日' && (
-              <div className="day-view">
-                <div className="day-schedule-container">
-                  {/* 時間軸背景 */}
-                  <div className="day-time-axis">
-                    {timeSlots.map((timeSlot) => (
-                      <div key={timeSlot} className="day-time-slot">
-                        <div className="time-label">{timeSlot}</div>
-                        <div className="time-content-bg"></div>
-                      </div>
-                    ))}
+          {/* 學生列表區域 */}
+          {activeTab === 'students' && (
+            <div className="students-section" style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ marginBottom: '20px', color: '#1976d2' }}>👥 學生列表</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                {students.map(student => (
+                  <div key={student.id} style={{
+                    backgroundColor: '#f5f5f5',
+                    padding: '15px',
+                    borderRadius: '6px',
+                    border: '1px solid #e0e0e0'
+                  }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>{student.chinese_name}</div>
+                    <div style={{ color: '#666', marginBottom: '3px' }}>學校：{student.school}</div>
+                    <div style={{ color: '#666', marginBottom: '3px' }}>年級：{student.grade}</div>
+                    <div style={{ color: '#666' }}>程度：{student.level_type}</div>
                   </div>
-                  
-                  {/* 課程覆蓋層 */}
-                  <div className="day-schedules-overlay">
-                    {(() => {
-                      const currentDayOfWeek = getDayOfWeek(currentDate);
-                      const daySchedules = getSchedulesForDayView(currentDayOfWeek);
-                      
-                      return daySchedules.map((schedule) => {
-                        const position = calculateSchedulePosition(schedule.displayStartTime, schedule.displayEndTime);
-                        
-                        return (
-                          <div 
-                            key={schedule.id} 
-                            className="schedule-block"
-                            style={{
-                              position: 'absolute',
-                              top: `${position.top}px`,
-                              height: `${position.height}px`,
-                              left: 'var(--time-column-width, 100px)', // 時間欄寬度，支援響應式
-                              right: '8px',
-                              zIndex: 1
-                            }}
-                          >
-                            <div className="schedule-item">
-                              <div className="schedule-student">{schedule.student_name}</div>
-                              <div className="schedule-course">{schedule.course_name || schedule.subject || '一般課程'}</div>
-                              <div className="schedule-time">{schedule.displayStartTime} - {schedule.displayEndTime}</div>
-                              {schedule.teacher_name && (
-                                <div className="schedule-teacher">{schedule.teacher_name}</div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 統計資料區域 */}
+          {activeTab === 'stats' && (
+            <div className="stats-section" style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ marginBottom: '20px', color: '#1976d2' }}>📊 統計資料</h2>
+              
+              {/* 基本統計 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                <div style={{
+                  backgroundColor: '#e3f2fd',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #1976d2'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#1976d2' }}>{totalStudents}</div>
+                  <div style={{ color: '#1976d2' }}>總學生數</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#ffebee',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #d32f2f'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#d32f2f' }}>{students.filter(s => !s.is_active).length || 0}</div>
+                  <div style={{ color: '#d32f2f' }}>停用學生</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#e8f5e8',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #388e3c'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#388e3c' }}>{getCurrentWeekSchedules()}</div>
+                  <div style={{ color: '#388e3c' }}>本週課程</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#fff3e0',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #f57c00'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#f57c00' }}>{schedules.length}</div>
+                  <div style={{ color: '#f57c00' }}>總課程數</div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -58,6 +58,9 @@ const SchoolsPage: React.FC = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  
+  // 新增：分頁選單狀態
+  const [activeTab, setActiveTab] = useState<'schools' | 'stats'>('schools');
 
   // 取得學校資料
   const fetchSchools = async () => {
@@ -352,183 +355,336 @@ const SchoolsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
+        }}
+      />
+
       {/* 主要容器 */}
       <div className="container">        
-        {/* 內容區 */}
-        <div className="main-content">
-          {/* 側邊欄 */}
-          <div className="sidebar">
-            <div className="stats-bar">
-              <div className="stat-item">
-                <div className="stat-number">{overallStats.total_schools}</div>
-                <div className="stat-label">總學校</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">{overallStats.public_schools}</div>
-                <div className="stat-label">公立學校</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">{overallStats.national_schools}</div>
-                <div className="stat-label">國立學校</div>
-              </div>
-            </div>
 
-            <div className="student-list">
-              <h3>📊 快速統計</h3>
-              <div className="quick-stats">
-                {districtStats.map((district) => (
-                  <div key={district.district} className="quick-stat-item">
-                    <span className="quick-stat-label">{district.district}:</span>
-                    <span className="quick-stat-value">{district.district_count}校</span>
-                  </div>
-                ))}
-                <div className="quick-stat-item">
-                  <span className="quick-stat-label">我們的學生:</span>
-                  <span className="quick-stat-value">{overallStats.total_our_students}人</span>
-                </div>
-              </div>
-            </div>
+        {/* 分頁按鈕區域 */}
+        <div className="tab-navigation" style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '0px',
+            marginTop: '-10px'
+          }}>
+            <button
+              className={`tab-button ${activeTab === 'schools' ? 'active' : ''}`}
+              onClick={() => setActiveTab('schools')}
+              style={{
+                padding: '12px 24px',
+                marginRight: '10px',
+                border: '2px solid #1976d2',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: activeTab === 'schools' ? '#1976d2' : 'white',
+                color: activeTab === 'schools' ? 'white' : '#1976d2',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              🏫 學校列表
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'stats' ? 'active' : ''}`}
+              onClick={() => setActiveTab('stats')}
+              style={{
+                padding: '12px 24px',
+                border: '2px solid #1976d2',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: activeTab === 'stats' ? '#1976d2' : 'white',
+                color: activeTab === 'stats' ? 'white' : '#1976d2',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              📊 統計資料
+            </button>
           </div>
 
-          {/* 學校列表區域 */}
-          <div className="calendar-section">
-            <div className="calendar-header">
-              <div className="calendar-nav">
-                <div className="pagination-controls">
-                  <button className="btn" onClick={handlePrevPage} disabled={currentPage === 1}>
-                    ‹ 上一頁
-                  </button>
-                  <div className="page-info">
-                    {currentPage} / {totalPages}
-                  </div>
-                  <button className="btn" onClick={handleNextPage} disabled={currentPage === totalPages}>
-                    下一頁 ›
-                  </button>
-                  <select 
-                    value={schoolsPerPage} 
-                    onChange={(e) => handleSchoolsPerPageChange(Number(e.target.value))}
-                    className="per-page-select"
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
-                
-                {/* 排序選項 */}
-                <div className="sort-options">
-                  <select 
-                    value={sortOptions.type} 
-                    onChange={(e) => handleSortChange('type', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">學校性質</option>
-                    <option value="公立">公立</option>
-                    <option value="國立">國立</option>
-                    <option value="私立">私立</option>
-                  </select>
-                  
-                  <select 
-                    value={sortOptions.district} 
-                    onChange={(e) => handleSortChange('district', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">行政區</option>
-                    {districts.map((district) => (
-                      <option key={district} value={district}>{district}</option>
-                    ))}
-                  </select>
-                  
-                                    <select
-                    value={sortOptions.level} 
-                    onChange={(e) => handleSortChange('level', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">學制</option>
-                    <option value="國小">國小</option>
-                    <option value="國中">國中</option>
-                    <option value="高中">高中</option>
-                    <option value="大學">大學</option>
-                    <option value="在職">在職</option>
-                  </select>
-                </div>
-              </div>
-              <div className="calendar-controls">
-                <span className="student-count">總共 {totalSchools} 所學校</span>
-                <button className="btn btn-secondary" onClick={handleAddSchool}>+ 新增學校</button>
-              </div>
-            </div>
+        {/* 內容區 */}
+        <div className="main-content" style={{ display: 'block', width: '100%' }}>
 
-            {/* 學校列表表格 */}
-            <div className="students-table-container">
-              <table className="students-table">
-                <thead>
-                  <tr>
-                    <th>學校全名</th>
-                    <th>簡稱</th>
-                    <th>性質</th>
-                    <th>行政區</th>
-                    <th>學制</th>
-                    <th>我們的學生數</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getCurrentPageSchools().map((school) => (
-                    <tr key={school.id} className="student-row">
-                      <td className="student-chinese-name">{school.school_name}</td>
-                      <td className="student-english-name">{school.short_name}</td>
-                      <td>
-                        <span className="badge badge-school">{school.school_type}</span>
-                      </td>
-                      <td>
-                        <span className="badge badge-grade">{school.district}</span>
-                      </td>
-                      <td>
-                        <span 
-                          className={`badge badge-education-level education-level-${school.education_level || '未設定'}`}
-                          style={{
-                            backgroundColor: getEducationLevelColors(school.education_level).backgroundColor,
-                            color: getEducationLevelColors(school.education_level).color,
-                            border: '1px solid',
-                            borderColor: getEducationLevelColors(school.education_level).borderColor
-                          }}
-                        >
-                          {school.education_level || '未設定'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="badge badge-gender">{school.our_student_count}</span>
-                      </td>
-                      <td className="student-actions">
-                        <button 
-                          className="btn-small btn-edit" 
-                          onClick={() => handleEditSchool(school)}
-                        >
-                          編輯
-                        </button>
-                        {user?.role === 'admin' && (
+          {/* 學校列表區域 */}
+          {activeTab === 'schools' && (
+            <div className="calendar-section" style={{ marginTop: '20px' }}>
+              <div className="calendar-header">
+                <div className="calendar-nav">
+                  <div className="pagination-controls">
+                    <button 
+                      className="btn" 
+                      onClick={handlePrevPage} 
+                      disabled={currentPage === 1}
+                      style={{
+                        backgroundColor: '#1976d2',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        opacity: currentPage === 1 ? 0.6 : 1
+                      }}
+                    >
+                      ‹ 上一頁
+                    </button>
+                    <div className="page-info">
+                      {currentPage} / {totalPages}
+                    </div>
+                    <button 
+                      className="btn" 
+                      onClick={handleNextPage} 
+                      disabled={currentPage >= totalPages}
+                      style={{
+                        backgroundColor: '#1976d2',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                        opacity: currentPage >= totalPages ? 0.6 : 1
+                      }}
+                    >
+                      下一頁 ›
+                    </button>
+                    <select 
+                      value={schoolsPerPage} 
+                      onChange={(e) => handleSchoolsPerPageChange(Number(e.target.value))}
+                      className="per-page-select"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                  
+                  {/* 排序選項 */}
+                  <div className="sort-options">
+                    <select 
+                      value={sortOptions.type} 
+                      onChange={(e) => handleSortChange('type', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">學校類型</option>
+                      <option value="公立">公立</option>
+                      <option value="國立">國立</option>
+                      <option value="私立">私立</option>
+                    </select>
+                    
+                    <select 
+                      value={sortOptions.district} 
+                      onChange={(e) => handleSortChange('district', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">行政區</option>
+                      {districts.map((district) => (
+                        <option key={district} value={district}>{district}</option>
+                      ))}
+                    </select>
+                    
+                    <select 
+                      value={sortOptions.level} 
+                      onChange={(e) => handleSortChange('level', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">教育階段</option>
+                      <option value="小學">小學</option>
+                      <option value="國中">國中</option>
+                      <option value="高中">高中</option>
+                      <option value="大學">大學</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="calendar-controls">
+                  <span className="student-count" style={{ marginLeft: '20px', marginRight: '-5px' }}>總共 {schools.length} 所學校</span>
+                  <button className="btn btn-secondary" onClick={handleAddSchool}>+ 新增學校</button>
+                </div>
+              </div>
+
+              {/* 學校列表表格 */}
+              <div className="students-table-container">
+                <table className="students-table">
+                  <thead>
+                    <tr>
+                      <th>學校名稱</th>
+                      <th>簡稱</th>
+                      <th>學校類型</th>
+                      <th>行政區</th>
+                      <th>教育階段</th>
+                      <th>電話</th>
+                      <th>地址</th>
+                      <th>我們的學生數</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getCurrentPageSchools().map((school) => (
+                      <tr key={school.id} className="student-row">
+                        <td className="student-chinese-name">{school.school_name}</td>
+                        <td className="student-english-name">{school.short_name}</td>
+                        <td>
+                          <span className="badge badge-school">{school.school_type}</span>
+                        </td>
+                        <td>
+                          <span className="badge badge-grade">{school.district}</span>
+                        </td>
+                        <td>
+                          <span 
+                            className={`badge badge-level level-${school.education_level || '未設定'}`}
+                          >
+                            {school.education_level || '未設定'}
+                          </span>
+                        </td>
+                        <td>{school.phone || '未設定'}</td>
+                        <td>{school.address || '未設定'}</td>
+                        <td>
+                          <span className="badge badge-enrollment-status">
+                            {school.our_student_count}人
+                          </span>
+                        </td>
+                        <td className="student-actions">
                           <button 
-                            className="btn-small btn-delete" 
+                            className="btn-small btn-edit"
+                            onClick={() => handleEditSchool(school)}
+                          >
+                            編輯
+                          </button>
+                          <button 
+                            className="btn-small btn-delete"
                             onClick={() => handleDeleteSchool(school)}
                           >
                             刪除
                           </button>
-                        )}
-                        <button 
-                          className="btn-small btn-schedule" 
-                          onClick={() => handleViewSchoolDetail(school)}
-                        >
-                          詳情
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <button 
+                            className="btn-small btn-schedule"
+                            onClick={() => handleViewSchoolDetail(school)}
+                          >
+                            詳情
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* 統計資料區域 */}
+          {activeTab === 'stats' && (
+            <div className="stats-section" style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ marginBottom: '20px', color: '#1976d2' }}>📊 學校統計資料</h2>
+              
+              {/* 基本統計 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                <div style={{
+                  backgroundColor: '#e3f2fd',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #1976d2'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#1976d2' }}>{stats.find(s => s.district === null)?.total_schools || 0}</div>
+                  <div style={{ color: '#1976d2' }}>總學校數</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#e8f5e8',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #388e3c'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#388e3c' }}>{stats.find(s => s.district === null)?.public_schools || 0}</div>
+                  <div style={{ color: '#388e3c' }}>公立學校</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#fff3e0',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #f57c00'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#f57c00' }}>{stats.find(s => s.district === null)?.national_schools || 0}</div>
+                  <div style={{ color: '#f57c00' }}>國立學校</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#fce4ec',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #c2185b'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#c2185b' }}>{stats.find(s => s.district === null)?.private_schools || 0}</div>
+                  <div style={{ color: '#c2185b' }}>私立學校</div>
+                </div>
+              </div>
+
+              {/* 總學生數統計 */}
+              <div style={{ marginBottom: '30px' }}>
+                <h3 style={{ marginBottom: '15px', color: '#333' }}>👥 我們的學生總數</h3>
+                <div style={{
+                  backgroundColor: '#e3f2fd',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #1976d2'
+                }}>
+                  <div style={{ fontSize: '3em', fontWeight: 'bold', color: '#1976d2' }}>{stats.find(s => s.district === null)?.total_our_students || 0}</div>
+                  <div style={{ color: '#1976d2', fontSize: '18px' }}>位學生</div>
+                </div>
+              </div>
+
+              {/* 行政區統計 */}
+              {stats.length > 1 && (
+                <div>
+                  <h3 style={{ marginBottom: '15px', color: '#333' }}>🗺️ 行政區分布</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                    {stats.filter(s => s.district !== null).map((stat, index) => (
+                      <div key={index} style={{
+                        backgroundColor: '#f5f5f5',
+                        padding: '15px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        border: '1px solid #e0e0e0'
+                      }}>
+                        <span style={{ fontWeight: 'bold' }}>{stat.district}</span>
+                        <span style={{
+                          backgroundColor: '#1976d2',
+                          color: 'white',
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          fontSize: '14px'
+                        }}>
+                          {stat.district_count}所
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -539,9 +695,9 @@ const SchoolsPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
-            <SchoolEditForm 
-              school={selectedSchool} 
-              onSave={handleSaveSchool} 
+            <SchoolEditForm
+              school={selectedSchool}
+              onSave={handleSaveSchool}
               onCancel={closeModals}
             />
           </Box>
@@ -554,7 +710,7 @@ const SchoolsPage: React.FC = () => {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              您確定要刪除學校「{selectedSchool?.school_name}」嗎？
+              確定要刪除學校「{selectedSchool?.school_name}」嗎？
             </Typography>
             <Alert severity="warning">
               此操作無法復原！
@@ -569,103 +725,88 @@ const SchoolsPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* 詳情模態框 */}
-      <Dialog open={showDetailModal} onClose={closeModals} maxWidth="md" fullWidth>
-        <DialogTitle>學校詳情</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            {selectedSchool && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">學校全名：</Typography>
-                  <Typography variant="body1">{selectedSchool.school_name}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">簡稱：</Typography>
-                  <Typography variant="body1">{selectedSchool.short_name}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">學校性質：</Typography>
-                  <Chip label={selectedSchool.school_type} size="small" color="primary" />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">行政區：</Typography>
-                  <Chip label={selectedSchool.district} size="small" color="secondary" />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">學制：</Typography>
-                  <Chip 
-                    label={selectedSchool.education_level || '未設定'}
-                    size="small"
-                    sx={{
-                      backgroundColor: getEducationLevelColors(selectedSchool.education_level).backgroundColor,
-                      color: getEducationLevelColors(selectedSchool.education_level).color,
-                      border: '1px solid',
-                      borderColor: getEducationLevelColors(selectedSchool.education_level).borderColor
-                    }}
-                  />
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">電話：</Typography>
-                  <Typography variant="body1">{selectedSchool.phone || '未提供'}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">地址：</Typography>
-                  <Typography variant="body1">{selectedSchool.address || '未提供'}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">我們的學生數：</Typography>
-                  <Chip label={`${selectedSchool.our_student_count}人`} size="small" color="info" />
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeModals}>關閉</Button>
-        </DialogActions>
-      </Dialog>
-
       {/* 管理員密碼驗證模態框 */}
       <Dialog open={showPasswordModal} onClose={closeModals} maxWidth="sm" fullWidth>
-        <DialogTitle>🔐 管理員身份驗證</DialogTitle>
+        <DialogTitle>管理員密碼驗證</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              <strong>即將刪除學校：</strong>{selectedSchool?.school_name}
+              ⚠️ 您即將刪除學校：<strong>{selectedSchool?.school_name}</strong>
             </Typography>
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              ⚠️ 此操作無法復原，請謹慎操作！
-            </Alert>
-            
+            <Typography variant="body2" sx={{ mb: 3 }}>
+              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+            </Typography>
             <TextField
               fullWidth
               type="password"
-              label="請輸入管理員密碼"
+              label="管理員密碼"
               value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              placeholder="輸入您的管理員密碼"
-              onKeyPress={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+              error={!!passwordError}
+              helperText={passwordError}
+              onKeyPress={(e: React.KeyboardEvent) => {
                 if (e.key === 'Enter') {
                   verifyPasswordAndDelete();
                 }
               }}
-              error={!!passwordError}
-              helperText={passwordError || '請輸入您的管理員密碼'}
-              sx={{ mb: 2 }}
             />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeModals}>取消</Button>
           <Button 
-            onClick={verifyPasswordAndDelete}
+            onClick={verifyPasswordAndDelete} 
             color="error" 
             variant="contained"
-            disabled={!adminPassword}
+            disabled={!adminPassword.trim()}
           >
             確認刪除
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 詳情模態框 */}
+      <Dialog open={showDetailModal} onClose={closeModals} maxWidth="lg" fullWidth>
+        <DialogTitle>學校詳情</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            {selectedSchool && (
+              <div style={{ padding: '20px' }}>
+                <h3 style={{ color: '#1976d2', marginBottom: '20px' }}>🏫 {selectedSchool.school_name}</h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                  <div>
+                    <h4 style={{ color: '#333', marginBottom: '10px' }}>基本資訊</h4>
+                    <div style={{ backgroundColor: '#f5f5f5', padding: '15px', borderRadius: '6px' }}>
+                      <p><strong>簡稱：</strong>{selectedSchool.short_name}</p>
+                      <p><strong>學校類型：</strong>{selectedSchool.school_type}</p>
+                      <p><strong>行政區：</strong>{selectedSchool.district}</p>
+                      <p><strong>教育階段：</strong>{selectedSchool.education_level}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 style={{ color: '#333', marginBottom: '10px' }}>聯絡資訊</h4>
+                    <div style={{ backgroundColor: '#f5f5f5', padding: '15px', borderRadius: '6px' }}>
+                      <p><strong>電話：</strong>{selectedSchool.phone || '未設定'}</p>
+                      <p><strong>地址：</strong>{selectedSchool.address || '未設定'}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 style={{ color: '#333', marginBottom: '10px' }}>學生統計</h4>
+                    <div style={{ backgroundColor: '#e3f2fd', padding: '15px', borderRadius: '6px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#1976d2' }}>{selectedSchool.our_student_count}</div>
+                      <div style={{ color: '#1976d2' }}>我們的學生數</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModals}>關閉</Button>
         </DialogActions>
       </Dialog>
     </>

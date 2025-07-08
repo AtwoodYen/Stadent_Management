@@ -177,167 +177,182 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   }, []);
 
   return (
-    <Container maxWidth="sm" sx={{ 
-      height: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    }}>
-      <Paper elevation={10} sx={{ 
-        width: '100%', 
-        maxWidth: 400, 
-        borderRadius: 3,
-        overflow: 'hidden'
+    <>
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
+        }}
+      />
+
+      <Container maxWidth="sm" sx={{ 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center'
       }}>
-        <Box sx={{ 
-          bgcolor: 'primary.main', 
-          color: 'white', 
-          py: 3, 
-          textAlign: 'center' 
+        <Paper elevation={10} sx={{ 
+          width: '100%', 
+          maxWidth: 400, 
+          borderRadius: 3,
+          overflow: 'hidden'
         }}>
-          <Lock sx={{ fontSize: 48, mb: 1 }} />
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            Im未來-學生管理系統
-          </Typography>
-          <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
-            請輸入您的帳號密碼
-          </Typography>
-        </Box>
-        
-        <CardContent sx={{ p: 4 }}>
-          <form onSubmit={handleSubmit}>
-            <Box sx={{ mb: 3 }}>
-              <TextField
-                fullWidth
-                label="帳號"
-                variant="outlined"
-                value={username}
-                onChange={(e) => {
-                  const newUsername = e.target.value;
-                  setUsername(newUsername);
-                  
-                  // 切換帳號時清除錯誤訊息
-                  setError('');
-                  
-                  // 防抖動檢查新帳號的鎖定狀態
-                  debouncedCheckLockStatus(newUsername);
-                }}
-                required
-                InputProps={{
-                  startAdornment: (
-                    <Box sx={{ 
-                      backgroundColor: '#f0f8ff', 
-                      borderRadius: '50%', 
-                      p: 0.5, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      mr: 1
-                    }}>
-                      <Person sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
-                    </Box>
-                  )
-                }}
-                sx={{ 
-                  mb: 2,
-                  '& .MuiOutlinedInput-input': {
-                    paddingLeft: '4px'
-                  }
-                }}
-              />
-              
-              <TextField
-                fullWidth
-                label="密碼"
-                type={showPassword ? 'text' : 'password'}
-                variant="outlined"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                InputProps={{
-                  /* ----------- 左側鎖頭 ----------- */
-                  startAdornment: (
-                    <Box sx={{ 
-                      backgroundColor: '#f0f8ff', 
-                      borderRadius: '50%', 
-                      p: 0.5, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      mr: 1
-                    }}>
-                      <Lock sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
-                    </Box>
-                  ),
-
-                  /* ----------- 右側眼睛 ----------- */
-                  endAdornment: (
-                    <Box
-                      onClick={handleClickShowPassword}
-                      onMouseDown={handleMouseDownPassword}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
+          <Box sx={{ 
+            bgcolor: 'primary.main', 
+            color: 'white', 
+            py: 3, 
+            textAlign: 'center' 
+          }}>
+            <Lock sx={{ fontSize: 48, mb: 1 }} />
+            <Typography variant="h4" component="h1" fontWeight="bold">
+              Im未來-學生管理系統
+            </Typography>
+            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+              請輸入您的帳號密碼
+            </Typography>
+          </Box>
+          
+          <CardContent sx={{ p: 4 }}>
+            <form onSubmit={handleSubmit}>
+              <Box sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  label="帳號"
+                  variant="outlined"
+                  value={username}
+                  onChange={(e) => {
+                    const newUsername = e.target.value;
+                    setUsername(newUsername);
+                    
+                    // 切換帳號時清除錯誤訊息
+                    setError('');
+                    
+                    // 防抖動檢查新帳號的鎖定狀態
+                    debouncedCheckLockStatus(newUsername);
+                  }}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ 
+                        backgroundColor: '#f0f8ff', 
+                        borderRadius: '50%', 
+                        p: 0.5, 
+                        display: 'flex', 
+                        alignItems: 'center', 
                         justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'text.secondary',
-                        padding: '4px',
-                        borderRadius: '4px',
-                        '&:hover': {
-                          color: 'primary.main'
-                        }
-                      }}
-                    >
-                      {showPassword
-                        ? <VisibilityOff sx={{ fontSize: '1.1rem' }} />
-                        : <Visibility sx={{ fontSize: '1.1rem' }} />}
-                    </Box>
-                  )
-                }}
+                        mr: 1
+                      }}>
+                        <Person sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
+                      </Box>
+                    )
+                  }}
+                  sx={{ 
+                    mb: 2,
+                    '& .MuiOutlinedInput-input': {
+                      paddingLeft: '4px'
+                    }
+                  }}
+                />
+                
+                <TextField
+                  fullWidth
+                  label="密碼"
+                  type={showPassword ? 'text' : 'password'}
+                  variant="outlined"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  InputProps={{
+                    /* ----------- 左側鎖頭 ----------- */
+                    startAdornment: (
+                      <Box sx={{ 
+                        backgroundColor: '#f0f8ff', 
+                        borderRadius: '50%', 
+                        p: 0.5, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        mr: 1
+                      }}>
+                        <Lock sx={{ color: 'primary.main', fontSize: '1.2rem' }} />
+                      </Box>
+                    ),
+
+                    /* ----------- 右側眼睛 ----------- */
+                    endAdornment: (
+                      <Box
+                        onClick={handleClickShowPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: 'text.secondary',
+                          padding: '4px',
+                          borderRadius: '4px',
+                          '&:hover': {
+                            color: 'primary.main'
+                          }
+                        }}
+                      >
+                        {showPassword
+                          ? <VisibilityOff sx={{ fontSize: '1.1rem' }} />
+                          : <Visibility sx={{ fontSize: '1.1rem' }} />}
+                      </Box>
+                    )
+                  }}
+                  sx={{ 
+                    '& .MuiOutlinedInput-input': {
+                      paddingLeft: '4px'
+                    }
+                  }}
+                />
+              </Box>
+
+              {error && (
+                <Alert severity={isLocked ? "warning" : "error"} sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                disabled={loading || isLocked}
                 sx={{ 
-                  '& .MuiOutlinedInput-input': {
-                    paddingLeft: '4px'
-                  }
-                }}
-              />
-            </Box>
-
-            {error && (
-              <Alert severity={isLocked ? "warning" : "error"} sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={loading || isLocked}
-              sx={{ 
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                borderRadius: 2,
-                background: isLocked 
-                  ? 'linear-gradient(45deg, #9E9E9E 30%, #757575 90%)'
-                  : 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                '&:hover': {
+                  py: 1.5,
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  borderRadius: 2,
                   background: isLocked 
                     ? 'linear-gradient(45deg, #9E9E9E 30%, #757575 90%)'
-                    : 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
-                }
-              }}
-            >
-              {loading ? '登入中...' : isLocked ? `帳號鎖定中 (${remainingTime}分)` : '登入'}
-            </Button>
-          </form>
+                    : 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                  '&:hover': {
+                    background: isLocked 
+                      ? 'linear-gradient(45deg, #9E9E9E 30%, #757575 90%)'
+                      : 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                  }
+                }}
+              >
+                {loading ? '登入中...' : isLocked ? `帳號鎖定中 (${remainingTime}分)` : '登入'}
+              </Button>
+            </form>
 
 
-        </CardContent>
-      </Paper>
-    </Container>
+          </CardContent>
+        </Paper>
+      </Container>
+    </>
   );
 };
 

@@ -40,6 +40,11 @@
   grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
 }
 
+/* 第二行基本資料的網格佈局 - 4個欄位 */
+.student-form .basic-info-row:nth-child(3) {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
 .student-form .basic-details-row {
   grid-template-columns: 1fr 1fr 1fr;
 }

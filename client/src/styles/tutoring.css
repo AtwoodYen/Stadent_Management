@@ -10,6 +10,7 @@ body {
   font-family: 'Arial', sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
+  background-attachment: fixed; /* 背景固定，不隨滾動移動 */
 }
 
 /* 容器與排版 */

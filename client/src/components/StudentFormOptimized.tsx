@@ -23,6 +23,7 @@ interface Student {
   class_type: string;
   enrollment_status: string;
   notes: string;
+  class_schedule_type?: string; // 新增
 }
 
 interface ClassType {
@@ -63,7 +64,8 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
     level_type: '',
     class_type: '',
     enrollment_status: '進行中',
-    notes: ''
+    notes: '',
+    class_schedule_type: '常態班' // 新增
   });
 
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
@@ -131,6 +133,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
 
   useEffect(() => {
     if (student) {
+      // 編輯現有學生
       setFormData({
         chinese_name: student.chinese_name || '',
         english_name: student.english_name || '',
@@ -149,7 +152,31 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
         level_type: student.level_type || '',
         class_type: student.class_type || '',
         enrollment_status: student.enrollment_status || '進行中',
-        notes: student.notes || ''
+        notes: student.notes || '',
+        class_schedule_type: student.class_schedule_type || '常態班' // 新增
+      });
+    } else {
+      // 新增學生，重置表單資料
+      setFormData({
+        chinese_name: '',
+        english_name: '',
+        student_phone: '',
+        student_email: '',
+        student_line: '',
+        father_name: '',
+        father_phone: '',
+        father_line: '',
+        mother_name: '',
+        mother_phone: '',
+        mother_line: '',
+        school: '',
+        grade: '',
+        gender: '',
+        level_type: '',
+        class_type: '',
+        enrollment_status: '進行中',
+        notes: '',
+        class_schedule_type: '常態班' // 新增
       });
     }
   }, [student]);
@@ -204,7 +231,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
           基本資料
         </div>
         
-        {/* 基本資料：所有欄位在同一行 */}
+        {/* 基本資料：第一行 */}
         <div className="form-row basic-info-row">
           <div className="form-field">
             <label>
@@ -317,7 +344,10 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
               <option value="女">女</option>
             </select>
           </div>
-          
+        </div>
+
+        {/* 基本資料：第二行 */}
+        <div className="form-row basic-info-row" style={{ marginTop: '10px' }}>
           <div className="form-field">
             <label>程度</label>
             <select
@@ -351,7 +381,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </select>
           </div>
           
-          <div className="form-field">
+          <div className="form-field" style={{ marginLeft: '30px' }}>
             <label>就讀狀態</label>
             <select
               value={formData.enrollment_status}
@@ -362,10 +392,32 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
               <option value="已畢業">已畢業</option>
             </select>
           </div>
+
+          <div className="form-field" style={{ marginLeft: '80px' }}>
+            <label htmlFor="class_schedule_type">班級排程類型<span className="required">*</span></label>
+            <TextField
+              select
+              id="class_schedule_type"
+              value={formData.class_schedule_type || '常態班'}
+              onChange={(e) => handleChange('class_schedule_type', e.target.value)}
+              required
+              size="small"
+              sx={{
+                width: '160%',
+                '& .MuiOutlinedInput-root': {
+                  height: '40px',
+                  fontSize: '14px'
+                }
+              }}
+            >
+              <option value="常態班">常態班</option>
+              <option value="短期班">短期班</option>
+            </TextField>
+          </div>
         </div>
 
         {/* 聯絡資訊與備註並排區域 */}
-        <div className="contact-notes-container">
+        <div className="contact-notes-container" style={{ marginTop: '20px' }}>
           {/* 聯絡資訊區域 */}
           <div className="contact-section">
             <div className="section-title">

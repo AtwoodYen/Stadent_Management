@@ -42,6 +42,7 @@ interface Student {
   created_at: string;
   updated_at: string;
   is_active: boolean;
+  class_schedule_type: string; // 新增：常態班/短期班
 }
 
 interface ClassType {
@@ -65,7 +66,8 @@ const StudentsPage: React.FC = () => {
     level: '',
     gender: '',
     classType: '',
-    enrollmentStatus: ''
+    enrollmentStatus: '',
+    classScheduleType: '' // 新增
   });
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: 'chinese_name',
@@ -76,6 +78,9 @@ const StudentsPage: React.FC = () => {
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 新增：分頁選單狀態
+  const [activeTab, setActiveTab] = useState<'students' | 'stats'>('students');
   
   // 編輯相關狀態
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -120,6 +125,7 @@ const StudentsPage: React.FC = () => {
       if (sortOptions.gender) params.append('gender', sortOptions.gender);
       if (sortOptions.classType) params.append('class_type', sortOptions.classType);
       if (sortOptions.enrollmentStatus) params.append('enrollment_status', sortOptions.enrollmentStatus);
+      if (sortOptions.classScheduleType) params.append('class_schedule_type', sortOptions.classScheduleType);
       
       const response = await fetch(`/api/students?${params}`);
       if (!response.ok) {
@@ -457,360 +463,580 @@ const StudentsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
+        }}
+      />
+
       {/* 主要容器 */}
       <div className="container">        
+
+        {/* 分頁按鈕區域 */}
+        <div className="tab-navigation" style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '0px',
+            marginTop: '-10px'
+          }}>
+            <button
+              className={`tab-button ${activeTab === 'students' ? 'active' : ''}`}
+              onClick={() => setActiveTab('students')}
+              style={{
+                padding: '12px 24px',
+                marginRight: '10px',
+                border: '2px solid #1976d2',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: activeTab === 'students' ? '#1976d2' : 'white',
+                color: activeTab === 'students' ? 'white' : '#1976d2',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              📋 學生列表
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'stats' ? 'active' : ''}`}
+              onClick={() => setActiveTab('stats')}
+              style={{
+                padding: '12px 24px',
+                border: '2px solid #1976d2',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: activeTab === 'stats' ? '#1976d2' : 'white',
+                color: activeTab === 'stats' ? 'white' : '#1976d2',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              📊 學生統計
+            </button>
+          </div>
+
         {/* 內容區 */}
         <div className="main-content">
-          {/* 側邊欄 */}
-          <div className="sidebar">
-            <div className="stats-bar">
-              <div className="stat-item">
-                <div className="stat-number">{totalStudents}</div>
-                <div className="stat-label">總學生</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">{students.filter(s => !s.is_active).length}</div>
-                <div className="stat-label">停用學生</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">{students.filter(s => s.gender === '男').length}</div>
-                <div className="stat-label">男學生</div>
-              </div>
-            </div>
-
-            <div className="student-list">
-              <h3>📊 快速統計</h3>
-              <div className="quick-stats">
-                {schoolStats.map((stat) => (
-                  <div key={stat.school} className="quick-stat-item">
-                    <span className="quick-stat-label">{stat.school}:</span>
-                    <span className="quick-stat-value">{stat.count}人</span>
-                  </div>
-                ))}
-                {gradeStats.map((stat) => (
-                  <div key={stat.grade} className="quick-stat-item">
-                    <span className="quick-stat-label">{stat.grade}:</span>
-                    <span className="quick-stat-value">{stat.count}人</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
 
           {/* 學生列表區域 */}
-          <div className="calendar-section">
-            <div className="calendar-header">
-              <div className="calendar-nav">
-                <div className="pagination-controls">
-                  <button 
-                    className="btn" 
-                    onClick={handlePrevPage} 
-                    disabled={currentPage === 1}
-                    style={{
-                      backgroundColor: '#1976d2',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                      opacity: currentPage === 1 ? 0.6 : 1
-                    }}
-                  >
-                    ‹ 上一頁
-                  </button>
-                  <div className="page-info">
-                    {currentPage} / {totalPages}
+          {activeTab === 'students' && (
+            <div className="calendar-section" style={{ marginTop: '20px' }}>
+              <div className="calendar-header">
+                <div className="calendar-nav">
+                  <div className="pagination-controls">
+                    <button 
+                      className="btn" 
+                      onClick={handlePrevPage} 
+                      disabled={currentPage === 1}
+                      style={{
+                        backgroundColor: '#1976d2',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        opacity: currentPage === 1 ? 0.6 : 1
+                      }}
+                    >
+                      ‹ 上一頁
+                    </button>
+                    <div className="page-info">
+                      {currentPage} / {totalPages}
+                    </div>
+                    <button 
+                      className="btn" 
+                      onClick={handleNextPage} 
+                      disabled={currentPage === totalPages}
+                      style={{
+                        backgroundColor: '#1976d2',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                        opacity: currentPage === totalPages ? 0.6 : 1
+                      }}
+                    >
+                      下一頁 ›
+                    </button>
+                    <select 
+                      value={studentsPerPage} 
+                      onChange={(e) => handleStudentsPerPageChange(Number(e.target.value))}
+                      className="per-page-select"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
                   </div>
-                  <button 
-                    className="btn" 
-                    onClick={handleNextPage} 
-                    disabled={currentPage === totalPages}
-                    style={{
+                  
+                  {/* 排序選項 */}
+                  <div className="sort-options">
+                    <select 
+                      value={sortOptions.school} 
+                      onChange={(e) => handleSortChange('school', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">學校</option>
+                      {schools.map((school) => (
+                        <option key={school} value={school}>{school}</option>
+                      ))}
+                    </select>
+                    
+                    <select 
+                      value={sortOptions.grade} 
+                      onChange={(e) => handleSortChange('grade', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">年級</option>
+                      <optgroup label="小學">
+                        <option value="小一">小一</option>
+                        <option value="小二">小二</option>
+                        <option value="小三">小三</option>
+                        <option value="小四">小四</option>
+                        <option value="小五">小五</option>
+                        <option value="小六">小六</option>
+                      </optgroup>
+                      <optgroup label="國中">
+                        <option value="國一">國一</option>
+                        <option value="國二">國二</option>
+                        <option value="國三">國三</option>
+                      </optgroup>
+                      <optgroup label="高中">
+                        <option value="高一">高一</option>
+                        <option value="高二">高二</option>
+                        <option value="高三">高三</option>
+                      </optgroup>
+                      <optgroup label="大學">
+                        <option value="大一">大一</option>
+                        <option value="大二">大二</option>
+                        <option value="大三">大三</option>
+                        <option value="大四">大四</option>
+                      </optgroup>
+                    </select>
+                    
+                    <select 
+                      value={sortOptions.level} 
+                      onChange={(e) => handleSortChange('level', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">程度</option>
+                      <option value="新手">新手</option>
+                      <option value="入門">入門</option>
+                      <option value="進階">進階</option>
+                      <option value="高階">高階</option>
+                      <option value="精英">精英</option>
+                    </select>
+                    
+                    <select 
+                      value={sortOptions.gender} 
+                      onChange={(e) => handleSortChange('gender', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">性別</option>
+                      <option value="男">男</option>
+                      <option value="女">女</option>
+                    </select>
+                    
+                    <select 
+                      value={sortOptions.classType} 
+                      onChange={(e) => handleSortChange('classType', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">班別</option>
+                      {classTypes.map((classType) => (
+                        <option key={classType.class_code} value={classType.class_code}>
+                          {classType.class_name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <select 
+                      value={sortOptions.enrollmentStatus} 
+                      onChange={(e) => handleSortChange('enrollmentStatus', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">就讀狀態</option>
+                      <option value="進行中">進行中</option>
+                      <option value="暫停中">暫停中</option>
+                      <option value="已畢業">已畢業</option>
+                    </select>
+
+                    <select 
+                      value={sortOptions.classScheduleType} 
+                      onChange={(e) => handleSortChange('classScheduleType', e.target.value)}
+                      className="sort-select"
+                    >
+                      <option value="">班級排程類型</option>
+                      <option value="常態班">常態班</option>
+                      <option value="短期班">短期班</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="calendar-controls">
+                  <span className="student-count" style={{ marginLeft: '20px', marginRight: '-5px' }}>總共 {totalStudents} 位學生</span>
+                  <button className="btn btn-secondary" onClick={handleAddStudent}>+ 新增學生</button>
+                </div>
+              </div>
+
+              {/* 學生列表表格 */}
+              <div className="students-table-container">
+                <table className="students-table">
+                  <thead>
+                    <tr>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'chinese_name' ? 'active' : ''}`}
+                        onClick={() => handleSort('chinese_name')}
+                      >
+                        中文姓名<span className="sort-icon">{getSortIcon('chinese_name')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'english_name' ? 'active' : ''}`}
+                        onClick={() => handleSort('english_name')}
+                      >
+                        英文姓名<span className="sort-icon">{getSortIcon('english_name')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'school' ? 'active' : ''}`}
+                        onClick={() => handleSort('school')}
+                      >
+                        學校<span className="sort-icon">{getSortIcon('school')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'grade' ? 'active' : ''}`}
+                        onClick={() => handleSort('grade')}
+                      >
+                        年級<span className="sort-icon">{getSortIcon('grade')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'gender' ? 'active' : ''}`}
+                        onClick={() => handleSort('gender')}
+                      >
+                        性別<span className="sort-icon">{getSortIcon('gender')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'level_type' ? 'active' : ''}`}
+                        onClick={() => handleSort('level_type')}
+                      >
+                        程度<span className="sort-icon">{getSortIcon('level_type')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'class_type_name' ? 'active' : ''}`}
+                        onClick={() => handleSort('class_type_name')}
+                      >
+                        班別<span className="sort-icon">{getSortIcon('class_type_name')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'enrollment_status' ? 'active' : ''}`}
+                        onClick={() => handleSort('enrollment_status')}
+                      >
+                        就讀狀態<span className="sort-icon">{getSortIcon('enrollment_status')}</span>
+                      </th>
+                      <th 
+                        className={`sortable-header ${sortConfig.key === 'class_schedule_type' ? 'active' : ''}`}
+                        onClick={() => handleSort('class_schedule_type')}
+                      >
+                        班級排程類型<span className="sort-icon">{getSortIcon('class_schedule_type')}</span>
+                      </th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getCurrentPageStudents().map((student) => (
+                      <tr key={student.id} className="student-row">
+                        <td className="student-chinese-name">{student.chinese_name}</td>
+                        <td className="student-english-name">{student.english_name}</td>
+                        <td>
+                          <span className="badge badge-school">{student.school}</span>
+                        </td>
+                        <td>
+                          <span className="badge badge-grade">{student.grade}</span>
+                        </td>
+                        <td>
+                          <span 
+                            className={`badge badge-gender gender-${student.gender || '未設定'}`}
+                          >
+                            {student.gender || '未設定'}
+                          </span>
+                        </td>
+                        <td>
+                          <span 
+                            className={`badge badge-level level-${student.level_type || '未設定'}`}
+                          >
+                            {student.level_type || '未設定'}
+                          </span>
+                        </td>
+                        <td>
+                          <span 
+                            className="badge badge-class"
+                            style={{
+                              backgroundColor: student.class_type === 'CPP' ? '#e3f2fd' : // 淺藍色 - C/C++
+                                     student.class_type === 'PROJECT' ? '#f3e5f5' : // 淺紫色 - 專題製作
+                                     student.class_type === 'SCRATCH' ? '#e8f5e8' : // 淺綠色 - Scratch
+                                     student.class_type === 'APCS_A' ? '#fff3e0' : // 淺橙色 - APCS A
+                                     student.class_type === 'APCS_P' ? '#fce4ec' : // 淺粉色 - APCS P
+                                     student.class_type === 'ANIMATION' ? '#f1f8e9' : // 淺青綠色 - 動畫美術
+                                     student.class_type === 'PYTHON' ? '#fff8e1' : // 淺黃色 - Python
+                                     '#f5f5f5', // 預設灰色
+                              color: student.class_type === 'CPP' ? '#1976d2' : // 深藍色
+                                     student.class_type === 'PROJECT' ? '#7b1fa2' : // 深紫色
+                                     student.class_type === 'SCRATCH' ? '#388e3c' : // 深綠色
+                                     student.class_type === 'APCS_A' ? '#f57c00' : // 深橙色
+                                     student.class_type === 'APCS_P' ? '#c2185b' : // 深粉色
+                                     student.class_type === 'ANIMATION' ? '#689f38' : // 深青綠色
+                                     student.class_type === 'PYTHON' ? '#f57f17' : // 深黃色 - Python
+                                     '#757575', // 預設深灰色
+                              border: student.class_type ? '1px solid' : 'none',
+                              borderColor: student.class_type === 'CPP' ? '#1976d2' :
+                                          student.class_type === 'PROJECT' ? '#7b1fa2' :
+                                          student.class_type === 'SCRATCH' ? '#388e3c' :
+                                          student.class_type === 'APCS_A' ? '#f57c00' :
+                                          student.class_type === 'APCS_P' ? '#c2185b' :
+                                          student.class_type === 'ANIMATION' ? '#689f38' :
+                                          student.class_type === 'PYTHON' ? '#f57f17' :
+                                          'transparent'
+                            }}
+                          >
+                            {getClassTypeName(student.class_type)}
+                          </span>
+                        </td>
+                        <td>
+                          <span 
+                            className="badge badge-enrollment-status"
+                            style={{
+                              backgroundColor: student.enrollment_status === '進行中' ? '#e8f5e8' : // 淺綠色
+                                     student.enrollment_status === '暫停中' ? '#fff3e0' : // 淺橙色
+                                     student.enrollment_status === '已畢業' ? '#f3e5f5' : // 淺紫色
+                                     '#f5f5f5', // 預設灰色
+                              color: student.enrollment_status === '進行中' ? '#388e3c' : // 深綠色
+                                     student.enrollment_status === '暫停中' ? '#f57c00' : // 深橙色
+                                     student.enrollment_status === '已畢業' ? '#7b1fa2' : // 深紫色
+                                     '#757575', // 預設深灰色
+                              border: student.enrollment_status ? '1px solid' : 'none',
+                              borderColor: student.enrollment_status === '進行中' ? '#388e3c' :
+                                          student.enrollment_status === '暫停中' ? '#f57c00' :
+                                          student.enrollment_status === '已畢業' ? '#7b1fa2' :
+                                          'transparent'
+                            }}
+                          >
+                            {student.enrollment_status || '未設定'}
+                          </span>
+                        </td>
+                        <td>
+                          <span 
+                            className="badge badge-class-schedule-type"
+                            style={{
+                              backgroundColor: student.class_schedule_type === '常態班' ? '#e3f2fd' : student.class_schedule_type === '短期班' ? '#fff3e0' : '#f5f5f5',
+                              color: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : '#757575',
+                              border: student.class_schedule_type ? '1px solid' : 'none',
+                              borderColor: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : 'transparent'
+                            }}
+                          >
+                            {student.class_schedule_type || '未設定'}
+                          </span>
+                        </td>
+                        <td className="student-actions">
+                          <button 
+                            className="btn-small btn-edit"
+                            onClick={() => handleEditStudent(student)}
+                          >
+                            編輯
+                          </button>
+                          <button 
+                            className="btn-small btn-delete"
+                            onClick={() => handleDeleteStudent(student)}
+                          >
+                            刪除
+                          </button>
+                          <button 
+                            className="btn-small btn-schedule"
+                            onClick={() => handleViewStudentDetail(student)}
+                          >
+                            詳情
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 統計資料區域 */}
+          {activeTab === 'stats' && (
+            <div className="stats-section" style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              width: '100%',
+              maxWidth: '100%',
+              margin: '0 auto',
+              marginTop: '15px'
+            }}>
+              <h2 style={{ marginBottom: '20px', color: '#1976d2' }}>📊 學生統計資料</h2>
+              
+              {/* 基本統計 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                <div style={{
+                  backgroundColor: '#e3f2fd',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #1976d2'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#1976d2' }}>{totalStudents}</div>
+                  <div style={{ color: '#1976d2' }}>總學生數</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#ffebee',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #d32f2f'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#d32f2f' }}>{students.filter(s => !s.is_active).length}</div>
+                  <div style={{ color: '#d32f2f' }}>停用學生</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#e8f5e8',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #388e3c'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#388e3c' }}>{students.filter(s => s.gender === '男').length}</div>
+                  <div style={{ color: '#388e3c' }}>男學生</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#fce4ec',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #c2185b'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#c2185b' }}>{students.filter(s => s.gender === '女').length}</div>
+                  <div style={{ color: '#c2185b' }}>女學生</div>
+                </div>
+              </div>
+
+              {/* 學校統計 */}
+              <div style={{ marginBottom: '30px' }}>
+                <h3 style={{ marginBottom: '15px', color: '#333' }}>🏫 學校分布</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                  {schoolStats.map((stat) => (
+                    <div key={stat.school} style={{
+                      backgroundColor: '#f5f5f5',
+                      padding: '15px',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      border: '1px solid #e0e0e0'
+                    }}>
+                      <span style={{ fontWeight: 'bold' }}>{stat.school}</span>
+                      <span style={{
+                        backgroundColor: '#1976d2',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '14px'
+                      }}>
+                        {stat.count}人
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 年級統計 */}
+              <div style={{ marginBottom: '30px' }}>
+                <h3 style={{ marginBottom: '15px', color: '#333' }}>📚 年級分布</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                  {gradeStats.map((stat) => (
+                    <div key={stat.grade} style={{
+                      backgroundColor: '#f5f5f5',
+                      padding: '15px',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      border: '1px solid #e0e0e0'
+                    }}>
+                      <span style={{ fontWeight: 'bold' }}>{stat.grade}</span>
+                      <span style={{
+                        backgroundColor: '#388e3c',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '14px'
+                      }}>
+                        {stat.count}人
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 班級排程類型統計 */}
+              <div>
+                <h3 style={{ marginBottom: '15px', color: '#333' }}>📅 班級排程類型分布</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                  <div style={{
+                    backgroundColor: '#e3f2fd',
+                    padding: '15px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: '1px solid #1976d2'
+                  }}>
+                    <span style={{ fontWeight: 'bold' }}>常態班</span>
+                    <span style={{
                       backgroundColor: '#1976d2',
                       color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                      opacity: currentPage === totalPages ? 0.6 : 1
-                    }}
-                  >
-                    下一頁 ›
-                  </button>
-                  <select 
-                    value={studentsPerPage} 
-                    onChange={(e) => handleStudentsPerPageChange(Number(e.target.value))}
-                    className="per-page-select"
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                </div>
-                
-                {/* 排序選項 */}
-                <div className="sort-options">
-                  <select 
-                    value={sortOptions.school} 
-                    onChange={(e) => handleSortChange('school', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">學校</option>
-                    {schools.map((school) => (
-                      <option key={school} value={school}>{school}</option>
-                    ))}
-                  </select>
-                  
-                  <select 
-                    value={sortOptions.grade} 
-                    onChange={(e) => handleSortChange('grade', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">年級</option>
-                    <optgroup label="小學">
-                      <option value="小一">小一</option>
-                      <option value="小二">小二</option>
-                      <option value="小三">小三</option>
-                      <option value="小四">小四</option>
-                      <option value="小五">小五</option>
-                      <option value="小六">小六</option>
-                    </optgroup>
-                    <optgroup label="國中">
-                      <option value="國一">國一</option>
-                      <option value="國二">國二</option>
-                      <option value="國三">國三</option>
-                    </optgroup>
-                    <optgroup label="高中">
-                      <option value="高一">高一</option>
-                      <option value="高二">高二</option>
-                      <option value="高三">高三</option>
-                    </optgroup>
-                    <optgroup label="大學">
-                      <option value="大一">大一</option>
-                      <option value="大二">大二</option>
-                      <option value="大三">大三</option>
-                      <option value="大四">大四</option>
-                    </optgroup>
-                  </select>
-                  
-                  <select 
-                    value={sortOptions.level} 
-                    onChange={(e) => handleSortChange('level', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">程度</option>
-                    <option value="新手">新手</option>
-                    <option value="入門">入門</option>
-                    <option value="進階">進階</option>
-                    <option value="高階">高階</option>
-                    <option value="精英">精英</option>
-                  </select>
-                  
-                  <select 
-                    value={sortOptions.gender} 
-                    onChange={(e) => handleSortChange('gender', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">性別</option>
-                    <option value="男">男</option>
-                    <option value="女">女</option>
-                  </select>
-                  
-                  <select 
-                    value={sortOptions.classType} 
-                    onChange={(e) => handleSortChange('classType', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">班別</option>
-                    {classTypes.map((classType) => (
-                      <option key={classType.class_code} value={classType.class_code}>
-                        {classType.class_name}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <select 
-                    value={sortOptions.enrollmentStatus} 
-                    onChange={(e) => handleSortChange('enrollmentStatus', e.target.value)}
-                    className="sort-select"
-                  >
-                    <option value="">就讀狀態</option>
-                    <option value="進行中">進行中</option>
-                    <option value="暫停中">暫停中</option>
-                    <option value="已畢業">已畢業</option>
-                  </select>
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      fontSize: '14px'
+                    }}>
+                      {students.filter(s => s.class_schedule_type === '常態班').length}人
+                    </span>
+                  </div>
+                  <div style={{
+                    backgroundColor: '#fff3e0',
+                    padding: '15px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: '1px solid #f57c00'
+                  }}>
+                    <span style={{ fontWeight: 'bold' }}>短期班</span>
+                    <span style={{
+                      backgroundColor: '#f57c00',
+                      color: 'white',
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      fontSize: '14px'
+                    }}>
+                      {students.filter(s => s.class_schedule_type === '短期班').length}人
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="calendar-controls">
-                <span className="student-count">總共 {totalStudents} 位學生</span>
-                <button className="btn btn-secondary" onClick={handleAddStudent}>+ 新增學生</button>
-              </div>
             </div>
-
-            {/* 學生列表表格 */}
-            <div className="students-table-container">
-              <table className="students-table">
-                <thead>
-                  <tr>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'chinese_name' ? 'active' : ''}`}
-                      onClick={() => handleSort('chinese_name')}
-                    >
-                      中文姓名<span className="sort-icon">{getSortIcon('chinese_name')}</span>
-                    </th>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'english_name' ? 'active' : ''}`}
-                      onClick={() => handleSort('english_name')}
-                    >
-                      英文姓名<span className="sort-icon">{getSortIcon('english_name')}</span>
-                    </th>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'school' ? 'active' : ''}`}
-                      onClick={() => handleSort('school')}
-                    >
-                      學校<span className="sort-icon">{getSortIcon('school')}</span>
-                    </th>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'grade' ? 'active' : ''}`}
-                      onClick={() => handleSort('grade')}
-                    >
-                      年級<span className="sort-icon">{getSortIcon('grade')}</span>
-                    </th>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'gender' ? 'active' : ''}`}
-                      onClick={() => handleSort('gender')}
-                    >
-                      性別<span className="sort-icon">{getSortIcon('gender')}</span>
-                    </th>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'level_type' ? 'active' : ''}`}
-                      onClick={() => handleSort('level_type')}
-                    >
-                      程度<span className="sort-icon">{getSortIcon('level_type')}</span>
-                    </th>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'class_type_name' ? 'active' : ''}`}
-                      onClick={() => handleSort('class_type_name')}
-                    >
-                      班別<span className="sort-icon">{getSortIcon('class_type_name')}</span>
-                    </th>
-                    <th 
-                      className={`sortable-header ${sortConfig.key === 'enrollment_status' ? 'active' : ''}`}
-                      onClick={() => handleSort('enrollment_status')}
-                    >
-                      就讀狀態<span className="sort-icon">{getSortIcon('enrollment_status')}</span>
-                    </th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getCurrentPageStudents().map((student) => (
-                    <tr key={student.id} className="student-row">
-                      <td className="student-chinese-name">{student.chinese_name}</td>
-                      <td className="student-english-name">{student.english_name}</td>
-                      <td>
-                        <span className="badge badge-school">{student.school}</span>
-                      </td>
-                      <td>
-                        <span className="badge badge-grade">{student.grade}</span>
-                      </td>
-                      <td>
-                        <span 
-                          className={`badge badge-gender gender-${student.gender || '未設定'}`}
-                        >
-                          {student.gender || '未設定'}
-                        </span>
-                      </td>
-                      <td>
-                        <span 
-                          className={`badge badge-level level-${student.level_type || '未設定'}`}
-                        >
-                          {student.level_type || '未設定'}
-                        </span>
-                      </td>
-                      <td>
-                        <span 
-                          className="badge badge-class"
-                          style={{
-                            backgroundColor: student.class_type === 'CPP' ? '#e3f2fd' : // 淺藍色 - C/C++
-                                   student.class_type === 'PROJECT' ? '#f3e5f5' : // 淺紫色 - 專題製作
-                                   student.class_type === 'SCRATCH' ? '#e8f5e8' : // 淺綠色 - Scratch
-                                   student.class_type === 'APCS_A' ? '#fff3e0' : // 淺橙色 - APCS A
-                                   student.class_type === 'APCS_P' ? '#fce4ec' : // 淺粉色 - APCS P
-                                   student.class_type === 'ANIMATION' ? '#f1f8e9' : // 淺青綠色 - 動畫美術
-                                   student.class_type === 'PYTHON' ? '#fff8e1' : // 淺黃色 - Python
-                                   '#f5f5f5', // 預設灰色
-                            color: student.class_type === 'CPP' ? '#1976d2' : // 深藍色
-                                   student.class_type === 'PROJECT' ? '#7b1fa2' : // 深紫色
-                                   student.class_type === 'SCRATCH' ? '#388e3c' : // 深綠色
-                                   student.class_type === 'APCS_A' ? '#f57c00' : // 深橙色
-                                   student.class_type === 'APCS_P' ? '#c2185b' : // 深粉色
-                                   student.class_type === 'ANIMATION' ? '#689f38' : // 深青綠色
-                                   student.class_type === 'PYTHON' ? '#f57f17' : // 深黃色 - Python
-                                   '#757575', // 預設深灰色
-                            border: student.class_type ? '1px solid' : 'none',
-                            borderColor: student.class_type === 'CPP' ? '#1976d2' :
-                                        student.class_type === 'PROJECT' ? '#7b1fa2' :
-                                        student.class_type === 'SCRATCH' ? '#388e3c' :
-                                        student.class_type === 'APCS_A' ? '#f57c00' :
-                                        student.class_type === 'APCS_P' ? '#c2185b' :
-                                        student.class_type === 'ANIMATION' ? '#689f38' :
-                                        student.class_type === 'PYTHON' ? '#f57f17' :
-                                        'transparent'
-                          }}
-                        >
-                          {getClassTypeName(student.class_type)}
-                        </span>
-                      </td>
-                      <td>
-                        <span 
-                          className="badge badge-enrollment-status"
-                          style={{
-                            backgroundColor: student.enrollment_status === '進行中' ? '#e8f5e8' : // 淺綠色
-                                   student.enrollment_status === '暫停中' ? '#fff3e0' : // 淺橙色
-                                   student.enrollment_status === '已畢業' ? '#f3e5f5' : // 淺紫色
-                                   '#f5f5f5', // 預設灰色
-                            color: student.enrollment_status === '進行中' ? '#388e3c' : // 深綠色
-                                   student.enrollment_status === '暫停中' ? '#f57c00' : // 深橙色
-                                   student.enrollment_status === '已畢業' ? '#7b1fa2' : // 深紫色
-                                   '#757575', // 預設深灰色
-                            border: student.enrollment_status ? '1px solid' : 'none',
-                            borderColor: student.enrollment_status === '進行中' ? '#388e3c' :
-                                        student.enrollment_status === '暫停中' ? '#f57c00' :
-                                        student.enrollment_status === '已畢業' ? '#7b1fa2' :
-                                        'transparent'
-                          }}
-                        >
-                          {student.enrollment_status || '未設定'}
-                        </span>
-                      </td>
-                      <td className="student-actions">
-                        <button 
-                          className="btn-small btn-edit"
-                          onClick={() => handleEditStudent(student)}
-                        >
-                          編輯
-                        </button>
-                        <button 
-                          className="btn-small btn-delete"
-                          onClick={() => handleDeleteStudent(student)}
-                        >
-                          刪除
-                        </button>
-                        <button 
-                          className="btn-small btn-schedule"
-                          onClick={() => handleViewStudentDetail(student)}
-                        >
-                          詳情
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -822,8 +1048,8 @@ const StudentsPage: React.FC = () => {
         fullWidth
         PaperProps={{
           sx: {
-            maxWidth: '1460px',
-            width: '90vw'
+            maxWidth: '1504px',
+            width: '93vw'
           }
         }}
       >
@@ -912,6 +1138,7 @@ const StudentsPage: React.FC = () => {
               <StudentDetailView
                 student={selectedStudent}
                 onEdit={handleEditFromDetail}
+                onDelete={() => handleDeleteStudent(selectedStudent)}
                 onClose={closeModals}
               />
             )}

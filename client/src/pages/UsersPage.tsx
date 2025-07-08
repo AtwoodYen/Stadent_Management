@@ -351,280 +351,296 @@ const UsersPage: React.FC = () => {
   }
 
   return (
-    <Box>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+    <>
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
+        }}
+      />
 
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
-            用戶管理
-          </Typography>
-          <Typography variant="h6" sx={{ color: '#ccc' }}>
-            總用戶數：{users.length}
-          </Typography>
+      <Box>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
+              用戶管理
+            </Typography>
+            <Typography variant="h6" sx={{ color: '#ccc' }}>
+              總用戶數：{users.length}
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            新增用戶
+          </Button>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          新增用戶
-        </Button>
-      </Box>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <TableSortLabel
-                  active={sortState.field === 'full_name'}
-                  direction={sortState.field === 'full_name' ? sortState.order : 'asc'}
-                  onClick={() => handleSort('full_name')}
-                >
-                  用戶名稱
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortState.field === 'role'}
-                  direction={sortState.field === 'role' ? sortState.order : 'asc'}
-                  onClick={() => handleSort('role')}
-                >
-                  角色
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortState.field === 'department'}
-                  direction={sortState.field === 'department' ? sortState.order : 'asc'}
-                  onClick={() => handleSort('department')}
-                >
-                  部門
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>聯絡方式</TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortState.field === 'is_active'}
-                  direction={sortState.field === 'is_active' ? sortState.order : 'asc'}
-                  onClick={() => handleSort('is_active')}
-                >
-                  狀態
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sortedUsers.map((user) => (
-              <TableRow key={user.id} sx={{ opacity: user.is_active ? 1 : 0.6 }}>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
                 <TableCell>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                      {roleIcons[user.role]}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" fontWeight="bold">
-                        {user.full_name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        @{user.username}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={roleLabels[user.role]}
-                    color={roleColors[user.role]}
-                    size="small"
-                    icon={roleIcons[user.role]}
-                  />
-                </TableCell>
-                <TableCell>{user.department || '-'}</TableCell>
-                <TableCell>
-                  <Typography variant="body2">{user.email}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {user.phone || '-'}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={user.is_active}
-                        onChange={() => toggleUserStatus(user.id)}
-                        size="small"
-                      />
-                    }
-                    label={user.is_active ? "啟用" : "停用"}
-                  />
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenDialog(user)}
+                  <TableSortLabel
+                    active={sortState.field === 'full_name'}
+                    direction={sortState.field === 'full_name' ? sortState.order : 'asc'}
+                    onClick={() => handleSort('full_name')}
                   >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(user)}
-                    disabled={user.role === 'admin' && user.id === 1}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                    用戶名稱
+                  </TableSortLabel>
                 </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortState.field === 'role'}
+                    direction={sortState.field === 'role' ? sortState.order : 'asc'}
+                    onClick={() => handleSort('role')}
+                  >
+                    角色
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortState.field === 'department'}
+                    direction={sortState.field === 'department' ? sortState.order : 'asc'}
+                    onClick={() => handleSort('department')}
+                  >
+                    部門
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>聯絡方式</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortState.field === 'is_active'}
+                    direction={sortState.field === 'is_active' ? sortState.order : 'asc'}
+                    onClick={() => handleSort('is_active')}
+                  >
+                    狀態
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>操作</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {sortedUsers.map((user) => (
+                <TableRow key={user.id} sx={{ opacity: user.is_active ? 1 : 0.6 }}>
+                  <TableCell>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                        {roleIcons[user.role]}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">
+                          {user.full_name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          @{user.username}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={roleLabels[user.role]}
+                      color={roleColors[user.role]}
+                      size="small"
+                      icon={roleIcons[user.role]}
+                    />
+                  </TableCell>
+                  <TableCell>{user.department || '-'}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{user.email}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {user.phone || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={user.is_active}
+                          onChange={() => toggleUserStatus(user.id)}
+                          size="small"
+                        />
+                      }
+                      label={user.is_active ? "啟用" : "停用"}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenDialog(user)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(user)}
+                      disabled={user.role === 'admin' && user.id === 1}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingUser ? '編輯用戶資料' : '新增用戶'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Box display="flex" gap={2}>
-              <TextField
-                fullWidth
-                label="用戶名稱"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                margin="normal"
-              />
-              <TextField
-                fullWidth
-                label="帳號"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                margin="normal"
-              />
-            </Box>
-
-            <TextField
-              fullWidth
-              label="電子郵件"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              margin="normal"
-            />
-
-            {!editingUser && (
-              <TextField
-                fullWidth
-                label="密碼"
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                margin="normal"
-                required
-              />
-            )}
-
-            <Box display="flex" gap={2}>
-              <TextField
-                fullWidth
-                label="電話"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                margin="normal"
-              />
-              <TextField
-                fullWidth
-                label="部門"
-                value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                margin="normal"
-              />
-            </Box>
-
-            <FormControl fullWidth margin="normal">
-              <InputLabel>角色</InputLabel>
-              <Select
-                value={formData.role}
-                label="角色"
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as User['role'] })}
-              >
-                <MenuItem value="user">一般用戶</MenuItem>
-                <MenuItem value="teacher">老師</MenuItem>
-                <MenuItem value="manager">管理者</MenuItem>
-                <MenuItem value="admin">系統管理員</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+          <DialogTitle>
+            {editingUser ? '編輯用戶資料' : '新增用戶'}
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Box display="flex" gap={2}>
+                <TextField
+                  fullWidth
+                  label="用戶名稱"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  margin="normal"
                 />
-              }
-              label="啟用狀態"
-              sx={{ mt: 2 }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>取消</Button>
-          <Button 
-            onClick={handleSave} 
-            variant="contained"
-            disabled={!formData.full_name || !formData.username || !formData.email || (!editingUser && !formData.password)}
-          >
-            {editingUser ? '更新' : '新增'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+                <TextField
+                  fullWidth
+                  label="帳號"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  margin="normal"
+                />
+              </Box>
 
-      {/* 管理員密碼驗證模態框 */}
-      <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
-        <DialogTitle>管理員密碼驗證</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              ⚠️ 您即將刪除用戶：<strong>{userToDelete?.full_name}</strong>
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3 }}>
-              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
-            </Typography>
-            <TextField
-              fullWidth
-              type="password"
-              label="管理員密碼"
-              value={adminPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
-              error={!!passwordError}
-              helperText={passwordError}
-              onKeyPress={(e: React.KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  verifyPasswordAndDelete();
+              <TextField
+                fullWidth
+                label="電子郵件"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                margin="normal"
+              />
+
+              {!editingUser && (
+                <TextField
+                  fullWidth
+                  label="密碼"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  margin="normal"
+                  required
+                />
+              )}
+
+              <Box display="flex" gap={2}>
+                <TextField
+                  fullWidth
+                  label="電話"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  margin="normal"
+                />
+                <TextField
+                  fullWidth
+                  label="部門"
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  margin="normal"
+                />
+              </Box>
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>角色</InputLabel>
+                <Select
+                  value={formData.role}
+                  label="角色"
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as User['role'] })}
+                >
+                  <MenuItem value="user">一般用戶</MenuItem>
+                  <MenuItem value="teacher">老師</MenuItem>
+                  <MenuItem value="manager">管理者</MenuItem>
+                  <MenuItem value="admin">系統管理員</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  />
                 }
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closePasswordModal}>取消</Button>
-          <Button 
-            onClick={verifyPasswordAndDelete} 
-            color="error" 
-            variant="contained"
-            disabled={!adminPassword.trim()}
-          >
-            確認刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+                label="啟用帳號"
+                sx={{ mt: 2 }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>取消</Button>
+            <Button 
+              onClick={handleSave} 
+              variant="contained"
+              disabled={!formData.username || !formData.email || !formData.full_name || (!editingUser && !formData.password)}
+            >
+              {editingUser ? '更新' : '新增'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 管理員密碼驗證模態框 */}
+        <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
+          <DialogTitle>管理員密碼驗證</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                ⚠️ 您即將刪除用戶：<strong>{userToDelete?.full_name}</strong>
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3 }}>
+                只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+              </Typography>
+              <TextField
+                fullWidth
+                type="password"
+                label="管理員密碼"
+                value={adminPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+                error={!!passwordError}
+                helperText={passwordError}
+                onKeyPress={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter') {
+                    verifyPasswordAndDelete();
+                  }
+                }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closePasswordModal}>取消</Button>
+            <Button 
+              onClick={verifyPasswordAndDelete} 
+              color="error" 
+              variant="contained"
+              disabled={!adminPassword.trim()}
+            >
+              確認刪除
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </>
   );
 };
 

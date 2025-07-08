@@ -17,6 +17,7 @@ import TeachersPage from './pages/TeachersPage';
 import TeacherCoursesManagementPage from './pages/TeacherCoursesManagementPage';
 import CourseCategoriesPage from './pages/CourseCategoriesPage';
 import UsersPage from './pages/UsersPage';
+import ShortTermSchedulePage from './pages/ShortTermSchedulePage';
 import DevTools from './components/DevTools';
 import './App.css';
 
@@ -78,6 +79,7 @@ const AppContent = () => {
           <Route path="/teacher-courses" element={<TeacherCoursesManagementPage />} />
           <Route path="/course-categories" element={<CourseCategoriesPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/short-term-schedule/:studentId" element={<ShortTermSchedulePage />} />
         </Routes>
       </Layout>
     </Router>

@@ -10,6 +10,15 @@ import FormRow from './FormRow';
 import FormContainer from './FormContainer';
 import { getLevelColors } from '../utils/levelColors';
 import { getGenderColors } from '../utils/genderColors';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  School as SchoolIcon,
+  Person as PersonIcon,
+  Schedule as ScheduleIcon
+} from '@mui/icons-material';
 
 interface Student {
   id?: number;
@@ -33,6 +42,7 @@ interface Student {
   notes: string;
   created_at?: string;
   updated_at?: string;
+  class_schedule_type?: string; // 新增
 }
 
 interface ClassType {
@@ -45,12 +55,14 @@ interface ClassType {
 interface StudentDetailViewProps {
   student: Student;
   onEdit: () => void;
+  onDelete: () => void;
   onClose: () => void;
 }
 
 const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   student,
   onEdit,
+  onDelete,
   onClose
 }) => {
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
@@ -227,7 +239,18 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
             />
           </FormRow>
           
-          <div></div> {/* 空白佔位 */}
+          <FormRow label="班級排程類型" labelWidth={100}>
+            <Chip
+              label={student.class_schedule_type || '未設定'}
+              size="small"
+              sx={{
+                backgroundColor: student.class_schedule_type === '常態班' ? '#e3f2fd' : student.class_schedule_type === '短期班' ? '#fff3e0' : '#f5f5f5',
+                color: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : '#757575',
+                border: student.class_schedule_type ? '1px solid' : 'none',
+                borderColor: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : 'transparent'
+              }}
+            />
+          </FormRow>
         </Box>
       </Box>
 
@@ -351,22 +374,57 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
       )}
 
       {/* 按鈕區域 */}
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 2 }}>
-        <Button 
-          variant="outlined" 
-          onClick={onClose}
-          sx={{ minWidth: 100 }}
-        >
-          關閉
-        </Button>
-        <Button 
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-end' }}>
+        <Button
           variant="contained"
+          startIcon={<EditIcon />}
           onClick={onEdit}
-          sx={{ minWidth: 100 }}
         >
           編輯
         </Button>
-              </Box>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteIcon />}
+          onClick={onDelete}
+        >
+          刪除
+        </Button>
+        {student.class_schedule_type === '短期班' && (
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<ScheduleIcon />}
+            onClick={() => {
+              // 計算本週的開始和結束日期
+              const today = new Date();
+              const dayOfWeek = today.getDay(); // 0 = 週日, 1 = 週一, ...
+              const monday = new Date(today);
+              monday.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+              const sunday = new Date(monday);
+              sunday.setDate(monday.getDate() + 6);
+              
+              const weekStartDate = monday.toISOString().split('T')[0];
+              const weekEndDate = sunday.toISOString().split('T')[0];
+              
+              // 開啟短期班排課編輯器
+              window.open(
+                `/short-term-schedule/${student.id}?week_start=${weekStartDate}&week_end=${weekEndDate}`,
+                '_blank',
+                'width=1200,height=800'
+              );
+            }}
+          >
+            短期班排課
+          </Button>
+        )}
+        <Button 
+          variant="outlined" 
+          onClick={onClose}
+        >
+          關閉
+        </Button>
+      </Box>
       </FormContainer>
     );
   };

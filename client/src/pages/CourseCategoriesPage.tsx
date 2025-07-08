@@ -475,182 +475,198 @@ const CourseCategoriesPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1" sx={{ color: 'white' }}>
-          課程分類管理
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          新增課程分類
-        </Button>
-      </Box>
-
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <TableContainer>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell width={50}></TableCell>
-                  <TableCell>分類名稱</TableCell>
-                  <TableCell>分類代碼</TableCell>
-                  <TableCell>描述</TableCell>
-                  <TableCell align="center">排序</TableCell>
-                  <TableCell align="center">課程數量</TableCell>
-                  <TableCell align="center">師資數量</TableCell>
-                  <TableCell align="center">學生數量</TableCell>
-                  <TableCell align="center">狀態</TableCell>
-                  <TableCell align="center">操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <SortableContext
-                  items={categories.map(cat => cat.id.toString())}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {categories.map((category, index) => (
-                    <SortableTableRow
-                      key={category.id}
-                      category={category}
-                      index={index}
-                      onEdit={handleOpenDialog}
-                      onDelete={handleDeleteCategory}
-                      onToggleActive={handleToggleActive}
-                    />
-                  ))}
-                </SortableContext>
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </DndContext>
-      </Paper>
-
-      {/* 新增/編輯對話框 */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingCategory ? '編輯課程分類' : '新增課程分類'}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="課程分類名稱"
-            fullWidth
-            variant="outlined"
-            value={formData.category_name}
-            onChange={(e) => setFormData({ ...formData, category_name: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="描述"
-            fullWidth
-            variant="outlined"
-            multiline
-            rows={3}
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="排序"
-            type="number"
-            fullWidth
-            variant="outlined"
-            value={formData.sort_order}
-            onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-            sx={{ mb: 2 }}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              />
-            }
-            label="啟用"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>取消</Button>
-          <Button onClick={handleSaveCategory} variant="contained">
-            {editingCategory ? '更新' : '新增'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 管理員密碼驗證模態框 */}
-      <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
-        <DialogTitle>管理員密碼驗證</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              ⚠️ 您即將刪除課程分類：<strong>{categoryToDelete?.category_name}</strong>
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3 }}>
-              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
-            </Typography>
-            <TextField
-              fullWidth
-              type="password"
-              label="管理員密碼"
-              value={adminPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
-              error={!!passwordError}
-              helperText={passwordError}
-              onKeyPress={(e: React.KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  verifyPasswordAndDelete();
-                }
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closePasswordModal}>取消</Button>
-          <Button 
-            onClick={verifyPasswordAndDelete} 
-            color="error" 
-            variant="contained"
-            disabled={!adminPassword.trim()}
-          >
-            確認刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 訊息提示 */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+    <>
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
         sx={{
-          top: '50% !important',
-          left: '50% !important',
-          transform: 'translate(-50%, -50%) !important',
-          bottom: 'auto !important',
-          right: 'auto !important'
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
         }}
-      >
-        <Alert
+      />
+
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h4" component="h1" sx={{ color: 'white' }}>
+            課程分類管理
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            新增課程分類
+          </Button>
+        </Box>
+
+        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <TableContainer>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell width={50}></TableCell>
+                    <TableCell>分類名稱</TableCell>
+                    <TableCell>分類代碼</TableCell>
+                    <TableCell>描述</TableCell>
+                    <TableCell align="center">排序</TableCell>
+                    <TableCell align="center">課程數量</TableCell>
+                    <TableCell align="center">師資數量</TableCell>
+                    <TableCell align="center">學生數量</TableCell>
+                    <TableCell align="center">狀態</TableCell>
+                    <TableCell align="center">操作</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <SortableContext
+                    items={categories.map(cat => cat.id.toString())}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {categories.map((category, index) => (
+                      <SortableTableRow
+                        key={category.id}
+                        category={category}
+                        index={index}
+                        onEdit={handleOpenDialog}
+                        onDelete={handleDeleteCategory}
+                        onToggleActive={handleToggleActive}
+                      />
+                    ))}
+                  </SortableContext>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </DndContext>
+        </Paper>
+
+        {/* 新增/編輯對話框 */}
+        <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            {editingCategory ? '編輯課程分類' : '新增課程分類'}
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="課程分類名稱"
+              fullWidth
+              variant="outlined"
+              value={formData.category_name}
+              onChange={(e) => setFormData({ ...formData, category_name: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              margin="dense"
+              label="描述"
+              fullWidth
+              variant="outlined"
+              multiline
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              margin="dense"
+              label="排序"
+              type="number"
+              fullWidth
+              variant="outlined"
+              value={formData.sort_order}
+              onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+              sx={{ mb: 2 }}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                />
+              }
+              label="啟用"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>取消</Button>
+            <Button onClick={handleSaveCategory} variant="contained">
+              {editingCategory ? '更新' : '新增'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 管理員密碼驗證模態框 */}
+        <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
+          <DialogTitle>管理員密碼驗證</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                ⚠️ 您即將刪除課程分類：<strong>{categoryToDelete?.category_name}</strong>
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3 }}>
+                只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+              </Typography>
+              <TextField
+                fullWidth
+                type="password"
+                label="管理員密碼"
+                value={adminPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+                error={!!passwordError}
+                helperText={passwordError}
+                onKeyPress={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter') {
+                    verifyPasswordAndDelete();
+                  }
+                }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closePasswordModal}>取消</Button>
+            <Button 
+              onClick={verifyPasswordAndDelete} 
+              color="error" 
+              variant="contained"
+              disabled={!adminPassword.trim()}
+            >
+              確認刪除
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 訊息提示 */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          sx={{
+            top: '50% !important',
+            left: '50% !important',
+            transform: 'translate(-50%, -50%) !important',
+            bottom: 'auto !important',
+            right: 'auto !important'
+          }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Container>
+    </>
   );
 };
 

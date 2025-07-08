@@ -513,7 +513,7 @@ app.get('/api/auth/locked-accounts', authenticateToken, async (req, res, next) =
 // [READ] 取得所有學生資料
 app.get('/api/students', async (req, res, next) => {
     try {
-        const { school, grade, level_type, gender, class_type, enrollment_status } = req.query;
+        const { school, grade, level_type, gender, class_type, enrollment_status, class_schedule_type } = req.query;
         let query = 'SELECT * FROM students WHERE is_active = 1';
         const request = pool.request();
         
@@ -540,6 +540,10 @@ app.get('/api/students', async (req, res, next) => {
         if (enrollment_status) {
             query += ' AND enrollment_status = @enrollment_status';
             request.input('enrollment_status', sql.NVarChar, enrollment_status);
+        }
+        if (class_schedule_type) {
+            query += ' AND class_schedule_type = @class_schedule_type';
+            request.input('class_schedule_type', sql.NVarChar, class_schedule_type);
         }
         
         query += ' ORDER BY school, grade, class_type, chinese_name';
@@ -653,6 +657,7 @@ app.post(
     body('father_email').optional().isEmail().withMessage('無效的父親電子信箱格式'),
     body('mother_email').optional().isEmail().withMessage('無效的母親電子信箱格式'),
     body('enrollment_status').optional().isIn(['進行中', '已畢業', '暫停中']).withMessage('無效的就讀狀態'),
+    body('class_schedule_type').optional().isIn(['常態班', '短期班']).withMessage('無效的班級排程類型'),
     // --- 路由處理器 ---
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -666,7 +671,7 @@ app.post(
                 chinese_name, english_name, student_phone, student_email, student_line,
                 father_name, father_phone, father_line,
                 mother_name, mother_phone, mother_line,
-                school, grade, gender, level_type, class_type, enrollment_status, notes
+                school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type
             } = req.body;
             
             const result = await pool.request()
@@ -688,20 +693,20 @@ app.post(
                 .input('class_type', sql.NVarChar, class_type)
                 .input('enrollment_status', sql.NVarChar, enrollment_status || '進行中')
                 .input('notes', sql.NVarChar, notes || null)
+                .input('class_schedule_type', sql.NVarChar, class_schedule_type || '常態班')
                 .query(`
                     INSERT INTO students (
                         chinese_name, english_name, student_phone, student_email, student_line,
                         father_name, father_phone, father_line,
                         mother_name, mother_phone, mother_line,
-                        school, grade, gender, level_type, class_type, enrollment_status, notes
+                        school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type
                     ) 
                     VALUES (
                         @chinese_name, @english_name, @student_phone, @student_email, @student_line,
                         @father_name, @father_phone, @father_line,
                         @mother_name, @mother_phone, @mother_line,
-                        @school, @grade, @gender, @level_type, @class_type, @enrollment_status, @notes
+                        @school, @grade, @gender, @level_type, @class_type, @enrollment_status, @notes, @class_schedule_type
                     );
-                    
                     SELECT * FROM students WHERE id = SCOPE_IDENTITY() AND is_active = 1;
                 `);
             res.status(201).json(result.recordset[0]);
@@ -724,6 +729,7 @@ app.put(
     body('class_type').notEmpty().withMessage('班別為必填'),
     body('student_email').notEmpty().withMessage('學生電子信箱為必填').isEmail().withMessage('無效的學生電子信箱格式'),
     body('enrollment_status').optional().isIn(['進行中', '已畢業', '暫停中']).withMessage('無效的就讀狀態'),
+    body('class_schedule_type').optional().isIn(['常態班', '短期班']).withMessage('無效的班級排程類型'),
     // --- 路由處理器 ---
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -738,7 +744,7 @@ app.put(
                 chinese_name, english_name, student_phone, student_email, student_line,
                 father_name, father_phone, father_line,
                 mother_name, mother_phone, mother_line,
-                school, grade, gender, level_type, class_type, enrollment_status, notes
+                school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type
             } = req.body;
             
             const result = await pool.request()
@@ -761,6 +767,7 @@ app.put(
                 .input('class_type', sql.NVarChar, class_type)
                 .input('enrollment_status', sql.NVarChar, enrollment_status || '進行中')
                 .input('notes', sql.NVarChar, notes || null)
+                .input('class_schedule_type', sql.NVarChar, class_schedule_type || '常態班')
                 .query(`
                     UPDATE students 
                     SET chinese_name = @chinese_name, english_name = @english_name, 
@@ -768,7 +775,7 @@ app.put(
                         father_name = @father_name, father_phone = @father_phone, father_line = @father_line,
                         mother_name = @mother_name, mother_phone = @mother_phone, mother_line = @mother_line,
                         school = @school, grade = @grade, gender = @gender, 
-                        level_type = @level_type, class_type = @class_type, enrollment_status = @enrollment_status, notes = @notes, updated_at = GETDATE()
+                        level_type = @level_type, class_type = @class_type, enrollment_status = @enrollment_status, notes = @notes, class_schedule_type = @class_schedule_type, updated_at = GETDATE()
                     WHERE id = @id AND is_active = 1;
                     SELECT * FROM students WHERE id = @id AND is_active = 1;
                 `);
@@ -1441,13 +1448,13 @@ app.get('/api/schools/stats', async (req, res, next) => {
                 SUM(CASE WHEN school_type = N'公立' THEN 1 ELSE 0 END) as public_schools,
                 SUM(CASE WHEN school_type = N'國立' THEN 1 ELSE 0 END) as national_schools,
                 SUM(CASE WHEN school_type = N'私立' THEN 1 ELSE 0 END) as private_schools,
-                SUM(our_student_count) as total_our_students,
+                (SELECT COUNT(*) FROM students WHERE is_active = 1) as total_our_students,
                 district,
                 COUNT(*) as district_count
             FROM schools 
             WHERE is_active = 1
             GROUP BY ROLLUP(district)
-            ORDER BY district
+            ORDER BY CASE WHEN district IS NULL THEN 1 ELSE 0 END, district
         `);
         res.json(result.recordset);
     } catch (err) {
@@ -2798,4 +2805,410 @@ const startServer = async () => {
 };
 
 startServer();
+
+// =====================================================
+// 短期班排課 API
+// =====================================================
+
+// [READ] 取得短期班排課資料
+app.get('/api/short-term-schedules', async (req, res, next) => {
+    try {
+        const { student_id, week_start_date, week_end_date, day_of_week, status } = req.query;
+        let query = `
+            SELECT 
+                sts.*,
+                s.chinese_name as student_name,
+                s.school,
+                s.grade,
+                t.name as teacher_name
+            FROM short_term_schedules sts
+            LEFT JOIN students s ON sts.student_id = s.id
+            LEFT JOIN teachers t ON sts.teacher_id = t.id
+            WHERE s.is_active = 1
+        `;
+        const request = pool.request();
+        
+        if (student_id) {
+            query += ' AND sts.student_id = @student_id';
+            request.input('student_id', sql.Int, student_id);
+        }
+        if (week_start_date) {
+            query += ' AND sts.week_start_date >= @week_start_date';
+            request.input('week_start_date', sql.Date, week_start_date);
+        }
+        if (week_end_date) {
+            query += ' AND sts.week_end_date <= @week_end_date';
+            request.input('week_end_date', sql.Date, week_end_date);
+        }
+        if (day_of_week) {
+            query += ' AND sts.day_of_week = @day_of_week';
+            request.input('day_of_week', sql.Int, day_of_week);
+        }
+        if (status) {
+            query += ' AND sts.status = @status';
+            request.input('status', sql.NVarChar, status);
+        }
+        
+        query += ' ORDER BY sts.week_start_date, sts.day_of_week, sts.time_slot';
+        
+        const result = await request.query(query);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得指定學生的短期班排課
+app.get('/api/short-term-schedules/student/:studentId', async (req, res, next) => {
+    try {
+        const { studentId } = req.params;
+        const { week_start_date, week_end_date } = req.query;
+        
+        let query = `
+            SELECT 
+                sts.*,
+                s.chinese_name as student_name,
+                s.school,
+                s.grade,
+                t.name as teacher_name
+            FROM short_term_schedules sts
+            LEFT JOIN students s ON sts.student_id = s.id
+            LEFT JOIN teachers t ON sts.teacher_id = t.id
+            WHERE sts.student_id = @student_id AND s.is_active = 1
+        `;
+        const request = pool.request();
+        request.input('student_id', sql.Int, studentId);
+        
+        if (week_start_date) {
+            query += ' AND sts.week_start_date >= @week_start_date';
+            request.input('week_start_date', sql.Date, week_start_date);
+        }
+        if (week_end_date) {
+            query += ' AND sts.week_end_date <= @week_end_date';
+            request.input('week_end_date', sql.Date, week_end_date);
+        }
+        
+        query += ' ORDER BY sts.week_start_date, sts.day_of_week, sts.time_slot';
+        
+        const result = await request.query(query);
+        res.json(result.recordset);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [CREATE] 新增短期班排課
+app.post('/api/short-term-schedules', async (req, res, next) => {
+    try {
+        const {
+            student_id,
+            week_start_date,
+            week_end_date,
+            day_of_week,
+            time_slot,
+            duration_minutes = 30,
+            lesson_type,
+            teacher_id,
+            subject,
+            classroom,
+            notes
+        } = req.body;
+
+        // 驗證必填欄位
+        if (!student_id || !week_start_date || !week_end_date || !day_of_week || !time_slot || !lesson_type) {
+            return res.status(400).json({
+                error: '缺少必填欄位',
+                required: ['student_id', 'week_start_date', 'week_end_date', 'day_of_week', 'time_slot', 'lesson_type']
+            });
+        }
+
+        // 驗證學生是否存在
+        const studentCheck = await pool.request()
+            .input('student_id', sql.Int, student_id)
+            .query('SELECT id FROM students WHERE id = @student_id AND is_active = 1');
+        
+        if (studentCheck.recordset.length === 0) {
+            return res.status(400).json({ error: '學生不存在或已停用' });
+        }
+
+        // 驗證老師是否存在（如果提供）
+        if (teacher_id) {
+            const teacherCheck = await pool.request()
+                .input('teacher_id', sql.Int, teacher_id)
+                .query('SELECT id FROM teachers WHERE id = @teacher_id AND is_active = 1');
+            
+            if (teacherCheck.recordset.length === 0) {
+                return res.status(400).json({ error: '老師不存在或已停用' });
+            }
+        }
+
+        // 檢查時間衝突
+        const conflictCheck = await pool.request()
+            .input('student_id', sql.Int, student_id)
+            .input('week_start_date', sql.Date, week_start_date)
+            .input('week_end_date', sql.Date, week_end_date)
+            .input('day_of_week', sql.Int, day_of_week)
+            .input('time_slot', sql.Time, time_slot)
+            .query(`
+                SELECT id FROM short_term_schedules 
+                WHERE student_id = @student_id 
+                AND week_start_date = @week_start_date 
+                AND week_end_date = @week_end_date
+                AND day_of_week = @day_of_week 
+                AND time_slot = @time_slot
+                AND status != 'cancelled'
+            `);
+
+        if (conflictCheck.recordset.length > 0) {
+            return res.status(400).json({ error: '該時段已有排課，請選擇其他時段' });
+        }
+
+        // 新增排課
+        const insertQuery = `
+            INSERT INTO short_term_schedules (
+                student_id, week_start_date, week_end_date, day_of_week, 
+                time_slot, duration_minutes, lesson_type, teacher_id, 
+                subject, classroom, notes
+            ) VALUES (
+                @student_id, @week_start_date, @week_end_date, @day_of_week,
+                @time_slot, @duration_minutes, @lesson_type, @teacher_id,
+                @subject, @classroom, @notes
+            );
+            SELECT SCOPE_IDENTITY() as id;
+        `;
+
+        const result = await pool.request()
+            .input('student_id', sql.Int, student_id)
+            .input('week_start_date', sql.Date, week_start_date)
+            .input('week_end_date', sql.Date, week_end_date)
+            .input('day_of_week', sql.Int, day_of_week)
+            .input('time_slot', sql.Time, time_slot)
+            .input('duration_minutes', sql.Int, duration_minutes)
+            .input('lesson_type', sql.NVarChar, lesson_type)
+            .input('teacher_id', sql.Int, teacher_id)
+            .input('subject', sql.NVarChar, subject)
+            .input('classroom', sql.NVarChar, classroom)
+            .input('notes', sql.NVarChar, notes)
+            .query(insertQuery);
+
+        const newId = result.recordset[0].id;
+        
+        // 回傳新增的資料
+        const newSchedule = await pool.request()
+            .input('id', sql.Int, newId)
+            .query(`
+                SELECT 
+                    sts.*,
+                    s.chinese_name as student_name,
+                    s.school,
+                    s.grade,
+                    t.name as teacher_name
+                FROM short_term_schedules sts
+                LEFT JOIN students s ON sts.student_id = s.id
+                LEFT JOIN teachers t ON sts.teacher_id = t.id
+                WHERE sts.id = @id
+            `);
+
+        res.status(201).json(newSchedule.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [UPDATE] 更新短期班排課
+app.put('/api/short-term-schedules/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const {
+            week_start_date,
+            week_end_date,
+            day_of_week,
+            time_slot,
+            duration_minutes,
+            lesson_type,
+            teacher_id,
+            subject,
+            classroom,
+            notes,
+            status
+        } = req.body;
+
+        // 檢查排課是否存在
+        const existingCheck = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT student_id FROM short_term_schedules WHERE id = @id');
+
+        if (existingCheck.recordset.length === 0) {
+            return res.status(404).json({ error: '排課不存在' });
+        }
+
+        const student_id = existingCheck.recordset[0].student_id;
+
+        // 檢查時間衝突（排除自己）
+        if (week_start_date && week_end_date && day_of_week && time_slot) {
+            const conflictCheck = await pool.request()
+                .input('id', sql.Int, id)
+                .input('student_id', sql.Int, student_id)
+                .input('week_start_date', sql.Date, week_start_date)
+                .input('week_end_date', sql.Date, week_end_date)
+                .input('day_of_week', sql.Int, day_of_week)
+                .input('time_slot', sql.Time, time_slot)
+                .query(`
+                    SELECT id FROM short_term_schedules 
+                    WHERE id != @id
+                    AND student_id = @student_id 
+                    AND week_start_date = @week_start_date 
+                    AND week_end_date = @week_end_date
+                    AND day_of_week = @day_of_week 
+                    AND time_slot = @time_slot
+                    AND status != 'cancelled'
+                `);
+
+            if (conflictCheck.recordset.length > 0) {
+                return res.status(400).json({ error: '該時段已有排課，請選擇其他時段' });
+            }
+        }
+
+        // 建立更新查詢
+        let updateQuery = 'UPDATE short_term_schedules SET ';
+        const request = pool.request();
+        request.input('id', sql.Int, id);
+        
+        const updates = [];
+        
+        if (week_start_date !== undefined) {
+            updates.push('week_start_date = @week_start_date');
+            request.input('week_start_date', sql.Date, week_start_date);
+        }
+        if (week_end_date !== undefined) {
+            updates.push('week_end_date = @week_end_date');
+            request.input('week_end_date', sql.Date, week_end_date);
+        }
+        if (day_of_week !== undefined) {
+            updates.push('day_of_week = @day_of_week');
+            request.input('day_of_week', sql.Int, day_of_week);
+        }
+        if (time_slot !== undefined) {
+            updates.push('time_slot = @time_slot');
+            request.input('time_slot', sql.Time, time_slot);
+        }
+        if (duration_minutes !== undefined) {
+            updates.push('duration_minutes = @duration_minutes');
+            request.input('duration_minutes', sql.Int, duration_minutes);
+        }
+        if (lesson_type !== undefined) {
+            updates.push('lesson_type = @lesson_type');
+            request.input('lesson_type', sql.NVarChar, lesson_type);
+        }
+        if (teacher_id !== undefined) {
+            updates.push('teacher_id = @teacher_id');
+            request.input('teacher_id', sql.Int, teacher_id);
+        }
+        if (subject !== undefined) {
+            updates.push('subject = @subject');
+            request.input('subject', sql.NVarChar, subject);
+        }
+        if (classroom !== undefined) {
+            updates.push('classroom = @classroom');
+            request.input('classroom', sql.NVarChar, classroom);
+        }
+        if (notes !== undefined) {
+            updates.push('notes = @notes');
+            request.input('notes', sql.NVarChar, notes);
+        }
+        if (status !== undefined) {
+            updates.push('status = @status');
+            request.input('status', sql.NVarChar, status);
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: '沒有提供要更新的欄位' });
+        }
+
+        updateQuery += updates.join(', ') + ' WHERE id = @id';
+        await request.query(updateQuery);
+
+        // 回傳更新後的資料
+        const updatedSchedule = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT 
+                    sts.*,
+                    s.chinese_name as student_name,
+                    s.school,
+                    s.grade,
+                    t.name as teacher_name
+                FROM short_term_schedules sts
+                LEFT JOIN students s ON sts.student_id = s.id
+                LEFT JOIN teachers t ON sts.teacher_id = t.id
+                WHERE sts.id = @id
+            `);
+
+        res.json(updatedSchedule.recordset[0]);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [DELETE] 刪除短期班排課
+app.delete('/api/short-term-schedules/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        // 檢查排課是否存在
+        const existingCheck = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT id FROM short_term_schedules WHERE id = @id');
+
+        if (existingCheck.recordset.length === 0) {
+            return res.status(404).json({ error: '排課不存在' });
+        }
+
+        // 刪除排課
+        await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM short_term_schedules WHERE id = @id');
+
+        res.json({ message: '排課已刪除' });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// [READ] 取得可用的時段列表
+app.get('/api/short-term-schedules/time-slots', async (req, res, next) => {
+    try {
+        const timeSlots = [
+            { time_slot: '09:00:00', display_time: '09:00' },
+            { time_slot: '09:30:00', display_time: '09:30' },
+            { time_slot: '10:00:00', display_time: '10:00' },
+            { time_slot: '10:30:00', display_time: '10:30' },
+            { time_slot: '11:00:00', display_time: '11:00' },
+            { time_slot: '11:30:00', display_time: '11:30' },
+            { time_slot: '12:00:00', display_time: '12:00' },
+            { time_slot: '12:30:00', display_time: '12:30' },
+            { time_slot: '13:00:00', display_time: '13:00' },
+            { time_slot: '13:30:00', display_time: '13:30' },
+            { time_slot: '14:00:00', display_time: '14:00' },
+            { time_slot: '14:30:00', display_time: '14:30' },
+            { time_slot: '15:00:00', display_time: '15:00' },
+            { time_slot: '15:30:00', display_time: '15:30' },
+            { time_slot: '16:00:00', display_time: '16:00' },
+            { time_slot: '16:30:00', display_time: '16:30' },
+            { time_slot: '17:00:00', display_time: '17:00' },
+            { time_slot: '17:30:00', display_time: '17:30' },
+            { time_slot: '18:00:00', display_time: '18:00' },
+            { time_slot: '18:30:00', display_time: '18:30' },
+            { time_slot: '19:00:00', display_time: '19:00' },
+            { time_slot: '19:30:00', display_time: '19:30' },
+            { time_slot: '20:00:00', display_time: '20:00' },
+            { time_slot: '20:30:00', display_time: '20:30' },
+            { time_slot: '21:00:00', display_time: '21:00' }
+        ];
+        
+        res.json(timeSlots);
+    } catch (err) {
+        next(err);
+    }
+});
 

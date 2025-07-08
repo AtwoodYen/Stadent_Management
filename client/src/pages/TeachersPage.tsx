@@ -735,6 +735,20 @@ const TeachersPage: React.FC = () => {
 
   return (
     <>
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
+        }}
+      />
+
       {/* Main content layout */}
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>

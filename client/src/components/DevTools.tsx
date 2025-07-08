@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 const DevTools: React.FC = () => {
   const { logout, isAuthenticated, user } = useAuth();
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
 
   // 只在開發環境顯示
   if (import.meta.env.PROD) {

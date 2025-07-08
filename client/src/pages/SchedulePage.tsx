@@ -63,34 +63,33 @@ interface Lesson {
 
 /* ---------- 主元件 ---------- */
 export default function SchedulePage() {
-  /* ---------------- 資料狀態 ---------------- */
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<ViewType>('month');
   const [students, setStudents] = useState<Student[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
-
-  /* ---------------- UI 狀態 ---------------- */
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [view, setView] = useState<ViewType>('day');
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<number | ''>('');
-  const [selectedTime, setSelectedTime] = useState('');
   const [topic, setTopic] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<number>(0);
+  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  
+  // 新增：分頁選單狀態
+  const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'stats'>('schedule');
 
-  /* ---------- 時段表：08:00 ~ 21:30, 每 30 分 ---------- */
-  const timeSlots = React.useMemo(() => {
-    const base = new Date();          // 只取時間部分
-    base.setHours(8, 0, 0, 0);
-    return Array.from({ length: 28 }, (_, i) =>
-      format(addMinutes(base, i * 30), 'HH:mm')
-    );
-  }, []);
+  const timeSlots = [
+    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+    '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+  ];
 
-  /* ---------- 統計計算 ---------- */
+  // 計算本週課程數
   const lessonsThisWeek = lessons.filter(l => {
-    const start = startOfWeek(new Date());
-    const end = endOfWeek(new Date());
-    return l.date >= start && l.date <= end;
+    const lessonDate = new Date(l.date);
+    const weekStart = startOfWeek(currentDate);
+    const weekEnd = endOfWeek(currentDate);
+    return lessonDate >= weekStart && lessonDate <= weekEnd;
   }).length;
 
   /* ---------- 工具函式 ---------- */
@@ -114,7 +113,7 @@ export default function SchedulePage() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedDate(null);
-    setSelectedStudent('');
+    setSelectedStudent(0);
     setSelectedTime('');
     setTopic('');
   };
@@ -361,125 +360,248 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className='schedule-container'>
-      <div className='main-content'>
-        {/* ------------------ 側邊欄 ------------------ */}
-        <div className='sidebar'>
-          <div className='stats-bar'>
-            <div className='stat-item'>
-              <div className='stat-number'>{students.length}</div>
-              <div className='stat-label'>學生</div>
-            </div>
-            <div className='stat-item'>
-              <div className='stat-number'>0</div>
-              <div className='stat-label'>畢業生</div>
-            </div>
-            <div className='stat-item'>
-              <div className='stat-number'>{lessonsThisWeek}</div>
-              <div className='stat-label'>本週課程</div>
-            </div>
+    <>
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
+        }}
+      />
+
+      <div className='schedule-container'>
+        <div className='main-content'>
+          {/* 分頁選單 */}
+          <div className="tab-navigation" style={{
+            display: 'flex',
+            borderBottom: '2px solid #e0e0e0',
+            marginBottom: '20px',
+            backgroundColor: '#fff',
+            borderRadius: '8px 8px 0 0',
+            overflow: 'hidden'
+          }}>
+            <button
+              className={`tab-button ${activeTab === 'schedule' ? 'active' : ''}`}
+              onClick={() => setActiveTab('schedule')}
+              style={{
+                flex: 1,
+                padding: '15px 20px',
+                border: 'none',
+                backgroundColor: activeTab === 'schedule' ? '#1976d2' : '#f5f5f5',
+                color: activeTab === 'schedule' ? 'white' : '#333',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: activeTab === 'schedule' ? 'bold' : 'normal',
+                transition: 'all 0.3s ease',
+                borderRight: '1px solid #e0e0e0'
+              }}
+            >
+              📅 課程排程
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'students' ? 'active' : ''}`}
+              onClick={() => setActiveTab('students')}
+              style={{
+                flex: 1,
+                padding: '15px 20px',
+                border: 'none',
+                backgroundColor: activeTab === 'students' ? '#1976d2' : '#f5f5f5',
+                color: activeTab === 'students' ? 'white' : '#333',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: activeTab === 'students' ? 'bold' : 'normal',
+                transition: 'all 0.3s ease',
+                borderRight: '1px solid #e0e0e0'
+              }}
+            >
+              👥 學生列表
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'stats' ? 'active' : ''}`}
+              onClick={() => setActiveTab('stats')}
+              style={{
+                flex: 1,
+                padding: '15px 20px',
+                border: 'none',
+                backgroundColor: activeTab === 'stats' ? '#1976d2' : '#f5f5f5',
+                color: activeTab === 'stats' ? 'white' : '#333',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: activeTab === 'stats' ? 'bold' : 'normal',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              📊 統計資料
+            </button>
           </div>
 
-          <div className='student-list'>
-            <h3>📋 學生管理</h3>
-            {students.map(s => (
-              <div key={s.id} className='student-item'>
-                <div className='student-item-details'>
-                  <div className='student-name'>{s.name}</div>
-                  <div className='student-info'>{s.level}</div>
+          {/* 課程排程區域 */}
+          {activeTab === 'schedule' && (
+            <div className='calendar-section'>
+              <div className='calendar-header'>
+                <div className='calendar-nav'>
+                  <button className='btn' onClick={handlePrevious}>‹ 上一頁</button>
+                  <div style={{ margin: '0 10px', fontWeight: 'bold' }}>
+                    {format(currentDate, view === 'month' ? 'yyyy 年 M 月' : 'yyyy 年 M 月 d 日')}
+                  </div>
+                  <button className='btn' onClick={handleNext}>下一頁 ›</button>
+                </div>
+
+                <div className='calendar-controls'>
+                  <ToggleButtonGroup
+                    color='primary'
+                    value={view}
+                    exclusive
+                    onChange={handleViewChange}
+                    aria-label='schedule view'
+                  >
+                    <ToggleButton value='month'>月</ToggleButton>
+                    <ToggleButton value='week'>週</ToggleButton>
+                    <ToggleButton value='day'>日</ToggleButton>
+                  </ToggleButtonGroup>
+                  <button className='btn btn-secondary' style={{ marginLeft: 10 }} onClick={handleToday}>今天</button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* ------------------ 主日曆區 ------------------ */}
-        <div className='calendar-section'>
-          <div className='calendar-header'>
-            
-            <div className='calendar-nav'>
-              <button className='btn' onClick={handlePrevious}>‹ 上一頁</button>
-              <div style={{ margin: '0 10px', fontWeight: 'bold' }}>
-                {format(currentDate, view === 'month' ? 'yyyy 年 M 月' : 'yyyy 年 M 月 d 日')}
+              {/* 日曆 */}
+              <div>
+                {view === 'month' && renderMonthView()}
+                {view === 'week' && renderWeekView()}
+                {view === 'day' && renderDayView()}
               </div>
-              <button className='btn' onClick={handleNext}>下一頁 ›</button>
             </div>
+          )}
 
-            <div className='calendar-controls'>
-              <ToggleButtonGroup
-                color='primary'
-                value={view}
-                exclusive
-                onChange={handleViewChange}
-                aria-label='schedule view'
-              >
-                <ToggleButton value='month'>月</ToggleButton>
-                <ToggleButton value='week'>週</ToggleButton>
-                <ToggleButton value='day'>日</ToggleButton>
-              </ToggleButtonGroup>
-              <button className='btn btn-secondary' style={{ marginLeft: 10 }} onClick={handleToday}>今天</button>
+          {/* 學生列表區域 */}
+          {activeTab === 'students' && (
+            <div className="students-section" style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ marginBottom: '20px', color: '#1976d2' }}>👥 學生列表</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                {students.map(s => (
+                  <div key={s.id} style={{
+                    backgroundColor: '#f5f5f5',
+                    padding: '15px',
+                    borderRadius: '6px',
+                    border: '1px solid #e0e0e0'
+                  }}>
+                    <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>{s.name}</h3>
+                    <p style={{ margin: '0', color: '#666' }}>程度：{s.level}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            
-          </div>
+          )}
 
-          {/* 日曆 */}
-          <div>
-            {view === 'month' && renderMonthView()}
-            {view === 'week' && renderWeekView()}
-            {view === 'day' && renderDayView()}
-          </div>
+          {/* 統計資料區域 */}
+          {activeTab === 'stats' && (
+            <div className="stats-section" style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              <h2 style={{ marginBottom: '20px', color: '#1976d2' }}>📊 統計資料</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                <div style={{
+                  backgroundColor: '#e3f2fd',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #1976d2'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#1976d2' }}>{students.length}</div>
+                  <div style={{ color: '#1976d2' }}>總學生數</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#e8f5e8',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #388e3c'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#388e3c' }}>{lessons.length}</div>
+                  <div style={{ color: '#388e3c' }}>總課程數</div>
+                </div>
+                <div style={{
+                  backgroundColor: '#fff3e0',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #f57c00'
+                }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#f57c00' }}>{lessonsThisWeek}</div>
+                  <div style={{ color: '#f57c00' }}>本週課程</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* -------------- 新增課程 Dialog -------------- */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth='sm' fullWidth>
+      {/* 新增課程對話框 */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>新增課程</DialogTitle>
         <DialogContent>
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ pt: 2 }}>
             <TextField
-              autoFocus
-              margin='normal'
-              label='主題'
               fullWidth
+              label="課程主題"
               value={topic}
-              onChange={e => setTopic(e.target.value)}
+              onChange={(e) => setTopic(e.target.value)}
+              margin="normal"
             />
-            <FormControl fullWidth margin='normal'>
+            <FormControl fullWidth margin="normal">
               <InputLabel>學生</InputLabel>
               <Select
                 value={selectedStudent}
-                label='學生'
-                onChange={e => setSelectedStudent(e.target.value as number)}
+                label="學生"
+                onChange={(e) => setSelectedStudent(Number(e.target.value))}
               >
-                {students.map(s => (
-                  <MenuItem key={s.id} value={s.id}>
-                    {s.name}（{s.level}）
+                {students.map((student) => (
+                  <MenuItem key={student.id} value={student.id}>
+                    {student.name} ({student.level})
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-            <TextField
-              margin='normal'
-              label='時間'
-              type='time'
-              fullWidth
-              value={selectedTime}
-              onChange={e => setSelectedTime(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+            <FormControl fullWidth margin="normal">
+              <InputLabel>開始時間</InputLabel>
+              <Select
+                value={selectedTime}
+                label="開始時間"
+                onChange={(e) => setSelectedTime(e.target.value)}
+              >
+                {timeSlots.map((time) => (
+                  <MenuItem key={time} value={time}>
+                    {time}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 0 }}>
+        <DialogActions>
           <Button onClick={handleCloseDialog}>取消</Button>
-          <Button
-            variant='contained'
-            onClick={handleAddLesson}
-            disabled={!topic || !selectedStudent || !selectedTime}
+          <Button 
+            onClick={handleAddLesson} 
+            variant="contained"
+            disabled={!selectedStudent || !selectedTime || !topic.trim()}
           >
             新增課程
           </Button>
         </DialogActions>
       </Dialog>
-    </div>
+    </>
   );
 }

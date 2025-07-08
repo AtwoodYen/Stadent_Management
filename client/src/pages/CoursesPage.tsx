@@ -286,172 +286,203 @@ const CoursesPage: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
-          課程管理
-        </Typography>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Typography variant="body1" sx={{ color: 'white' }}>
-            目前課程數量：{courses.length}
+    <>
+      {/* 背景容器 - 確保背景延伸到內容高度 */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: -1
+        }}
+      />
+
+      <Box>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
+            課程管理
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            新增課程
-          </Button>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Typography variant="body1" sx={{ color: 'white' }}>
+              目前課程數量：{courses.length}
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
+            >
+              新增課程
+            </Button>
+          </Box>
         </Box>
-      </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'name'}
-                  direction={sortField === 'name' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('name')}
-                >
-                  課程名稱
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'category'}
-                  direction={sortField === 'category' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('category')}
-                >
-                  分類
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'level'}
-                  direction={sortField === 'level' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('level')}
-                >
-                  難度
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'duration_minutes'}
-                  direction={sortField === 'duration_minutes' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('duration_minutes')}
-                >
-                  時長(分鐘)
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'price'}
-                  direction={sortField === 'price' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('price')}
-                >
-                  價格
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>先修課程</TableCell>
-              <TableCell>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sortedCourses.map((course) => (
-              <TableRow key={course.id}>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
                 <TableCell>
-                  <Box>
-                    <Typography variant="subtitle1">{course.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {course.description}
-                    </Typography>
-                  </Box>
-                </TableCell>
-                <TableCell>{course.category}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={course.level}
-                    sx={getLevelColor(course.level)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{course.duration_minutes}</TableCell>
-                <TableCell>NT$ {course.price}</TableCell>
-                <TableCell>
-                  {parsePrerequisites(course.prerequisites).map((prereq, index) => (
-                    <Chip
-                      key={index}
-                      label={prereq}
-                      size="small"
-                      variant="outlined"
-                      sx={{ mr: 0.5, mb: 0.5 }}
-                    />
-                  ))}
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenDialog(course)}
+                  <TableSortLabel
+                    active={sortField === 'name'}
+                    direction={sortField === 'name' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('name')}
                   >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(course)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                    課程名稱
+                  </TableSortLabel>
                 </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'category'}
+                    direction={sortField === 'category' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('category')}
+                  >
+                    分類
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'level'}
+                    direction={sortField === 'level' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('level')}
+                  >
+                    難度
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'duration_minutes'}
+                    direction={sortField === 'duration_minutes' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('duration_minutes')}
+                  >
+                    時長(分鐘)
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortField === 'price'}
+                    direction={sortField === 'price' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('price')}
+                  >
+                    價格
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>先修課程</TableCell>
+                <TableCell>操作</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* 新增/編輯課程對話框 */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingCourse ? '編輯課程' : '新增課程'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <TextField
-              fullWidth
-              label="課程名稱"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              margin="normal"
-              required
-            />
-            
-            <Box display="flex" gap={2}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>分類</InputLabel>
-                <Select
-                  value={formData.category}
-                  label="分類"
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                >
-                  {categories.map((cat) => (
-                    <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                  ))}
-                  {/* 允許手動輸入新分類 */}
-                  <MenuItem value="">
-                    <TextField
+            </TableHead>
+            <TableBody>
+              {sortedCourses.map((course) => (
+                <TableRow key={course.id}>
+                  <TableCell>
+                    <Box>
+                      <Typography variant="subtitle1">{course.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {course.description}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>{course.category}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={course.level}
+                      sx={getLevelColor(course.level)}
                       size="small"
-                      placeholder="輸入新分類後按 Enter 或失去焦點完成"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const value = (e.target as HTMLInputElement).value;
+                    />
+                  </TableCell>
+                  <TableCell>{course.duration_minutes}</TableCell>
+                  <TableCell>NT$ {course.price}</TableCell>
+                  <TableCell>
+                    {parsePrerequisites(course.prerequisites).map((prereq, index) => (
+                      <Chip
+                        key={index}
+                        label={prereq}
+                        size="small"
+                        variant="outlined"
+                        sx={{ mr: 0.5, mb: 0.5 }}
+                      />
+                    ))}
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenDialog(course)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(course)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* 新增/編輯課程對話框 */}
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+          <DialogTitle>
+            {editingCourse ? '編輯課程' : '新增課程'}
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <TextField
+                fullWidth
+                label="課程名稱"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                margin="normal"
+                required
+              />
+              
+              <Box display="flex" gap={2}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>分類</InputLabel>
+                  <Select
+                    value={formData.category}
+                    label="分類"
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  >
+                    {categories.map((cat) => (
+                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                    ))}
+                    {/* 允許手動輸入新分類 */}
+                    <MenuItem value="">
+                      <TextField
+                        size="small"
+                        placeholder="輸入新分類後按 Enter 或失去焦點完成"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const value = (e.target as HTMLInputElement).value;
+                            if (value.trim()) {
+                              const newCategory = value.trim();
+                              // 如果是新分類，添加到分類列表中
+                              if (!categories.includes(newCategory)) {
+                                setCategories([...categories, newCategory]);
+                              }
+                              setFormData({ ...formData, category: newCategory });
+                              // 清空輸入框
+                              (e.target as HTMLInputElement).value = '';
+                              // 關閉下拉選單
+                              (e.target as HTMLInputElement).blur();
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value;
                           if (value.trim()) {
                             const newCategory = value.trim();
                             // 如果是新分類，添加到分類列表中
@@ -461,138 +492,123 @@ const CoursesPage: React.FC = () => {
                             setFormData({ ...formData, category: newCategory });
                             // 清空輸入框
                             (e.target as HTMLInputElement).value = '';
-                            // 關閉下拉選單
-                            (e.target as HTMLInputElement).blur();
                           }
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const value = e.target.value;
-                        if (value.trim()) {
-                          const newCategory = value.trim();
-                          // 如果是新分類，添加到分類列表中
-                          if (!categories.includes(newCategory)) {
-                            setCategories([...categories, newCategory]);
-                          }
-                          setFormData({ ...formData, category: newCategory });
-                          // 清空輸入框
-                          (e.target as HTMLInputElement).value = '';
-                        }
-                      }}
-                      sx={{ width: '100%' }}
-                    />
-                  </MenuItem>
-                </Select>
-              </FormControl>
-              
-              <FormControl fullWidth margin="normal">
-                <InputLabel>難度</InputLabel>
-                <Select
-                  value={formData.level}
-                  label="難度"
-                  onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                >
-                  {levels.map((level) => (
-                    <MenuItem key={level} value={level}>{level}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+                        }}
+                        sx={{ width: '100%' }}
+                      />
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>難度</InputLabel>
+                  <Select
+                    value={formData.level}
+                    label="難度"
+                    onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+                  >
+                    {levels.map((level) => (
+                      <MenuItem key={level} value={level}>{level}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
 
-            <Box display="flex" gap={2}>
+              <Box display="flex" gap={2}>
+                <TextField
+                  fullWidth
+                  label="課程時長 (分鐘)"
+                  type="number"
+                  value={formData.duration_minutes}
+                  onChange={(e) => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
+                  margin="normal"
+                  inputProps={{ min: 1 }}
+                />
+                
+                <TextField
+                  fullWidth
+                  label="價格 (NT$)"
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                  margin="normal"
+                  inputProps={{ min: 0, step: 0.01 }}
+                />
+              </Box>
+
               <TextField
                 fullWidth
-                label="課程時長 (分鐘)"
-                type="number"
-                value={formData.duration_minutes}
-                onChange={(e) => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
+                label="課程描述"
+                multiline
+                rows={3}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 margin="normal"
-                inputProps={{ min: 1 }}
               />
-              
+
               <TextField
                 fullWidth
-                label="價格 (NT$)"
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                label="先修課程 (用逗號分隔)"
+                value={formData.prerequisites}
+                onChange={(e) => setFormData({ ...formData, prerequisites: e.target.value })}
                 margin="normal"
-                inputProps={{ min: 0, step: 0.01 }}
+                helperText="例如：JavaScript 基礎, HTML/CSS"
               />
             </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>取消</Button>
+            <Button 
+              onClick={handleSave} 
+              variant="contained"
+              disabled={!formData.name || !formData.category || !formData.level}
+            >
+              {editingCourse ? '更新' : '新增'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-            <TextField
-              fullWidth
-              label="課程描述"
-              multiline
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              margin="normal"
-            />
-
-            <TextField
-              fullWidth
-              label="先修課程 (用逗號分隔)"
-              value={formData.prerequisites}
-              onChange={(e) => setFormData({ ...formData, prerequisites: e.target.value })}
-              margin="normal"
-              helperText="例如：JavaScript 基礎, HTML/CSS"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>取消</Button>
-          <Button 
-            onClick={handleSave} 
-            variant="contained"
-            disabled={!formData.name || !formData.category || !formData.level}
-          >
-            {editingCourse ? '更新' : '新增'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 管理員密碼驗證模態框 */}
-      <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
-        <DialogTitle>管理員密碼驗證</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              ⚠️ 您即將刪除課程：<strong>{courseToDelete?.name}</strong>
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3 }}>
-              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
-            </Typography>
-            <TextField
-              fullWidth
-              type="password"
-              label="管理員密碼"
-              value={adminPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
-              error={!!passwordError}
-              helperText={passwordError}
-              onKeyPress={(e: React.KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  verifyPasswordAndDelete();
-                }
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closePasswordModal}>取消</Button>
-          <Button 
-            onClick={verifyPasswordAndDelete} 
-            color="error" 
-            variant="contained"
-            disabled={!adminPassword.trim()}
-          >
-            確認刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        {/* 管理員密碼驗證模態框 */}
+        <Dialog open={showPasswordModal} onClose={closePasswordModal} maxWidth="sm" fullWidth>
+          <DialogTitle>管理員密碼驗證</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                ⚠️ 您即將刪除課程：<strong>{courseToDelete?.name}</strong>
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3 }}>
+                只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+              </Typography>
+              <TextField
+                fullWidth
+                type="password"
+                label="管理員密碼"
+                value={adminPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+                error={!!passwordError}
+                helperText={passwordError}
+                onKeyPress={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter') {
+                    verifyPasswordAndDelete();
+                  }
+                }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closePasswordModal}>取消</Button>
+            <Button 
+              onClick={verifyPasswordAndDelete} 
+              color="error" 
+              variant="contained"
+              disabled={!adminPassword.trim()}
+            >
+              確認刪除
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </>
   );
 };
 

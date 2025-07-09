@@ -994,8 +994,8 @@ const StudentsPage: React.FC = () => {
           slotProps={{
             paper: {
               sx: {
-                maxWidth: '1504px',
-                width: '93vw'
+                maxWidth: '1104px',
+                width: '93vw',
               }
             }
           }}
@@ -1003,7 +1003,7 @@ const StudentsPage: React.FC = () => {
           <DialogTitle>
             {selectedStudent ? '編輯學生' : '新增學生'}
           </DialogTitle>
-          <DialogContent>
+          <DialogContent sx={{ mt: -2.5 }}>
             <Box sx={{ pt: 2 }}>
               <StudentFormOptimized
                 student={selectedStudent}
@@ -1077,10 +1077,22 @@ const StudentsPage: React.FC = () => {
         </Dialog>
 
         {/* 詳情模態框 */}
-        <Dialog open={showDetailModal} onClose={closeModals} maxWidth="lg" fullWidth>
-          <DialogTitle>學生詳情</DialogTitle>
-          <DialogContent>
-            <Box sx={{ pt: 2 }}>
+        <Dialog 
+          open={showDetailModal} 
+          onClose={closeModals} 
+          maxWidth={false}
+          fullWidth
+          slotProps={{
+            paper: {
+              sx: {
+                maxWidth: '900px',
+                width: '90vw',
+              }
+            }
+          }}
+        >
+          <DialogContent sx={{ pt: 1 }}>
+            <Box sx={{ pt: 0 }}>
               {selectedStudent && (
                 <StudentDetailView
                   student={selectedStudent}

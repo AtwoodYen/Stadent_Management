@@ -183,8 +183,8 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
                     {...params}
                     size="small"
                     placeholder="請輸入或選擇學校"
-                    required
-                    fullWidth
+                required
+                fullWidth
                   />
                 )}
               />

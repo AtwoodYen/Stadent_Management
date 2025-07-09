@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/improved-student-form.css';
-import { Autocomplete, TextField } from '@mui/material';
+import {
+  Autocomplete,
+  TextField,
+  Box,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Paper,
+  Divider,
+  Stack,
+  FormHelperText
+} from '@mui/material';
 import CustomAlert from './CustomAlert';
 
 interface Student {
@@ -224,59 +237,346 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
 
   return (
     <>
-      <form className={`student-form ${isLoading ? 'loading' : ''}`} onSubmit={handleSubmit}>
-        
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{
+          maxWidth: 1000,
+          mx: 'auto',
+          p: 3,
+          bgcolor: 'white',
+          borderRadius: 1,
+          boxShadow: 1,
+          opacity: isLoading ? 0.7 : 1,
+          pointerEvents: isLoading ? 'none' : 'auto',
+          position: 'relative'
+        }}
+      >
         {/* 基本資料區域 */}
-        <div className="section-title">
+        <Typography
+          variant="h6"
+          sx={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: 'black',
+            mb: 2,
+            pb: 1,
+            borderBottom: '2px solid #e3f2fd',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
           基本資料
-        </div>
+        </Typography>
         
         {/* 基本資料：第一行 */}
-        <div className="form-row basic-info-row">
-          <div className="form-field">
-            <label>
-              中文姓名<span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.chinese_name}
-              onChange={(e) => handleChange('chinese_name', e.target.value)}
-              required
-              placeholder="請輸入中文姓名"
-            />
-          </div>
+        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+          <Box sx={{ width: '14%' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel
+                sx={{
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  '&.Mui-focused': {
+                    transform: 'translate(14px, -9px) scale(0.75)'
+                  }
+                }}
+              >
+                中文姓名<span style={{ color: '#d32f2f' }}>*</span>
+              </InputLabel>
+              <TextField
+                value={formData.chinese_name}
+                onChange={(e) => handleChange('chinese_name', e.target.value)}
+                required
+                placeholder="請輸入中文姓名"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '14px'
+                  }
+                }}
+              />
+            </FormControl>
+          </Box>
           
-          <div className="form-field">
-            <label>英文姓名</label>
-            <input
-              type="text"
-              value={formData.english_name}
-              onChange={(e) => handleChange('english_name', e.target.value)}
-              placeholder="請輸入英文姓名"
-            />
-          </div>
+          <Box sx={{ width: '16.8%' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel
+                sx={{
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  '&.Mui-focused': {
+                    transform: 'translate(14px, -9px) scale(0.75)'
+                  }
+                }}
+              >
+                英文姓名
+              </InputLabel>
+              <TextField
+                value={formData.english_name}
+                onChange={(e) => handleChange('english_name', e.target.value)}
+                placeholder="請輸入英文姓名"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '14px'
+                  }
+                }}
+              />
+            </FormControl>
+          </Box>
           
-          <div className="form-field">
-            <label>
-              學校<span className="required">*</span>
-            </label>
-            <Autocomplete
-              options={schools}
-              value={formData.school}
-              onChange={(event, newValue) => handleChange('school', newValue || '')}
-              onInputChange={(event, newInputValue) => {
-                // 如果輸入的值不在選項中，也更新表單資料
-                if (!schools.includes(newInputValue)) {
-                  handleChange('school', newInputValue);
-                }
-              }}
-              freeSolo
-              renderInput={(params) => (
+          <Box sx={{ width: '12%' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel
+                sx={{
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  '&.Mui-focused': {
+                    transform: 'translate(14px, -9px) scale(0.75)'
+                  }
+                }}
+              >
+                學校<span style={{ color: '#d32f2f' }}>*</span>
+              </InputLabel>
+              <Autocomplete
+                options={schools}
+                value={formData.school}
+                onChange={(event, newValue) => handleChange('school', newValue || '')}
+                onInputChange={(event, newInputValue) => {
+                  if (!schools.includes(newInputValue)) {
+                    handleChange('school', newInputValue);
+                  }
+                }}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="請輸入或選擇學校"
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: '40px',
+                        fontSize: '14px'
+                      }
+                    }}
+                  />
+                )}
+                sx={{
+                  '& .MuiAutocomplete-input': {
+                    padding: '8px 12px !important'
+                  }
+                }}
+              />
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ width: '12%', pl: 0.75 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>
+                年級<span style={{ color: '#d32f2f' }}>*</span>
+              </InputLabel>
+              <Select
+                value={formData.grade}
+                onChange={(e) => handleChange('grade', e.target.value)}
+                required
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '13px'
+                  }
+                }}
+              >
+                <MenuItem value="">年級</MenuItem>
+                <MenuItem disabled>小學</MenuItem>
+                <MenuItem value="小一">小一</MenuItem>
+                <MenuItem value="小二">小二</MenuItem>
+                <MenuItem value="小三">小三</MenuItem>
+                <MenuItem value="小四">小四</MenuItem>
+                <MenuItem value="小五">小五</MenuItem>
+                <MenuItem value="小六">小六</MenuItem>
+                <MenuItem disabled>國中</MenuItem>
+                <MenuItem value="國一">國一</MenuItem>
+                <MenuItem value="國二">國二</MenuItem>
+                <MenuItem value="國三">國三</MenuItem>
+                <MenuItem disabled>高中</MenuItem>
+                <MenuItem value="高一">高一</MenuItem>
+                <MenuItem value="高二">高二</MenuItem>
+                <MenuItem value="高三">高三</MenuItem>
+                <MenuItem disabled>大學</MenuItem>
+                <MenuItem value="大一">大一</MenuItem>
+                <MenuItem value="大二">大二</MenuItem>
+                <MenuItem value="大三">大三</MenuItem>
+                <MenuItem value="大四">大四</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ width: '14.4%', pl: 1.25 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>
+                性別<span style={{ color: '#d32f2f' }}>*</span>
+              </InputLabel>
+              <Select
+                value={formData.gender}
+                onChange={(e) => handleChange('gender', e.target.value)}
+                required
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '13px'
+                  }
+                }}
+              >
+                <MenuItem value="">選</MenuItem>
+                <MenuItem value="男">男</MenuItem>
+                <MenuItem value="女">女</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </Stack>
+
+        {/* 基本資料：第二行 */}
+        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+          <Box sx={{ width: '10%' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>程度</InputLabel>
+              <Select
+                value={formData.level_type}
+                onChange={(e) => handleChange('level_type', e.target.value)}
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '14px'
+                  }
+                }}
+              >
+                <MenuItem value="">請選擇</MenuItem>
+                <MenuItem value="新手">新手</MenuItem>
+                <MenuItem value="入門">入門</MenuItem>
+                <MenuItem value="進階">進階</MenuItem>
+                <MenuItem value="高階">高階</MenuItem>
+                <MenuItem value="精英">精英</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ width: '18.2%' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>
+                班別<span style={{ color: '#d32f2f' }}>*</span>
+              </InputLabel>
+              <Select
+                value={formData.class_type}
+                onChange={(e) => handleChange('class_type', e.target.value)}
+                required
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '14px'
+                  }
+                }}
+              >
+                <MenuItem value="">請選擇</MenuItem>
+                {classTypes.map((classType) => (
+                  <MenuItem key={classType.class_code} value={classType.class_code}>
+                    {classType.class_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ width: '20%', pl: 3.75 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>就讀狀態</InputLabel>
+              <Select
+                value={formData.enrollment_status}
+                onChange={(e) => handleChange('enrollment_status', e.target.value)}
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '14px'
+                  }
+                }}
+              >
+                <MenuItem value="進行中">進行中</MenuItem>
+                <MenuItem value="暫停中">暫停中</MenuItem>
+                <MenuItem value="已畢業">已畢業</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          <Box sx={{ width: '20%', pl: 10 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>
+                班級排程類型<span style={{ color: '#d32f2f' }}>*</span>
+              </InputLabel>
+              <Select
+                value={formData.class_schedule_type || '常態班'}
+                onChange={(e) => handleChange('class_schedule_type', e.target.value)}
+                required
+                size="small"
+                sx={{
+                  width: '160%',
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '14px'
+                  }
+                }}
+              >
+                <MenuItem value="常態班">常態班</MenuItem>
+                <MenuItem value="短期班">短期班</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </Stack>
+
+        {/* 聯絡資訊區域 */}
+        <Box sx={{ mb: 3 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: 'black',
+              mb: 2,
+              pb: 1,
+              borderBottom: '2px solid #e3f2fd',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}
+          >
+            聯絡資訊
+          </Typography>
+
+          {/* 學生聯絡方式 */}
+          <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  學生電話
+                </InputLabel>
                 <TextField
-                  {...params}
+                  type="tel"
+                  value={formData.student_phone}
+                  onChange={(e) => handleChange('student_phone', e.target.value)}
+                  placeholder="請輸入電話號碼"
                   size="small"
-                  placeholder="請輸入或選擇學校"
-                  required
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       height: '40px',
@@ -284,277 +584,317 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
                     }
                   }}
                 />
-              )}
-              sx={{
-                '& .MuiAutocomplete-input': {
-                  padding: '8px 12px !important'
-                }
-              }}
-            />
-          </div>
-          
-          <div className="form-field">
-            <label>
-              年級<span className="required">*</span>
-            </label>
-            <select
-              value={formData.grade}
-              onChange={(e) => handleChange('grade', e.target.value)}
-              required
-            >
-              <option value="">年級</option>
-              <optgroup label="小學">
-                <option value="小一">小一</option>
-                <option value="小二">小二</option>
-                <option value="小三">小三</option>
-                <option value="小四">小四</option>
-                <option value="小五">小五</option>
-                <option value="小六">小六</option>
-              </optgroup>
-              <optgroup label="國中">
-                <option value="國一">國一</option>
-                <option value="國二">國二</option>
-                <option value="國三">國三</option>
-              </optgroup>
-              <optgroup label="高中">
-                <option value="高一">高一</option>
-                <option value="高二">高二</option>
-                <option value="高三">高三</option>
-              </optgroup>
-              <optgroup label="大學">
-                <option value="大一">大一</option>
-                <option value="大二">大二</option>
-                <option value="大三">大三</option>
-                <option value="大四">大四</option>
-              </optgroup>
-            </select>
-          </div>
-          
-          <div className="form-field">
-            <label>
-              性別<span className="required">*</span>
-            </label>
-            <select
-              value={formData.gender}
-              onChange={(e) => handleChange('gender', e.target.value)}
-              required
-            >
-              <option value="">選</option>
-              <option value="男">男</option>
-              <option value="女">女</option>
-            </select>
-          </div>
-        </div>
-
-        {/* 基本資料：第二行 */}
-        <div className="form-row basic-info-row" style={{ marginTop: '10px' }}>
-          <div className="form-field">
-            <label>程度</label>
-            <select
-              value={formData.level_type}
-              onChange={(e) => handleChange('level_type', e.target.value)}
-            >
-              <option value="">請選擇</option>
-              <option value="新手">新手</option>
-              <option value="入門">入門</option>
-              <option value="進階">進階</option>
-              <option value="高階">高階</option>
-              <option value="精英">精英</option>
-            </select>
-          </div>
-          
-          <div className="form-field">
-            <label>
-              班別<span className="required">*</span>
-            </label>
-            <select
-              value={formData.class_type}
-              onChange={(e) => handleChange('class_type', e.target.value)}
-              required
-            >
-              <option value="">請選擇</option>
-              {classTypes.map((classType) => (
-                <option key={classType.class_code} value={classType.class_code}>
-                  {classType.class_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="form-field" style={{ marginLeft: '30px' }}>
-            <label>就讀狀態</label>
-            <select
-              value={formData.enrollment_status}
-              onChange={(e) => handleChange('enrollment_status', e.target.value)}
-            >
-              <option value="進行中">進行中</option>
-              <option value="暫停中">暫停中</option>
-              <option value="已畢業">已畢業</option>
-            </select>
-          </div>
-
-          <div className="form-field" style={{ marginLeft: '80px' }}>
-            <label htmlFor="class_schedule_type">班級排程類型<span className="required">*</span></label>
-            <TextField
-              select
-              id="class_schedule_type"
-              value={formData.class_schedule_type || '常態班'}
-              onChange={(e) => handleChange('class_schedule_type', e.target.value)}
-              required
-              size="small"
-              sx={{
-                width: '160%',
-                '& .MuiOutlinedInput-root': {
-                  height: '40px',
-                  fontSize: '14px'
-                }
-              }}
-            >
-              <option value="常態班">常態班</option>
-              <option value="短期班">短期班</option>
-            </TextField>
-          </div>
-        </div>
-
-        {/* 聯絡資訊與備註並排區域 */}
-        <div className="contact-notes-container" style={{ marginTop: '20px' }}>
-          {/* 聯絡資訊區域 */}
-          <div className="contact-section">
-            <div className="section-title">
-              聯絡資訊
-            </div>
-
-            {/* 學生聯絡方式 */}
-            <div className="form-row contact-row">
-              <div className="form-field">
-                <label>學生電話</label>
-                <input
-                  type="tel"
-                  value={formData.student_phone}
-                  onChange={(e) => handleChange('student_phone', e.target.value)}
-                  placeholder="請輸入電話號碼"
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>
-                  學生信箱<span className="required">*</span>
-                </label>
-                <input
+              </FormControl>
+            </Box>
+            
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  學生信箱<span style={{ color: '#d32f2f' }}>*</span>
+                </InputLabel>
+                <TextField
                   type="email"
                   value={formData.student_email}
                   onChange={(e) => handleChange('student_email', e.target.value)}
                   required
                   placeholder="請輸入電子信箱"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-              
-              <div className="form-field">
-                <label>學生Line</label>
-                <input
+              </FormControl>
+            </Box>
+            
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  學生Line
+                </InputLabel>
+                <TextField
                   type="text"
                   value={formData.student_line}
                   onChange={(e) => handleChange('student_line', e.target.value)}
                   placeholder="請輸入Line ID"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-            </div>
+              </FormControl>
+            </Box>
+          </Stack>
 
-            {/* 父親聯絡方式 */}
-            <div className="form-row contact-row">
-              <div className="form-field">
-                <label>父親姓名</label>
-                <input
+          {/* 父親聯絡方式 */}
+          <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  父親姓名
+                </InputLabel>
+                <TextField
                   type="text"
                   value={formData.father_name}
                   onChange={(e) => handleChange('father_name', e.target.value)}
                   placeholder="請輸入父親姓名"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-              
-              <div className="form-field">
-                <label>父親電話</label>
-                <input
+              </FormControl>
+            </Box>
+            
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  父親電話
+                </InputLabel>
+                <TextField
                   type="tel"
                   value={formData.father_phone}
                   onChange={(e) => handleChange('father_phone', e.target.value)}
                   placeholder="請輸入電話號碼"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-              
-              <div className="form-field">
-                <label>父親Line</label>
-                <input
+              </FormControl>
+            </Box>
+            
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  父親Line
+                </InputLabel>
+                <TextField
                   type="text"
                   value={formData.father_line}
                   onChange={(e) => handleChange('father_line', e.target.value)}
                   placeholder="請輸入Line ID"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-            </div>
+              </FormControl>
+            </Box>
+          </Stack>
 
-            {/* 母親聯絡方式 */}
-            <div className="form-row contact-row">
-              <div className="form-field">
-                <label>母親姓名</label>
-                <input
+          {/* 母親聯絡方式 */}
+          <Stack direction="row" spacing={2}>
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  母親姓名
+                </InputLabel>
+                <TextField
                   type="text"
                   value={formData.mother_name}
                   onChange={(e) => handleChange('mother_name', e.target.value)}
                   placeholder="請輸入母親姓名"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-              
-              <div className="form-field">
-                <label>母親電話</label>
-                <input
+              </FormControl>
+            </Box>
+            
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  母親電話
+                </InputLabel>
+                <TextField
                   type="tel"
                   value={formData.mother_phone}
                   onChange={(e) => handleChange('mother_phone', e.target.value)}
                   placeholder="請輸入電話號碼"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-              
-              <div className="form-field">
-                <label>母親Line</label>
-                <input
+              </FormControl>
+            </Box>
+            
+            <Box sx={{ width: '33%' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel
+                  sx={{
+                    transform: 'translate(14px, -9px) scale(0.75)',
+                    '&.Mui-focused': {
+                      transform: 'translate(14px, -9px) scale(0.75)'
+                    }
+                  }}
+                >
+                  母親Line
+                </InputLabel>
+                <TextField
                   type="text"
                   value={formData.mother_line}
                   onChange={(e) => handleChange('mother_line', e.target.value)}
                   placeholder="請輸入Line ID"
+                  size="small"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      height: '40px',
+                      fontSize: '14px'
+                    }
+                  }}
                 />
-              </div>
-            </div>
-          </div>
+              </FormControl>
+            </Box>
+          </Stack>
+        </Box>
 
+        {/* 備註與按鈕並排區域 */}
+        <Stack direction="row" spacing={4} sx={{ mb: 3 }}>
           {/* 備註區域 */}
-          <div className="notes-section">
-            <div className="section-title">
+          <Box sx={{ width: '78%' }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: 'black',
+                mb: 2,
+                pb: 1,
+                borderBottom: '2px solid #e3f2fd',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
               備註
-            </div>
-            <div className="form-row notes-row">
-              <div className="form-field">
-                <label>備註</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => handleChange('notes', e.target.value)}
-                  placeholder="請輸入備註資訊"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+            </Typography>
+            <FormControl fullWidth>
+              <TextField
+                multiline
+                rows={8}
+                value={formData.notes}
+                onChange={(e) => handleChange('notes', e.target.value)}
+                placeholder="請輸入備註資訊"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    fontSize: '14px'
+                  }
+                }}
+              />
+            </FormControl>
+          </Box>
 
-        {/* 按鈕區域 */}
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>
-            取消
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={isLoading}>
-            {isLoading ? '儲存中...' : (student ? '更新' : '新增')}
-          </button>
-        </div>
-      </form>
+          {/* 按鈕區域 */}
+          <Box sx={{ width: '22%', display: 'flex', alignItems: 'flex-end', pb: 1 }}>
+            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ width: '100%' }}>
+              <Button
+                variant="outlined"
+                onClick={onCancel}
+                sx={{
+                  px: 3,
+                  py: 1,
+                  borderColor: '#666',
+                  color: '#666',
+                  '&:hover': {
+                    borderColor: '#333',
+                    color: '#333'
+                  }
+                }}
+              >
+                取消
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={isLoading}
+                sx={{
+                  px: 3,
+                  py: 1,
+                  bgcolor: '#1976d2',
+                  '&:hover': {
+                    bgcolor: '#1565c0'
+                  }
+                }}
+              >
+                {isLoading ? '儲存中...' : (student ? '更新' : '新增')}
+              </Button>
+            </Stack>
+          </Box>
+        </Stack>
+      </Box>
 
       {/* 自定義 Alert 組件 */}
       <CustomAlert

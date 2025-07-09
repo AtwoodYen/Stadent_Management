@@ -424,7 +424,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
         >
           關閉
         </Button>
-      </Box>
+              </Box>
       </FormContainer>
     );
   };

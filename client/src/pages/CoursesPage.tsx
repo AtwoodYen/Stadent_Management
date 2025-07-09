@@ -534,14 +534,16 @@ const CoursesPage: React.FC = () => {
         <Box display="flex" alignItems="center" gap={2}>
           {/* 過濾條件 */}
           <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel sx={{ color: 'white' }}>分類</InputLabel>
+            <InputLabel sx={{ color: 'black' }}>分類</InputLabel>
             <Select
               value={filterCategory}
               label="分類"
               onChange={(e) => setFilterCategory(e.target.value)}
               sx={{ 
                 bgcolor: 'background.paper',
-                '& .MuiSelect-icon': { color: 'white' }
+                '& .MuiSelect-icon': { color: 'black' },
+                '& .MuiInputLabel-root.Mui-focused': { color: 'black' },
+                '& .MuiInputLabel-root': { color: 'black' }
               }}
             >
               <MenuItem value="">全部</MenuItem>
@@ -552,14 +554,16 @@ const CoursesPage: React.FC = () => {
           </FormControl>
           
           <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel sx={{ color: 'white' }}>難度</InputLabel>
+            <InputLabel sx={{ color: 'black' }}>難度</InputLabel>
             <Select
               value={filterLevel}
               label="難度"
               onChange={(e) => setFilterLevel(e.target.value)}
               sx={{ 
                 bgcolor: 'background.paper',
-                '& .MuiSelect-icon': { color: 'white' }
+                '& .MuiSelect-icon': { color: 'black' },
+                '& .MuiInputLabel-root.Mui-focused': { color: 'black' },
+                '& .MuiInputLabel-root': { color: 'black' }
               }}
             >
               <MenuItem value="">全部</MenuItem>

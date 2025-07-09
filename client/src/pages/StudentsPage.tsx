@@ -8,16 +8,26 @@ import {
   Typography,
   Alert,
   Box,
-  TextField
+  TextField,
+  Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Paper,
+  CircularProgress
 } from '@mui/material';
 import StudentFormOptimized from '../components/StudentFormOptimized';
 import StudentDetailView from '../components/StudentDetailView';
 import CustomAlert from '../components/CustomAlert';
 import { getLevelColors } from '../utils/levelColors';
 import { getGenderColors } from '../utils/genderColors';
-import '../styles/improved-student-form.css';
-import '../styles/level-colors.css';
-import '../styles/gender-colors.css';
 
 interface Student {
   id: number;
@@ -91,6 +101,12 @@ const StudentsPage: React.FC = () => {
   const [passwordError, setPasswordError] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // 統計資料狀態
+  const [studentStats, setStudentStats] = useState<any>(null);
+  const [classTypeStats, setClassTypeStats] = useState<any[]>([]);
+  const [scheduleStats, setScheduleStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   // 自定義 Alert 狀態
   const [customAlert, setCustomAlert] = useState({
@@ -168,11 +184,51 @@ const StudentsPage: React.FC = () => {
     }
   };
 
+  // 取得詳細統計資料
+  const fetchDetailedStats = async () => {
+    try {
+      setStatsLoading(true);
+      
+      // 並行調用多個統計API
+      const [studentStatsRes, classTypeStatsRes, scheduleStatsRes] = await Promise.all([
+        fetch('/api/students/stats'),
+        fetch('/api/class-types/stats'),
+        fetch('/api/schedules/stats')
+      ]);
+
+      if (studentStatsRes.ok) {
+        const studentStatsData = await studentStatsRes.json();
+        setStudentStats(studentStatsData);
+      }
+
+      if (classTypeStatsRes.ok) {
+        const classTypeStatsData = await classTypeStatsRes.json();
+        setClassTypeStats(classTypeStatsData);
+      }
+
+      if (scheduleStatsRes.ok) {
+        const scheduleStatsData = await scheduleStatsRes.json();
+        setScheduleStats(scheduleStatsData);
+      }
+    } catch (err) {
+      console.error('取得統計資料失敗:', err);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
     fetchSchools();
     fetchClassTypes();
   }, [sortOptions]);
+
+  // 當切換到統計頁面時，取得詳細統計資料
+  useEffect(() => {
+    if (activeTab === 'stats') {
+      fetchDetailedStats();
+    }
+  }, [activeTab]);
 
   // 計算統計資料
   const totalStudents = students.length;
@@ -454,7 +510,7 @@ const StudentsPage: React.FC = () => {
   }
 
   return (
-    <>
+    <React.Fragment>
       {/* 背景容器 - 確保背景延伸到內容高度 */}
       <Box
         sx={{
@@ -470,692 +526,584 @@ const StudentsPage: React.FC = () => {
       />
 
       {/* 主要容器 */}
-      <div className="container">        
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>     
 
         {/* 分頁按鈕區域 */}
-        <div className="tab-navigation" style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: '0px',
-            marginTop: '10px'
-          }}>
-            <button
-              className={`tab-button ${activeTab === 'students' ? 'active' : ''}`}
-              onClick={() => setActiveTab('students')}
-              style={{
-                padding: '12px 24px',
-                marginRight: '10px',
-                border: '2px solid #1976d2',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: activeTab === 'students' ? '#1976d2' : 'white',
-                color: activeTab === 'students' ? 'white' : '#1976d2',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              📋 學生列表
-            </button>
-            <button
-              className={`tab-button ${activeTab === 'stats' ? 'active' : ''}`}
-              onClick={() => setActiveTab('stats')}
-              style={{
-                padding: '12px 24px',
-                border: '2px solid #1976d2',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                backgroundColor: activeTab === 'stats' ? '#1976d2' : 'white',
-                color: activeTab === 'stats' ? 'white' : '#1976d2',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              📊 學生統計
-            </button>
-          </div>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+          <Button
+            variant={activeTab === 'students' ? 'contained' : 'outlined'}
+            onClick={() => setActiveTab('students')}
+            sx={{
+              backgroundColor: activeTab === 'students' ? 'primary.main' : '#e0e0e0',
+              color: activeTab === 'students' ? 'white' : '#000000',
+              '&:hover': {
+                backgroundColor: activeTab === 'students' ? 'primary.dark' : '#d0d0d0'
+              }
+            }}
+          >
+            📋 學生列表
+          </Button>
+
+          <Button
+            variant={activeTab ==='stats' ? 'contained' : 'outlined'}
+            onClick={() => setActiveTab('stats')}
+            sx={{
+              backgroundColor: activeTab === 'stats' ? 'primary.main' : '#e0e0e0',
+              color: activeTab === 'stats' ? 'white' : '#000000',
+              '&:hover': {
+                backgroundColor: activeTab === 'stats' ? 'primary.dark' : '#d0d0d0'
+              }
+            }}
+          >
+            📊 學生統計
+          </Button>
+        </Box>
 
         {/* 內容區 */}
-        <div className="main-content" style={{
-          backgroundColor: '#e3f2fd',
-          borderRadius: '8px',
-          padding: '20px',
-          marginTop: '20px'
+        <Box sx={{ 
+          p: 2, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 2,
+          backgroundColor: 'background.paper',
+          borderRadius: 1,
+          boxShadow: 1
         }}>
 
           {/* 學生列表區域 */}
           {activeTab === 'students' && (
-            <div className="calendar-section" style={{ marginTop: '20px' }}>
-              <div className="calendar-header">
-                <div className="calendar-nav">
-                  <div className="pagination-controls">
-                    <button 
-                      className="btn" 
-                      onClick={handlePrevPage} 
-                      disabled={currentPage === 1}
-                      style={{
-                        backgroundColor: '#1976d2',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                        opacity: currentPage === 1 ? 0.6 : 1
-                      }}
-                    >
-                      ‹ 上一頁
-                    </button>
-                    <div className="page-info">
-                      {currentPage} / {totalPages}
-                    </div>
-                    <button 
-                      className="btn" 
-                      onClick={handleNextPage} 
-                      disabled={currentPage === totalPages}
-                      style={{
-                        backgroundColor: '#1976d2',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                        opacity: currentPage === totalPages ? 0.6 : 1
-                      }}
-                    >
-                      下一頁 ›
-                    </button>
-                    <select 
-                      value={studentsPerPage} 
-                      onChange={(e) => handleStudentsPerPageChange(Number(e.target.value))}
-                      className="per-page-select"
-                    >
-                      <option value={10}>10</option>
-                      <option value={20}>20</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                  </div>
-                  
-                  {/* 排序選項 */}
-                  <div className="sort-options">
-                    <select 
-                      value={sortOptions.school} 
-                      onChange={(e) => handleSortChange('school', e.target.value)}
-                      className="sort-select"
-                    >
-                      <option value="">學校</option>
-                      {schools.map((school) => (
-                        <option key={school} value={school}>{school}</option>
-                      ))}
-                    </select>
-                    
-                    <select 
-                      value={sortOptions.grade} 
-                      onChange={(e) => handleSortChange('grade', e.target.value)}
-                      className="sort-select"
-                    >
-                      <option value="">年級</option>
-                      <optgroup label="小學">
-                        <option value="小一">小一</option>
-                        <option value="小二">小二</option>
-                        <option value="小三">小三</option>
-                        <option value="小四">小四</option>
-                        <option value="小五">小五</option>
-                        <option value="小六">小六</option>
-                      </optgroup>
-                      <optgroup label="國中">
-                        <option value="國一">國一</option>
-                        <option value="國二">國二</option>
-                        <option value="國三">國三</option>
-                      </optgroup>
-                      <optgroup label="高中">
-                        <option value="高一">高一</option>
-                        <option value="高二">高二</option>
-                        <option value="高三">高三</option>
-                      </optgroup>
-                      <optgroup label="大學">
-                        <option value="大一">大一</option>
-                        <option value="大二">大二</option>
-                        <option value="大三">大三</option>
-                        <option value="大四">大四</option>
-                      </optgroup>
-                    </select>
-                    
-                    <select 
-                      value={sortOptions.level} 
-                      onChange={(e) => handleSortChange('level', e.target.value)}
-                      className="sort-select"
-                    >
-                      <option value="">程度</option>
-                      <option value="新手">新手</option>
-                      <option value="入門">入門</option>
-                      <option value="進階">進階</option>
-                      <option value="高階">高階</option>
-                      <option value="精英">精英</option>
-                    </select>
-                    
-                    <select 
-                      value={sortOptions.gender} 
-                      onChange={(e) => handleSortChange('gender', e.target.value)}
-                      className="sort-select"
-                    >
-                      <option value="">性別</option>
-                      <option value="男">男</option>
-                      <option value="女">女</option>
-                    </select>
-                    
-                    <select 
-                      value={sortOptions.classType} 
-                      onChange={(e) => handleSortChange('classType', e.target.value)}
-                      className="sort-select"
-                    >
-                      <option value="">班別</option>
-                      {classTypes.map((classType) => (
-                        <option key={classType.class_code} value={classType.class_code}>
-                          {classType.class_name}
-                        </option>
-                      ))}
-                    </select>
-                    
-                    <select 
-                      value={sortOptions.enrollmentStatus} 
-                      onChange={(e) => handleSortChange('enrollmentStatus', e.target.value)}
-                      className="sort-select"
-                    >
-                      <option value="">就讀狀態</option>
-                      <option value="進行中">進行中</option>
-                      <option value="暫停中">暫停中</option>
-                      <option value="已畢業">已畢業</option>
-                    </select>
+            <>
+              {/* 分頁 & 篩選 & 新增 */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  mb: 2,
+                }}
+              >
+                {/* 頁碼控制 */}
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Button
+                    size="small"
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 1}
+                    sx={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                      },
+                      '&:disabled': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        color: 'rgba(255, 255, 255, 0.5)',
+                      }
+                    }}
+                  >
+                    ‹ 上一頁
+                  </Button>
+                  <Typography>
+                    {currentPage} / {totalPages}
+                  </Typography>
+                  <Button
+                    size="small"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    sx={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                      },
+                      '&:disabled': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        color: 'rgba(255, 255, 255, 0.5)',
+                      }
+                    }}
+                  >
+                    下一頁 ›
+                  </Button>
+                </Stack>
 
-                    <select 
-                      value={sortOptions.classScheduleType} 
-                      onChange={(e) => handleSortChange('classScheduleType', e.target.value)}
-                      className="sort-select"
-                    >
-                      <option value="">班級排程類型</option>
-                      <option value="常態班">常態班</option>
-                      <option value="短期班">短期班</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="calendar-controls">
-                  <span className="student-count" style={{ marginLeft: '20px', marginRight: '-5px' }}>總共 {totalStudents} 位學生</span>
-                  <button className="btn btn-secondary" onClick={handleAddStudent}>+ 新增學生</button>
-                </div>
-              </div>
+                {/* 每頁筆數 */}
+                <FormControl size="small" sx={{ position: 'absolute', left: '25%' }}>
+                  <InputLabel>每頁</InputLabel>
+                  <Select
+                    value={studentsPerPage}
+                    label="每頁"
+                    onChange={(e) =>
+                      handleStudentsPerPageChange(Number(e.target.value))
+                    }
+                  >
+                    {[10, 20, 50, 100].map((n) => (
+                      <MenuItem key={n} value={n}>
+                        {n}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* 篩選選單 */}
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {[
+                    { label: '學校', field: 'school', options: schools },
+                    { label: '年級', field: 'grade', options: allGrades },
+                    { label: '程度', field: 'level', options: ['新手', '入門', '進階', '高階', '精英'] },
+                    { label: '性別', field: 'gender', options: ['男', '女'] },
+                    {
+                      label: '班別',
+                      field: 'classType',
+                      options: classTypes.map((ct) => ct.class_name),
+                    },
+                    {
+                      label: '排程類型',
+                      field: 'classScheduleType',
+                      options: ['常態班', '短期班'],
+                    },
+                    {
+                      label: '就讀狀態',
+                      field: 'enrollmentStatus',
+                      options: ['進行中', '暫停中', '已畢業'],
+                    },
+                  ].map(({ label, field, options }) => {
+                    // 根據欄位設定不同的寬度
+                    let width = '140px'; // 預設寬度
+                    if (field === 'school') width = '112px'; // 縮小20%
+                    else if (field === 'grade' || field === 'level') width = '98px'; // 縮小30%
+                    else if (field === 'gender') width = '70px'; // 縮小50%
+                    else if (field === 'classScheduleType') width = '126px'; // 縮小10%
+                    else if (field === 'enrollmentStatus') width = '112px'; // 縮小20%
+                    
+                    return (
+                      <FormControl key={field} size="small" sx={{ minWidth: width }}>
+                        <InputLabel>{label}</InputLabel>
+                        <Select
+                          value={sortOptions[field as keyof typeof sortOptions]}
+                          label={label}
+                          onChange={(e) =>
+                            handleSortChange(field, e.target.value as string)
+                          }
+                        >
+                          <MenuItem value="">不限</MenuItem>
+                          {options.map((opt: any) => (
+                            <MenuItem key={opt} value={opt}>
+                              {opt}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    );
+                  })}
+                </Stack>
+
+                {/* 新增學生按鈕 */}
+                <Button variant="contained" onClick={handleAddStudent}>
+                  + 新增學生
+                </Button>
+              </Box>
 
               {/* 學生列表表格 */}
-              <div className="students-table-container">
-                <table className="students-table">
-                  <thead>
-                    <tr>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'chinese_name' ? 'active' : ''}`}
-                        onClick={() => handleSort('chinese_name')}
-                      >
-                        中文姓名<span className="sort-icon">{getSortIcon('chinese_name')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'english_name' ? 'active' : ''}`}
-                        onClick={() => handleSort('english_name')}
-                      >
-                        英文姓名<span className="sort-icon">{getSortIcon('english_name')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'school' ? 'active' : ''}`}
-                        onClick={() => handleSort('school')}
-                      >
-                        學校<span className="sort-icon">{getSortIcon('school')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'grade' ? 'active' : ''}`}
-                        onClick={() => handleSort('grade')}
-                      >
-                        年級<span className="sort-icon">{getSortIcon('grade')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'gender' ? 'active' : ''}`}
-                        onClick={() => handleSort('gender')}
-                      >
-                        性別<span className="sort-icon">{getSortIcon('gender')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'level_type' ? 'active' : ''}`}
-                        onClick={() => handleSort('level_type')}
-                      >
-                        程度<span className="sort-icon">{getSortIcon('level_type')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'class_type_name' ? 'active' : ''}`}
-                        onClick={() => handleSort('class_type_name')}
-                      >
-                        班別<span className="sort-icon">{getSortIcon('class_type_name')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'enrollment_status' ? 'active' : ''}`}
-                        onClick={() => handleSort('enrollment_status')}
-                      >
-                        就讀狀態<span className="sort-icon">{getSortIcon('enrollment_status')}</span>
-                      </th>
-                      <th 
-                        className={`sortable-header ${sortConfig.key === 'class_schedule_type' ? 'active' : ''}`}
-                        onClick={() => handleSort('class_schedule_type')}
-                      >
-                        班級排程類型<span className="sort-icon">{getSortIcon('class_schedule_type')}</span>
-                      </th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      {[
+                        { key: 'chinese_name', label: '中文姓名' },
+                        { key: 'english_name', label: '英文姓名' },
+                        { key: 'school', label: '學校' },
+                        { key: 'grade', label: '年級' },
+                        { key: 'gender', label: '性別' },
+                        { key: 'level_type', label: '程度' },
+                        { key: 'class_type_name', label: '班別' },
+                        { key: 'class_schedule_type', label: '排程類型' },
+                        { key: 'enrollment_status', label: '就讀狀態' },
+                        { key: 'actions', label: '操作' },
+                      ].map(({ key, label }) => (
+                        <TableCell key={key}>
+                          {key !== 'actions' ? (
+                            <Box
+                              component="span"
+                              sx={{
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                              }}
+                              onClick={() => handleSort(key as any)}
+                            >
+                              {label}
+                              <Box component="span" sx={{ ml: 0.5 }}>
+                                {getSortIcon(key as any)}
+                              </Box>
+                            </Box>
+                          ) : (
+                            label
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
                     {getCurrentPageStudents().map((student) => (
-                      <tr key={student.id} className="student-row">
-                        <td className="student-chinese-name">{student.chinese_name}</td>
-                        <td className="student-english-name">{student.english_name}</td>
-                        <td>
-                          <span className="badge badge-school">{student.school}</span>
-                        </td>
-                        <td>
-                          <span className="badge badge-grade">{student.grade}</span>
-                        </td>
-                        <td>
-                          <span 
-                            className={`badge badge-gender gender-${student.gender || '未設定'}`}
+                      <TableRow key={student.id} hover>
+                        <TableCell>{student.chinese_name}</TableCell>
+                        <TableCell>{student.english_name}</TableCell>
+                        <TableCell>{student.school}</TableCell>
+                        <TableCell>{student.grade}</TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              ...getGenderColors(student.gender),
+                              px: 0.5,
+                              py: 0.25,
+                              borderRadius: 1,
+                              textAlign: 'center',
+                              minWidth: '24px',
+                              display: 'inline-block'
+                            }}
                           >
                             {student.gender || '未設定'}
-                          </span>
-                        </td>
-                        <td>
-                          <span 
-                            className={`badge badge-level level-${student.level_type || '未設定'}`}
-                          >
-                            {student.level_type || '未設定'}
-                          </span>
-                        </td>
-                        <td>
-                          <span 
-                            className="badge badge-class"
-                            style={{
-                              backgroundColor: student.class_type === 'CPP' ? '#e3f2fd' : // 淺藍色 - C/C++
-                                     student.class_type === 'PROJECT' ? '#f3e5f5' : // 淺紫色 - 專題製作
-                                     student.class_type === 'SCRATCH' ? '#e8f5e8' : // 淺綠色 - Scratch
-                                     student.class_type === 'APCS_A' ? '#fff3e0' : // 淺橙色 - APCS A
-                                     student.class_type === 'APCS_P' ? '#fce4ec' : // 淺粉色 - APCS P
-                                     student.class_type === 'ANIMATION' ? '#f1f8e9' : // 淺青綠色 - 動畫美術
-                                     student.class_type === 'PYTHON' ? '#fff8e1' : // 淺黃色 - Python
-                                     '#f5f5f5', // 預設灰色
-                              color: student.class_type === 'CPP' ? '#1976d2' : // 深藍色
-                                     student.class_type === 'PROJECT' ? '#7b1fa2' : // 深紫色
-                                     student.class_type === 'SCRATCH' ? '#388e3c' : // 深綠色
-                                     student.class_type === 'APCS_A' ? '#f57c00' : // 深橙色
-                                     student.class_type === 'APCS_P' ? '#c2185b' : // 深粉色
-                                     student.class_type === 'ANIMATION' ? '#689f38' : // 深青綠色
-                                     student.class_type === 'PYTHON' ? '#f57f17' : // 深黃色 - Python
-                                     '#757575', // 預設深灰色
-                              border: student.class_type ? '1px solid' : 'none',
-                              borderColor: student.class_type === 'CPP' ? '#1976d2' :
-                                          student.class_type === 'PROJECT' ? '#7b1fa2' :
-                                          student.class_type === 'SCRATCH' ? '#388e3c' :
-                                          student.class_type === 'APCS_A' ? '#f57c00' :
-                                          student.class_type === 'APCS_P' ? '#c2185b' :
-                                          student.class_type === 'ANIMATION' ? '#689f38' :
-                                          student.class_type === 'PYTHON' ? '#f57f17' :
-                                          'transparent'
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              ...getLevelColors(student.level_type),
+                              px: 0.5,
+                              py: 0.25,
+                              borderRadius: 1,
+                              textAlign: 'center',
+                              minWidth: '48px',
+                              display: 'inline-block'
                             }}
                           >
-                            {getClassTypeName(student.class_type)}
-                          </span>
-                        </td>
-                        <td>
-                          <span 
-                            className="badge badge-enrollment-status"
-                            style={{
-                              backgroundColor: student.enrollment_status === '進行中' ? '#e8f5e8' : // 淺綠色
-                                     student.enrollment_status === '暫停中' ? '#fff3e0' : // 淺橙色
-                                     student.enrollment_status === '已畢業' ? '#f3e5f5' : // 淺紫色
-                                     '#f5f5f5', // 預設灰色
-                              color: student.enrollment_status === '進行中' ? '#388e3c' : // 深綠色
-                                     student.enrollment_status === '暫停中' ? '#f57c00' : // 深橙色
-                                     student.enrollment_status === '已畢業' ? '#7b1fa2' : // 深紫色
-                                     '#757575', // 預設深灰色
-                              border: student.enrollment_status ? '1px solid' : 'none',
-                              borderColor: student.enrollment_status === '進行中' ? '#388e3c' :
-                                          student.enrollment_status === '暫停中' ? '#f57c00' :
-                                          student.enrollment_status === '已畢業' ? '#7b1fa2' :
-                                          'transparent'
-                            }}
-                          >
-                            {student.enrollment_status || '未設定'}
-                          </span>
-                        </td>
-                        <td>
-                          <span 
-                            className="badge badge-class-schedule-type"
-                            style={{
-                              backgroundColor: student.class_schedule_type === '常態班' ? '#e3f2fd' : student.class_schedule_type === '短期班' ? '#fff3e0' : '#f5f5f5',
-                              color: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : '#757575',
-                              border: student.class_schedule_type ? '1px solid' : 'none',
-                              borderColor: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : 'transparent'
-                            }}
-                          >
-                            {student.class_schedule_type || '未設定'}
-                          </span>
-                        </td>
-                        <td className="student-actions">
-                          <button 
-                            className="btn-small btn-edit"
-                            onClick={() => handleEditStudent(student)}
-                          >
-                            編輯
-                          </button>
-                          <button 
-                            className="btn-small btn-delete"
-                            onClick={() => handleDeleteStudent(student)}
-                          >
-                            刪除
-                          </button>
-                          <button 
-                            className="btn-small btn-schedule"
-                            onClick={() => handleViewStudentDetail(student)}
-                          >
-                            詳情
-                          </button>
-                        </td>
-                      </tr>
+                            {student.level_type}
+                          </Box>
+                        </TableCell>
+                        <TableCell>{getClassTypeName(student.class_type)}</TableCell>
+                        <TableCell>{student.class_schedule_type}</TableCell>
+                        <TableCell>{student.enrollment_status}</TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1}>
+                            <Button
+                              size="small"
+                              onClick={() => handleViewStudentDetail(student)}
+                            >
+                              詳情
+                            </Button>
+                            <Button
+                              size="small"
+                              onClick={() => handleEditStudent(student)}
+                            >
+                              編輯
+                            </Button>
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteStudent(student)}
+                            >
+                              刪除
+                            </Button>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
           )}
+        
 
           {/* 統計資料區域 */}
           {activeTab === 'stats' && (
-            <div className="stats-section" style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              padding: '20px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              width: '100%',
-              maxWidth: '100%',
-              margin: '0 auto',
-              marginTop: '15px'
-            }}>
-              <h2 style={{ marginBottom: '20px', color: '#1976d2' }}>📊 學生統計資料</h2>
+            <Box sx={{ display: 'grid', gap: 3 }}>
+              <Typography variant="h5" sx={{ mb: 2 }}>📊 詳細學生統計資料</Typography>
               
-              {/* 基本統計 */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-                <div style={{
-                  backgroundColor: '#e3f2fd',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  border: '1px solid #1976d2'
-                }}>
-                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#1976d2' }}>{totalStudents}</div>
-                  <div style={{ color: '#1976d2' }}>總學生數</div>
-                </div>
-                <div style={{
-                  backgroundColor: '#ffebee',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  border: '1px solid #d32f2f'
-                }}>
-                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#d32f2f' }}>{students.filter(s => !s.is_active).length}</div>
-                  <div style={{ color: '#d32f2f' }}>停用學生</div>
-                </div>
-                <div style={{
-                  backgroundColor: '#e8f5e8',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  border: '1px solid #388e3c'
-                }}>
-                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#388e3c' }}>{students.filter(s => s.gender === '男').length}</div>
-                  <div style={{ color: '#388e3c' }}>男學生</div>
-                </div>
-                <div style={{
-                  backgroundColor: '#fce4ec',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  border: '1px solid #c2185b'
-                }}>
-                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#c2185b' }}>{students.filter(s => s.gender === '女').length}</div>
-                  <div style={{ color: '#c2185b' }}>女學生</div>
-                </div>
-              </div>
+              {statsLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <>
+                  {/* 基本統計卡片 */}
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 2 }}>基本統計</Typography>
+                    <Stack direction="row" spacing={2} flexWrap="wrap">
+                      <Box sx={{ p: 2, bgcolor: 'primary.light', borderRadius: 1, textAlign: 'center', minWidth: 120 }}>
+                        <Typography variant="h4">{totalStudents}</Typography>
+                        <Typography>總學生數</Typography>
+                      </Box>
+                      <Box sx={{ p: 2, bgcolor: 'success.light', borderRadius: 1, textAlign: 'center', minWidth: 120 }}>
+                        <Typography variant="h4">{students.filter(s => s.gender === '男').length}</Typography>
+                        <Typography>男學生</Typography>
+                      </Box>
+                      <Box sx={{ p: 2, bgcolor: 'warning.light', borderRadius: 1, textAlign: 'center', minWidth: 120 }}>
+                        <Typography variant="h4">{students.filter(s => s.gender === '女').length}</Typography>
+                        <Typography>女學生</Typography>
+                      </Box>
+                      <Box sx={{ p: 2, bgcolor: 'info.light', borderRadius: 1, textAlign: 'center', minWidth: 120 }}>
+                        <Typography variant="h4">{students.filter(s => s.class_schedule_type === '常態班').length}</Typography>
+                        <Typography>常態班</Typography>
+                      </Box>
+                      <Box sx={{ p: 2, bgcolor: 'secondary.light', borderRadius: 1, textAlign: 'center', minWidth: 120 }}>
+                        <Typography variant="h4">{students.filter(s => s.class_schedule_type === '短期班').length}</Typography>
+                        <Typography>短期班</Typography>
+                      </Box>
+                    </Stack>
+                  </Box>
 
-              {/* 學校統計 */}
-              <div style={{ marginBottom: '30px' }}>
-                <h3 style={{ marginBottom: '15px', color: '#333' }}>🏫 學校分布</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  {schoolStats.map((stat) => (
-                    <div key={stat.school} style={{
-                      backgroundColor: '#f5f5f5',
-                      padding: '15px',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      border: '1px solid #e0e0e0'
-                    }}>
-                      <span style={{ fontWeight: 'bold' }}>{stat.school}</span>
-                      <span style={{
-                        backgroundColor: '#1976d2',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '14px'
-                      }}>
-                        {stat.count}人
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                  {/* 學校分布統計 */}
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 2 }}>學校分布</Typography>
+                    <Stack direction="row" spacing={2} flexWrap="wrap">
+                      {schoolStats
+                        .filter(stat => stat.count > 0)
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, 8)
+                        .map((stat, index) => (
+                          <Paper key={stat.school} sx={{ p: 2, textAlign: 'center', minWidth: 120, flex: '1 1 200px' }}>
+                            <Typography variant="h6" color="primary">{stat.count}</Typography>
+                            <Typography variant="body2" color="text.secondary">{stat.school}</Typography>
+                          </Paper>
+                        ))}
+                    </Stack>
+                  </Box>
 
-              {/* 年級統計 */}
-              <div style={{ marginBottom: '30px' }}>
-                <h3 style={{ marginBottom: '15px', color: '#333' }}>📚 年級分布</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                  {gradeStats.map((stat) => (
-                    <div key={stat.grade} style={{
-                      backgroundColor: '#f5f5f5',
-                      padding: '15px',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      border: '1px solid #e0e0e0'
-                    }}>
-                      <span style={{ fontWeight: 'bold' }}>{stat.grade}</span>
-                      <span style={{
-                        backgroundColor: '#388e3c',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '14px'
-                      }}>
-                        {stat.count}人
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                  {/* 年級分布統計 */}
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 2 }}>年級分布</Typography>
+                    <Stack direction="row" spacing={2} flexWrap="wrap">
+                      {gradeStats
+                        .sort((a, b) => {
+                          const gradeOrder = ['小一', '小二', '小三', '小四', '小五', '小六', '國一', '國二', '國三', '高一', '高二', '高三'];
+                          return gradeOrder.indexOf(a.grade) - gradeOrder.indexOf(b.grade);
+                        })
+                        .map((stat, index) => (
+                          <Paper key={stat.grade} sx={{ p: 2, textAlign: 'center', minWidth: 80, flex: '1 1 120px' }}>
+                            <Typography variant="h6" color="secondary">{stat.count}</Typography>
+                            <Typography variant="body2" color="text.secondary">{stat.grade}</Typography>
+                          </Paper>
+                        ))}
+                    </Stack>
+                  </Box>
 
-              {/* 班級排程類型統計 */}
-              <div>
-                <h3 style={{ marginBottom: '15px', color: '#333' }}>📅 班級排程類型分布</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                  <div style={{
-                    backgroundColor: '#e3f2fd',
-                    padding: '15px',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    border: '1px solid #1976d2'
-                  }}>
-                    <span style={{ fontWeight: 'bold' }}>常態班</span>
-                    <span style={{
-                      backgroundColor: '#1976d2',
-                      color: 'white',
-                      padding: '4px 12px',
-                      borderRadius: '20px',
-                      fontSize: '14px'
-                    }}>
-                      {students.filter(s => s.class_schedule_type === '常態班').length}人
-                    </span>
-                  </div>
-                  <div style={{
-                    backgroundColor: '#fff3e0',
-                    padding: '15px',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    border: '1px solid #f57c00'
-                  }}>
-                    <span style={{ fontWeight: 'bold' }}>短期班</span>
-                    <span style={{
-                      backgroundColor: '#f57c00',
-                      color: 'white',
-                      padding: '4px 12px',
-                      borderRadius: '20px',
-                      fontSize: '14px'
-                    }}>
-                      {students.filter(s => s.class_schedule_type === '短期班').length}人
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  {/* 程度分布統計 */}
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 2 }}>程度分布</Typography>
+                    <Stack direction="row" spacing={2} flexWrap="wrap">
+                      {['新手', '入門', '進階', '高階', '精英'].map(level => {
+                        const count = students.filter(s => s.level_type === level).length;
+                        return (
+                          <Paper key={level} sx={{ p: 2, textAlign: 'center', minWidth: 80, flex: '1 1 120px' }}>
+                            <Typography variant="h6" color="success.main">{count}</Typography>
+                            <Typography variant="body2" color="text.secondary">{level}</Typography>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+
+                  {/* 班別統計 */}
+                  {classTypeStats.length > 0 && (
+                    <Box>
+                      <Typography variant="h6" sx={{ mb: 2 }}>班別統計</Typography>
+                      <Stack direction="row" spacing={2} flexWrap="wrap">
+                        {classTypeStats
+                          .filter(stat => stat.student_count > 0)
+                          .sort((a, b) => b.student_count - a.student_count)
+                          .map((stat, index) => (
+                            <Paper key={stat.class_code} sx={{ p: 2, minWidth: 250, flex: '1 1 300px' }}>
+                              <Typography variant="h6" color="primary">{stat.class_name}</Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                {stat.description}
+                              </Typography>
+                              <Typography variant="h5" color="success.main">{stat.student_count} 位學生</Typography>
+                            </Paper>
+                          ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* 課表統計 */}
+                  {scheduleStats && (
+                    <Box>
+                      <Typography variant="h6" sx={{ mb: 2 }}>課表統計</Typography>
+                      <Stack direction="row" spacing={2} flexWrap="wrap">
+                        <Paper sx={{ p: 2, textAlign: 'center', minWidth: 150, flex: '1 1 200px' }}>
+                          <Typography variant="h6" color="primary">
+                            {scheduleStats.find((s: any) => s.total_schedules)?.total_schedules || 0}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">總課表數</Typography>
+                        </Paper>
+                        <Paper sx={{ p: 2, textAlign: 'center', minWidth: 150, flex: '1 1 200px' }}>
+                          <Typography variant="h6" color="success.main">
+                            {scheduleStats.find((s: any) => s.students_with_schedules)?.students_with_schedules || 0}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">有課表學生</Typography>
+                        </Paper>
+                      </Stack>
+                      
+                      {/* 按星期統計 */}
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle1" sx={{ mb: 1 }}>按星期分布</Typography>
+                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                          {['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'].map(day => {
+                            const dayStats = scheduleStats.find((s: any) => s.day_of_week === day);
+                            const count = dayStats?.schedules_per_day || 0;
+                            return (
+                              <Paper key={day} sx={{ p: 1, textAlign: 'center', minWidth: 80, flex: '1 1 100px' }}>
+                                <Typography variant="body2" color="text.secondary">{day}</Typography>
+                                <Typography variant="h6" color="info.main">{count}</Typography>
+                              </Paper>
+                            );
+                          })}
+                        </Stack>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* 就讀狀態統計 */}
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 2 }}>就讀狀態</Typography>
+                    <Stack direction="row" spacing={2} flexWrap="wrap">
+                      {['進行中', '暫停中', '已畢業'].map(status => {
+                        const count = students.filter(s => s.enrollment_status === status).length;
+                        const color = status === '進行中' ? 'success.main' : status === '暫停中' ? 'warning.main' : 'error.main';
+                        return (
+                          <Paper key={status} sx={{ p: 2, textAlign: 'center', minWidth: 120, flex: '1 1 200px' }}>
+                            <Typography variant="h6" color={color}>{count}</Typography>
+                            <Typography variant="body2" color="text.secondary">{status}</Typography>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                </>
+              )}
+            </Box>
           )}
-        </div>
-      </div>
+        </Box>
 
-      {/* 編輯模態框 */}
-      <Dialog 
-        open={showEditModal} 
-        onClose={closeModals} 
-        maxWidth={false}
-        fullWidth
-        PaperProps={{
-          sx: {
-            maxWidth: '1504px',
-            width: '93vw'
-          }
-        }}
-      >
-        <DialogTitle>
-          {selectedStudent ? '編輯學生' : '新增學生'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <StudentEditForm
-              student={selectedStudent}
-              onSave={handleSaveStudent}
-              onCancel={closeModals}
-              isLoading={isSaving}
-            />
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-      {/* 刪除確認模態框 */}
-      <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
-        <DialogTitle>確認刪除</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              確定要刪除學生「{selectedStudent?.chinese_name}」嗎？
-            </Typography>
-            <Alert severity="warning">
-              此操作無法復原！
-            </Alert>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeModals}>取消</Button>
-          <Button onClick={confirmDeleteStudent} color="error" variant="contained">
-            確認刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 管理員密碼驗證模態框 */}
-      <Dialog open={showPasswordModal} onClose={closeModals} maxWidth="sm" fullWidth>
-        <DialogTitle>管理員密碼驗證</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              ⚠️ 您即將刪除學生：<strong>{selectedStudent?.chinese_name}</strong>
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3 }}>
-              只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
-            </Typography>
-            <TextField
-              fullWidth
-              type="password"
-              label="管理員密碼"
-              value={adminPassword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
-              error={!!passwordError}
-              helperText={passwordError}
-              onKeyPress={(e: React.KeyboardEvent) => {
-                if (e.key === 'Enter') {
-                  verifyPasswordAndDelete();
-                }
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeModals}>取消</Button>
-          <Button 
-            onClick={verifyPasswordAndDelete} 
-            color="error" 
-            variant="contained"
-            disabled={!adminPassword.trim()}
-          >
-            確認刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 詳情模態框 */}
-      <Dialog open={showDetailModal} onClose={closeModals} maxWidth="lg" fullWidth>
-        <DialogTitle>學生詳情</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            {selectedStudent && (
-              <StudentDetailView
+        {/* 編輯模態框 */}
+        <Dialog 
+          open={showEditModal} 
+          onClose={closeModals} 
+          maxWidth={false}
+          fullWidth
+          slotProps={{
+            paper: {
+              sx: {
+                maxWidth: '1504px',
+                width: '93vw'
+              }
+            }
+          }}
+        >
+          <DialogTitle>
+            {selectedStudent ? '編輯學生' : '新增學生'}
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <StudentFormOptimized
                 student={selectedStudent}
-                onEdit={handleEditFromDetail}
-                onDelete={() => handleDeleteStudent(selectedStudent)}
-                onClose={closeModals}
+                onSave={handleSaveStudent}
+                onCancel={closeModals}
+                isLoading={isSaving}
               />
-            )}
-          </Box>
-        </DialogContent>
-      </Dialog>
+            </Box>
+          </DialogContent>
+        </Dialog>
 
-      {/* 自定義 Alert 組件 */}
-      <CustomAlert
-        open={customAlert.open}
-        onClose={closeAlert}
-        message={customAlert.message}
-        type={customAlert.type}
-        title={customAlert.title}
-      />
-    </>
+        {/* 刪除確認模態框 */}
+        <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
+          <DialogTitle>確認刪除</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                確定要刪除學生「{selectedStudent?.chinese_name}」嗎？
+              </Typography>
+              <Alert severity="warning">
+                此操作無法復原！
+              </Alert>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeModals}>取消</Button>
+            <Button onClick={confirmDeleteStudent} color="error" variant="contained">
+              確認刪除
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 管理員密碼驗證模態框 */}
+        <Dialog open={showPasswordModal} onClose={closeModals} maxWidth="sm" fullWidth>
+          <DialogTitle>管理員密碼驗證</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                ⚠️ 您即將刪除學生：<strong>{selectedStudent?.chinese_name}</strong>
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3 }}>
+                只有系統管理員才能執行刪除操作，請輸入您的管理員密碼以確認身份：
+              </Typography>
+              <TextField
+                fullWidth
+                type="password"
+                label="管理員密碼"
+                value={adminPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAdminPassword(e.target.value)}
+                error={!!passwordError}
+                helperText={passwordError}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter') {
+                    verifyPasswordAndDelete();
+                  }
+                }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeModals}>取消</Button>
+            <Button 
+              onClick={verifyPasswordAndDelete} 
+              color="error" 
+              variant="contained"
+              disabled={!adminPassword.trim()}
+            >
+              確認刪除
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 詳情模態框 */}
+        <Dialog open={showDetailModal} onClose={closeModals} maxWidth="lg" fullWidth>
+          <DialogTitle>學生詳情</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              {selectedStudent && (
+                <StudentDetailView
+                  student={selectedStudent}
+                  onEdit={handleEditFromDetail}
+                  onDelete={() => handleDeleteStudent(selectedStudent)}
+                  onClose={closeModals}
+                />
+              )}
+            </Box>
+          </DialogContent>
+        </Dialog>
+
+        {/* 自定義 Alert 組件 */}
+        <CustomAlert
+          open={customAlert.open}
+          onClose={closeAlert}
+          message={customAlert.message}
+          type={customAlert.type}
+          title={customAlert.title}
+        />
+      </Box>
+    </React.Fragment>
   );
 };
 
-// 使用優化後的學生編輯表單組件
-const StudentEditForm = StudentFormOptimized;
-
-export default StudentsPage; 
+export default StudentsPage;

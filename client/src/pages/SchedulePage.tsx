@@ -201,7 +201,7 @@ export default function SchedulePage() {
 
   // 新增：日期顯示內容生成和寬度測量
   const dateDisplayRef = useRef<HTMLDivElement>(null);
-  const [dateDisplayWidth, setDateDisplayWidth] = useState(0);
+  const [dateDisplayWidth, setDateDisplayWidth] = useState(80); // 設定預設寬度
 
   const generateDateDisplayText = () => {
     if (view === 'month') {
@@ -217,10 +217,17 @@ export default function SchedulePage() {
 
   // 測量日期顯示寬度
   useEffect(() => {
-    if (dateDisplayRef.current) {
-      const width = dateDisplayRef.current.offsetWidth;
-      setDateDisplayWidth(width);
-    }
+    const measureWidth = () => {
+      if (dateDisplayRef.current) {
+        const width = dateDisplayRef.current.offsetWidth;
+        setDateDisplayWidth(width);
+      }
+    };
+    
+    // 使用 setTimeout 確保 DOM 完全渲染後再測量
+    const timer = setTimeout(measureWidth, 100);
+    
+    return () => clearTimeout(timer);
   }, [currentDate, view]);
 
   /* ---------- API 資料載入 ---------- */
@@ -771,7 +778,7 @@ export default function SchedulePage() {
               </div>
             </Box>
           )}
-        </Box>
+      </Box>
     </>
   );
 }

@@ -37,7 +37,7 @@
 
 /* 基本資料區域的網格佈局 */
 .student-form .basic-info-row {
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.4fr 1.4fr 1fr 1fr 1fr 1fr 1fr;
 }
 
 /* 第二行基本資料的網格佈局 - 4個欄位 */
@@ -149,6 +149,7 @@
   width: 80px;
   flex: 0 0 80px;
   font-size: 13px;
+  margin-left: 60px;
 }
 
 /* 性別 欄位縮小 */
@@ -159,6 +160,12 @@
   flex: 0 0 50px;
   font-size: 13px;
   padding: 10px 6px;
+  margin-left: 60px;
+}
+
+/* 性別欄位標籤向右移動 */
+.student-form .form-field:nth-child(5) label {
+  margin-left: 70px;
 }
 
 /* 程度、班別欄位縮小 */
@@ -262,7 +269,7 @@
 @media (max-width: 1400px) {
   /* 較小桌面：每行4個欄位 */
   .student-form .basic-info-row {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-columns: 1.4fr 1.4fr 1fr 1fr;
   }
   
   /* 學校欄位在較小桌面下的寬度調整 */
@@ -281,7 +288,7 @@
 @media (max-width: 1024px) {
   /* 平板版本：每行3個欄位 */
   .student-form .basic-info-row {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1.4fr 1.4fr 1fr;
   }
   
   /* 學校欄位在平板下的寬度調整 */
@@ -300,7 +307,7 @@
 @media (max-width: 768px) {
   /* 小平板：每行2個欄位 */
   .student-form .basic-info-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.4fr 1fr;
   }
   
   /* 小平板：聯絡資訊和備註改為上下排列 */
@@ -373,6 +380,7 @@
   .student-form .form-field:nth-child(7) select {
     max-width: none;
     flex: 1;
+    margin-left: 0;
   }
   
   /* 手機版學校欄位寬度調整 */

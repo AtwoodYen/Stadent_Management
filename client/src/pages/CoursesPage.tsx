@@ -542,8 +542,15 @@ const CoursesPage: React.FC = () => {
               sx={{ 
                 bgcolor: 'background.paper',
                 '& .MuiSelect-icon': { color: 'black' },
-                '& .MuiInputLabel-root.Mui-focused': { color: 'black' },
-                '& .MuiInputLabel-root': { color: 'black' }
+                '& .MuiInputLabel-root.Mui-focused': { 
+                  color: 'black',
+                  transform: 'translate(14px, 9px) scale(0.75)'
+                },
+                '& .MuiInputLabel-root': { color: 'black' },
+                '& .MuiInputLabel-root.MuiInputLabel-shrink': {
+                  color: 'black',
+                  transform: 'translate(14px, 9px) scale(0.75)'
+                }
               }}
             >
               <MenuItem value="">全部</MenuItem>
@@ -562,8 +569,15 @@ const CoursesPage: React.FC = () => {
               sx={{ 
                 bgcolor: 'background.paper',
                 '& .MuiSelect-icon': { color: 'black' },
-                '& .MuiInputLabel-root.Mui-focused': { color: 'black' },
-                '& .MuiInputLabel-root': { color: 'black' }
+                '& .MuiInputLabel-root.Mui-focused': { 
+                  color: 'black',
+                  transform: 'translate(14px, 9px) scale(0.75)'
+                },
+                '& .MuiInputLabel-root': { color: 'black' },
+                '& .MuiInputLabel-root.MuiInputLabel-shrink': {
+                  color: 'black',
+                  transform: 'translate(14px, 9px) scale(0.75)'
+                }
               }}
             >
               <MenuItem value="">全部</MenuItem>

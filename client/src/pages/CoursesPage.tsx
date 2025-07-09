@@ -180,6 +180,8 @@ const CoursesPage: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [filterCategory, setFilterCategory] = useState<string>('');
+  const [filterLevel, setFilterLevel] = useState<string>('');
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -445,43 +447,55 @@ const CoursesPage: React.FC = () => {
     }
   };
 
-  // 排序後的課程資料
-  const sortedCourses = [...courses].sort((a, b) => {
-    // 如果沒有選擇排序欄位，使用自定義排序
-    if (!sortField || sortField === 'name') {
-      if (a.sort_order !== undefined && b.sort_order !== undefined) {
-        return a.sort_order - b.sort_order;
+  // 過濾和排序後的課程資料
+  const filteredAndSortedCourses = [...courses]
+    .filter(course => {
+      // 分類過濾
+      if (filterCategory && course.category !== filterCategory) {
+        return false;
       }
-      return a.id - b.id;
-    }
+      // 難度過濾
+      if (filterLevel && convertLevel(course.level) !== filterLevel) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // 如果沒有選擇排序欄位，使用自定義排序
+      if (!sortField || sortField === 'name') {
+        if (a.sort_order !== undefined && b.sort_order !== undefined) {
+          return a.sort_order - b.sort_order;
+        }
+        return a.id - b.id;
+      }
 
-    let aValue: any = a[sortField];
-    let bValue: any = b[sortField];
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
 
-    // 處理難度排序的特殊邏輯
-    if (sortField === 'level') {
-      const levelOrder = { '新手': 1, '入門': 2, '進階': 3, '高階': 4, '精英': 5 };
-      // 轉換舊的難度值為新的難度值進行排序
-      const convertedAValue = convertLevel(aValue);
-      const convertedBValue = convertLevel(bValue);
-      aValue = levelOrder[convertedAValue as keyof typeof levelOrder] || 0;
-      bValue = levelOrder[convertedBValue as keyof typeof levelOrder] || 0;
-    }
+      // 處理難度排序的特殊邏輯
+      if (sortField === 'level') {
+        const levelOrder = { '新手': 1, '入門': 2, '進階': 3, '高階': 4, '精英': 5 };
+        // 轉換舊的難度值為新的難度值進行排序
+        const convertedAValue = convertLevel(aValue);
+        const convertedBValue = convertLevel(bValue);
+        aValue = levelOrder[convertedAValue as keyof typeof levelOrder] || 0;
+        bValue = levelOrder[convertedBValue as keyof typeof levelOrder] || 0;
+      }
 
-    // 處理字串和數字的比較
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      aValue = aValue.toLowerCase();
-      bValue = bValue.toLowerCase();
-    }
+      // 處理字串和數字的比較
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
 
-    if (aValue < bValue) {
-      return sortOrder === 'asc' ? -1 : 1;
-    }
-    if (aValue > bValue) {
-      return sortOrder === 'asc' ? 1 : -1;
-    }
-    return 0;
-  });
+      if (aValue < bValue) {
+        return sortOrder === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortOrder === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
 
   if (loading) {
     return (
@@ -536,6 +550,70 @@ const CoursesPage: React.FC = () => {
             {error}
           </Alert>
         )}
+
+        {/* 過濾條件 */}
+        <Box sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: 'white' }}>
+            過濾條件
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <FormControl sx={{ minWidth: 150 }}>
+              <InputLabel sx={{ color: 'white' }}>分類</InputLabel>
+              <Select
+                value={filterCategory}
+                label="分類"
+                onChange={(e) => setFilterCategory(e.target.value)}
+                sx={{ 
+                  bgcolor: 'background.paper',
+                  '& .MuiSelect-icon': { color: 'white' }
+                }}
+              >
+                <MenuItem value="">全部</MenuItem>
+                {categories.map((cat) => (
+                  <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <FormControl sx={{ minWidth: 150 }}>
+              <InputLabel sx={{ color: 'white' }}>難度</InputLabel>
+              <Select
+                value={filterLevel}
+                label="難度"
+                onChange={(e) => setFilterLevel(e.target.value)}
+                sx={{ 
+                  bgcolor: 'background.paper',
+                  '& .MuiSelect-icon': { color: 'white' }
+                }}
+              >
+                <MenuItem value="">全部</MenuItem>
+                {levels.map((level) => (
+                  <MenuItem key={level} value={level}>{level}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setFilterCategory('');
+                setFilterLevel('');
+              }}
+              sx={{ 
+                color: 'white', 
+                borderColor: 'white',
+                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
+              }}
+            >
+              清除過濾
+            </Button>
+          </Box>
+          
+          {/* 顯示過濾結果統計 */}
+          <Typography variant="body2" sx={{ mt: 1, color: 'white', opacity: 0.8 }}>
+            顯示 {filteredAndSortedCourses.length} / {courses.length} 筆課程
+          </Typography>
+        </Box>
 
         <DndContext
           sensors={sensors}
@@ -615,10 +693,10 @@ const CoursesPage: React.FC = () => {
 
               <TableBody>
                 <SortableContext
-                  items={sortedCourses.map(course => course.id)}
+                  items={filteredAndSortedCourses.map(course => course.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {sortedCourses.map((course) => (
+                  {filteredAndSortedCourses.map((course) => (
                     <SortableTableRow
                       key={course.id}
                       course={course}

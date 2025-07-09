@@ -90,7 +90,17 @@ const SortableTableRow: React.FC<{
   };
 
   return (
-    <TableRow ref={setNodeRef} style={style} {...attributes}>
+    <TableRow 
+      ref={setNodeRef} 
+      style={style} 
+      {...attributes}
+      sx={{ 
+        '& .MuiTableCell-root': {
+          padding: '6px 16px', // 減少 padding 來縮小高度
+          lineHeight: '1.2' // 減少行高
+        }
+      }}
+    >
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <IconButton
@@ -111,8 +121,8 @@ const SortableTableRow: React.FC<{
                 WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                lineHeight: '1.2em',
-                maxHeight: '2.4em' // 2行的高度
+                lineHeight: '1.1em', // 減少行高
+                maxHeight: '2.2em' // 減少最大高度
               }}
             >
               {course.description}
@@ -533,7 +543,7 @@ const CoursesPage: React.FC = () => {
           onDragEnd={handleDragEnd}
         >
           <TableContainer component={Paper}>
-            <Table>
+            <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ width: '50%' }}>

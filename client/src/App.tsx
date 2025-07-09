@@ -11,13 +11,13 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import StudentsPage from './pages/StudentsPage';
 import SchoolsPage from './pages/SchoolsPage';
-import TutorManagerPage from './pages/TutorManagerPage';
 import CoursesPage from './pages/CoursesPage';
 import TeachersPage from './pages/TeachersPage';
 import TeacherCoursesManagementPage from './pages/TeacherCoursesManagementPage';
 import CourseCategoriesPage from './pages/CourseCategoriesPage';
 import UsersPage from './pages/UsersPage';
 import ShortTermSchedulePage from './pages/ShortTermSchedulePage';
+import SchedulePage from './pages/SchedulePage';
 import DevTools from './components/DevTools';
 import './App.css';
 
@@ -30,9 +30,7 @@ const theme = createTheme({
     secondary: {
       main: '#764ba2',
     },
-    background: {
-      default: '#f5f7fa',
-    },
+    // 移除預設背景色，讓頁面自己的背景設定生效
   },
   typography: {
     fontFamily: '"Noto Sans TC", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -71,7 +69,7 @@ const AppContent = () => {
       <Layout>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/schedule" element={<TutorManagerPage />} />
+          <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/students" element={<StudentsPage />} />
           <Route path="/schools" element={<SchoolsPage />} />
           <Route path="/courses" element={<CoursesPage />} />

@@ -347,14 +347,6 @@ const SchoolsPage: React.FC = () => {
 
   return (
     <>
-      {/* 載入失敗覆蓋層 */}
-      <div id="app-overlay" className="app-overlay">
-        <div>
-          <h1>⚠️ 應用程式載入失敗</h1>
-          <p>請檢查您的網路連線或後端伺服器狀態，然後重新整理頁面。</p>
-        </div>
-      </div>
-
       {/* 背景容器 - 確保背景延伸到內容高度 */}
       <Box
         sx={{
@@ -377,7 +369,7 @@ const SchoolsPage: React.FC = () => {
             display: 'flex',
             justifyContent: 'center',
             marginBottom: '0px',
-            marginTop: '-10px'
+            marginTop: '10px'
           }}>
             <button
               className={`tab-button ${activeTab === 'schools' ? 'active' : ''}`}
@@ -417,7 +409,14 @@ const SchoolsPage: React.FC = () => {
           </div>
 
         {/* 內容區 */}
-        <div className="main-content" style={{ display: 'block', width: '100%' }}>
+        <div className="main-content" style={{ 
+          display: 'block', 
+          width: '100%',
+          backgroundColor: '#e8f5e8',
+          borderRadius: '8px',
+          padding: '20px',
+          marginTop: '20px'
+        }}>
 
           {/* 學校列表區域 */}
           {activeTab === 'schools' && (

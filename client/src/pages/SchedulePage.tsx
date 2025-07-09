@@ -7,8 +7,7 @@
    3. 課程資料保存在本地 state
 -------------------------------- */
 
-import React, { useState, useEffect } from 'react';
-import '../styles/tutoring.css';          // 內含 .calendar-section 與 .full-width
+import React, { useState, useEffect, Fragment, useRef } from 'react';
 import {
   Box,
   Button,
@@ -200,6 +199,30 @@ export default function SchedulePage() {
 
   const handleToday = () => setCurrentDate(new Date());
 
+  // 新增：日期顯示內容生成和寬度測量
+  const dateDisplayRef = useRef<HTMLDivElement>(null);
+  const [dateDisplayWidth, setDateDisplayWidth] = useState(0);
+
+  const generateDateDisplayText = () => {
+    if (view === 'month') {
+      return format(currentDate, 'yyyy年M月');
+    } else if (view === 'week') {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+      return `${format(weekStart, 'yyyy年MM月dd日')}～${format(weekEnd, 'yyyy年MM月dd日')}`;
+    } else {
+      return format(currentDate, 'yyyy年MM月dd日');
+    }
+  };
+
+  // 測量日期顯示寬度
+  useEffect(() => {
+    if (dateDisplayRef.current) {
+      const width = dateDisplayRef.current.offsetWidth;
+      setDateDisplayWidth(width);
+    }
+  }, [currentDate, view]);
+
   /* ---------- API 資料載入 ---------- */
   const fetchStudents = async () => {
     try {
@@ -256,9 +279,10 @@ export default function SchedulePage() {
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart);
-    const endDate = endOfWeek(monthEnd);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
+    /*
     const days: React.ReactElement[] = [];
     let day = startDate;
     while (day <= endDate) {
@@ -280,83 +304,173 @@ export default function SchedulePage() {
       );
       day = addDays(day, 1);
     }
+    */
+    const days: Date[] = [];
+    let day = startDate;
+    while (day <= endDate) {
+      days.push(day);
+      day = addDays(day, 1);
+    }
 
     return (
-      <div className='month-view'>
-        {['一', '二', '三', '四', '五', '六', '日'].map(d => (
-          <div key={d} className='day-header'>
-            {d}
-          </div>
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(7,1fr)',
+        gridTemplateRows: 'auto repeat(5, 2fr)',
+        gap: 1,
+        bgcolor: 'grey.200',
+        borderRadius: 1
+      }}>
+                  {/* 星期標題 */}
+          {['星期一','星期二','星期三','星期四','星期五','星期六','星期日'].map((d, index) => {
+            const today = new Date();
+            const todayDayOfWeek = today.getDay(); // 0=週日, 1=週一, ..., 6=週六
+            const isToday = (todayDayOfWeek === 0 && index === 6) || (todayDayOfWeek === index + 1);
+            
+            return (
+              <Box key={d} sx={{
+                bgcolor: isToday ? 'primary.dark' : 'primary.light', 
+                color: 'white',
+                textAlign: 'center', 
+                py: 1, 
+                fontWeight: 'bold'
+              }}>{d}</Box>
+            );
+          })}
+        {/* 日期格子，使用原 days 陣列 */}
+        {days.map((d, i) => (
+          <Box
+            key={i}
+            sx={{
+              bgcolor: isToday(d) ? '#ffebee' : (isSameMonth(d, monthStart) ? 'background.paper' : 'grey.50'),
+              p: 1,
+              cursor: 'pointer',
+              overflow: 'hidden',
+              minHeight: '120px'
+            }}
+            onClick={() => handleDateClick(d)}
+          >
+            <Box sx={{
+              fontSize: '0.875rem', fontWeight: 'bold',
+              color: isToday(d)
+                ? 'primary.main'
+                : isSameMonth(d, monthStart)
+                ? 'text.primary'
+                : 'text.disabled'
+            }}>{format(d, 'd')}</Box>
+
+            {getLessonsForDate(d).map(l => (
+              <Box key={l.id} sx={{
+                mt: 0.5,
+                p: 0.5,
+                bgcolor: 'primary.light',
+                borderRadius: 0.5,
+                fontSize: '0.75rem',
+                color: 'primary.main'
+              }}>{l.topic}</Box>
+            ))}
+          </Box>
         ))}
-        {days}
-      </div>
+      </Box>
     );
   };
 
   /* ---------- 週視圖 ---------- */
   const renderWeekView = () => {
-    const startDate = startOfWeek(currentDate);
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+    const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
     return (
-      <div className='week-view'>
-        {Array.from({ length: 7 }, (_, i) => {
-          const currentDay = addDays(startDate, i);
-          return (
-            <div key={i} className='day'>
-              <div className='day-header'>
-                {format(currentDay, 'M/d (E)')}
-              </div>
-              <div className='time-slots'>
-                {timeSlots.map(time => (
-                  <div key={time} className='time-slot'>
-                    <div className='time'>{time}</div>
-                    <div className='lessons'>
-                      {getLessonsForTimeSlot(currentDay, time).map(l => (
-                        <div key={l.id} className='lesson'>
-                          {getStudentName(l.studentId)}：{l.topic}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: '80px repeat(7,1fr)',
+        gridAutoRows: 'auto',
+        gap: 1,
+        bgcolor: 'grey.200'
+      }}>
+        <Box />
+                    {days.map(d => (
+              <Box key={d.toISOString()} sx={{
+                p: 1,
+                textAlign: 'center',
+                fontWeight: 'bold',
+                bgcolor: isToday(d) ? 'primary.light' : 'grey.100'
+              }}>{format(d, 'MM/dd')}</Box>
+            ))}
+
+            {timeSlots.map(time => (
+              <Fragment key={time}>
+                <Box sx={{ p: 1, textAlign: 'center', bgcolor: 'grey.100' }}>{time}</Box>
+                {days.map(d => (
+                  <Box key={`${d.toISOString()}-${time}`} sx={{
+                    p: 1,
+                    minHeight: 112,
+                    bgcolor: 'background.paper',
+                    overflow: 'hidden'
+                  }}>
+                {getLessonsForTimeSlot(d, time).map(l => (
+                  <Box key={l.id} sx={{
+                    mb: 0.5,
+                    p: 0.5,
+                    bgcolor: 'primary.light',
+                    borderRadius: 0.5,
+                    fontSize: '0.75rem',
+                    color: 'primary.main'
+                  }}>
+                    {getStudentName(l.studentId)}：{l.topic}
+                  </Box>
                 ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              </Box>
+            ))}
+          </Fragment>
+        ))}
+      </Box>
     );
   };
 
   /* ---------- 日視圖 ---------- */
   const renderDayView = () => (
-    <div className='day-view'>
-      <div className='time-slots'>
-        {timeSlots.map(time => (
-          <div key={time} className='time-slot'>
-            <div className='time'>{time}</div>
-            <div className='lessons'>
-              {getLessonsForTimeSlot(currentDate, time).map(l => (
-                <div key={l.id} className='lesson'>
-                  <div className='student-name'>{getStudentName(l.studentId)}</div>
-                  <div className='lesson-topic'>{l.topic}</div>
-                  <div className='lesson-time'>
-                    {l.startTime} - {l.endTime}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: '80px 1fr',
+      gridAutoRows: 'auto',
+      gap: 1,
+      bgcolor: 'grey.200'
+    }}>
+      {timeSlots.map(time => (
+        <Fragment key={time}>
+          <Box sx={{ p: 1, textAlign: 'center', bgcolor: 'grey.100' }}>{time}</Box>
+          <Box sx={{
+            p: 1,
+            minHeight: 112,
+            bgcolor: 'background.paper',
+            overflow: 'hidden'
+          }}>
+            {getLessonsForTimeSlot(currentDate, time).map(l => (
+              <Box key={l.id} sx={{
+                mb: 0.5,
+                p: 0.5,
+                bgcolor: 'primary.light',
+                borderRadius: 0.5,
+                fontSize: '0.75rem',
+                color: 'primary.main'
+              }}>
+                <Box>{getStudentName(l.studentId)}</Box>
+                <Box>{l.topic}</Box>
+                <Box sx={{ fontSize: '0.75rem', mt: 0.25 }}>{l.startTime} - {l.endTime}</Box>
+              </Box>
+            ))}
+          </Box>
+        </Fragment>
+      ))}
+    </Box>
   );
 
   /* ---------- 畫面 ---------- */
   if (loading) {
-    return (
-      <div className='schedule-container' style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <div>載入中...</div>
-      </div>
-    );
+    return 
+      <Box p={4}>載入中…</Box>;
   }
 
   return (
@@ -375,112 +489,223 @@ export default function SchedulePage() {
         }}
       />
 
-      <div className='schedule-container'>
-        <div className='main-content'>
-          {/* 分頁選單 */}
-          <div className="tab-navigation" style={{
-            display: 'flex',
-            borderBottom: '2px solid #e0e0e0',
-            marginBottom: '20px',
-            backgroundColor: '#fff',
-            borderRadius: '8px 8px 0 0',
-            overflow: 'hidden'
+      {/* 主要容器 */}
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>        
+
+        {/* 分頁按鈕區域 */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+          <Button
+            variant={activeTab === 'schedule' ? 'contained' : 'outlined'}
+            onClick={() => setActiveTab('schedule')}
+            sx={{
+              backgroundColor: activeTab === 'schedule' ? 'primary.main' : '#e0e0e0',
+              color: activeTab === 'schedule' ? 'white' : '#000000',
+              '&:hover': {
+                backgroundColor: activeTab === 'schedule' ? 'primary.dark' : '#d0d0d0'
+              }
+            }}
+          >📅 課程排程</Button>
+          <Button
+            variant={activeTab === 'students' ? 'contained' : 'outlined'}
+            onClick={() => setActiveTab('students')}
+            sx={{
+              backgroundColor: activeTab === 'students' ? 'primary.main' : '#e0e0e0',
+              color: activeTab === 'students' ? 'white' : '#000000',
+              '&:hover': {
+                backgroundColor: activeTab === 'students' ? 'primary.dark' : '#d0d0d0'
+              }
+            }}
+          >👥 學生列表</Button>
+          <Button
+            variant={activeTab === 'stats' ? 'contained' : 'outlined'}
+            onClick={() => setActiveTab('stats')}
+            sx={{
+              backgroundColor: activeTab === 'stats' ? 'primary.main' : '#e0e0e0',
+              color: activeTab === 'stats' ? 'white' : '#000000',
+              '&:hover': {
+                backgroundColor: activeTab === 'stats' ? 'primary.dark' : '#d0d0d0'
+              }
+            }}
+          >📊 統計資料</Button>
+        </Box>
+
+        {/* 內容區 */}
+        <Box sx={{ 
+          p: 2, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 2,
+          backgroundColor: 'background.paper',
+          borderRadius: 1,
+          boxShadow: 1
+        }}>
+
+          {/* 導覽和時間切換 */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            position: 'relative',
+            justifyContent: 'center',
+            paddingTop: '10px',
+            paddingBottom: '10px'
           }}>
-            <button
-              className={`tab-button ${activeTab === 'schedule' ? 'active' : ''}`}
-              onClick={() => setActiveTab('schedule')}
-              style={{
-                flex: 1,
-                padding: '15px 20px',
-                border: 'none',
-                backgroundColor: activeTab === 'schedule' ? '#1976d2' : '#f5f5f5',
-                color: activeTab === 'schedule' ? 'white' : '#333',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: activeTab === 'schedule' ? 'bold' : 'normal',
-                transition: 'all 0.3s ease',
-                borderRight: '1px solid #e0e0e0'
+            {/* 隱藏的日期文字用於測量寬度 */}
+            <Box
+              ref={dateDisplayRef}
+              sx={{
+                position: 'absolute',
+                visibility: 'hidden',
+                fontWeight: 'bold',
+                fontSize: '18px',
+                whiteSpace: 'nowrap'
               }}
             >
-              📅 課程排程
-            </button>
-            <button
-              className={`tab-button ${activeTab === 'students' ? 'active' : ''}`}
-              onClick={() => setActiveTab('students')}
-              style={{
-                flex: 1,
-                padding: '15px 20px',
-                border: 'none',
-                backgroundColor: activeTab === 'students' ? '#1976d2' : '#f5f5f5',
-                color: activeTab === 'students' ? 'white' : '#333',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: activeTab === 'students' ? 'bold' : 'normal',
-                transition: 'all 0.3s ease',
-                borderRight: '1px solid #e0e0e0'
+              {generateDateDisplayText()}
+            </Box>
+            
+            <Button 
+              onClick={handlePrevious}
+              sx={{
+                backgroundColor: '#000000',
+                color: 'white',
+                position: 'absolute',
+                left: `calc(100px - 80px)`,
+                '&:hover': {
+                  backgroundColor: '#333333'
+                }
               }}
             >
-              👥 學生列表
-            </button>
-            <button
-              className={`tab-button ${activeTab === 'stats' ? 'active' : ''}`}
-              onClick={() => setActiveTab('stats')}
-              style={{
-                flex: 1,
-                padding: '15px 20px',
-                border: 'none',
-                backgroundColor: activeTab === 'stats' ? '#1976d2' : '#f5f5f5',
-                color: activeTab === 'stats' ? 'white' : '#333',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: activeTab === 'stats' ? 'bold' : 'normal',
-                transition: 'all 0.3s ease'
+              {view === 'month' && '上一月'}
+              {view === 'week' && '上一週'}
+              {view === 'day' && '前一日'}
+            </Button>
+            
+            {/* 日期文字 */}
+            <Box sx={{ 
+              position: 'absolute',
+              left: '100px',
+              textAlign: 'left', 
+              fontWeight: 'bold',
+              fontSize: '18px',
+              whiteSpace: 'nowrap'
+            }}>
+              {generateDateDisplayText()}
+            </Box>
+            
+            {/* 下一日按鈕 */}
+            <Button 
+              onClick={handleNext}
+              sx={{
+                backgroundColor: '#000000',
+                color: 'white',
+                position: 'absolute',
+                left: `calc(100px + ${dateDisplayWidth}px + 15px)`,
+                '&:hover': {
+                  backgroundColor: '#333333'
+                }
               }}
             >
-              📊 統計資料
-            </button>
-          </div>
+              {view === 'month' && '下一月'}
+              {view === 'week' && '下一週'}
+              {view === 'day' && '後一日'}
+            </Button>
+            
+            <Button 
+              onClick={handleToday}
+              sx={{
+                backgroundColor: '#4caf50',
+                color: 'white',
+                position: 'absolute',
+                left: '35%',
+                '&:hover': {
+                  backgroundColor: '#388e3c'
+                }
+              }}
+            >
+              今天
+            </Button>
+            
+            <ToggleButtonGroup 
+              value={view} 
+              exclusive 
+              onChange={handleViewChange}
+              sx={{
+                position: 'absolute',
+                left: `calc(50% + ${dateDisplayWidth / 2}px + 140px)`,
+                '& .MuiToggleButton-root': {
+                  margin: '0 4px', // 每個按鈕左右各2px，總間距4px
+                  width: '70px', // 比今天按鈕寬10px，再放大80%
+                  height: '36px', // 與今天按鈕相同高度
+                  backgroundColor: '#e3f2fd', // 未中選：淺藍底色
+                  color: '#000000', // 未中選：黑色文字
+                  border: '1px solid #e3f2fd', // 淺藍邊框
+                  '&.Mui-selected': {
+                    backgroundColor: '#1976d2', // 中選：深藍底色
+                    color: 'white', // 中選：白色文字
+                    border: '1px solid #1976d2', // 中選時的邊框顏色
+                    '&:hover': {
+                      backgroundColor: '#1565c0' // 中選懸停：更深的藍色
+                    }
+                  },
+                  '&:hover': {
+                    backgroundColor: '#bbdefb' // 未中選懸停：稍深的淺藍色
+                  },
+                  '&:first-of-type': {
+                    marginLeft: 0,
+                    borderTopLeftRadius: '4px',
+                    borderBottomLeftRadius: '4px'
+                  },
+                  '&:last-of-type': {
+                    marginRight: 0,
+                    borderTopRightRadius: '4px',
+                    borderBottomRightRadius: '4px'
+                  }
+                }
+              }}
+            >
+              <ToggleButton value="month">月</ToggleButton>
+              <ToggleButton value="week">週</ToggleButton>
+              <ToggleButton value="day">日</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
 
-          {/* 課程排程區域 */}
-          {activeTab === 'schedule' && (
-            <div className='calendar-section'>
-              <div className='calendar-header'>
-                <div className='calendar-nav'>
-                  <button className='btn' onClick={handlePrevious}>‹ 上一頁</button>
-                  <div style={{ margin: '0 10px', fontWeight: 'bold' }}>
-                    {format(currentDate, view === 'month' ? 'yyyy 年 M 月' : 'yyyy 年 M 月 d 日')}
-                  </div>
-                  <button className='btn' onClick={handleNext}>下一頁 ›</button>
-                </div>
 
-                <div className='calendar-controls'>
-                  <ToggleButtonGroup
-                    color='primary'
-                    value={view}
-                    exclusive
-                    onChange={handleViewChange}
-                    aria-label='schedule view'
-                  >
-                    <ToggleButton value='month'>月</ToggleButton>
-                    <ToggleButton value='week'>週</ToggleButton>
-                    <ToggleButton value='day'>日</ToggleButton>
-                  </ToggleButtonGroup>
-                  <button className='btn btn-secondary' style={{ marginLeft: 10 }} onClick={handleToday}>今天</button>
-                </div>
-              </div>
 
-              {/* 日曆 */}
-              <div>
-                {view === 'month' && renderMonthView()}
-                {view === 'week' && renderWeekView()}
-                {view === 'day' && renderDayView()}
-              </div>
-            </div>
-          )}
+          {/* 日曆區塊：月/週/日 */}
+          {view === 'month' && renderMonthView()}
+          {view === 'week' && renderWeekView()}
+          {view === 'day' && renderDayView()}
+        </Box>
+
+        {/* 新增課程對話框 */}
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <DialogTitle>新增課程</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <TextField fullWidth label="課程主題" value={topic} onChange={e => setTopic(e.target.value)} margin="normal" />
+              <FormControl fullWidth margin="normal">
+                <InputLabel>學生</InputLabel>
+                <Select value={selectedStudent} label="學生" onChange={e => setSelectedStudent(Number(e.target.value))}>
+                  {students.map(s => (<MenuItem key={s.id} value={s.id}>{s.name} ({s.level})</MenuItem>))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>開始時間</InputLabel>
+                <Select value={selectedTime} label="開始時間" onChange={e => setSelectedTime(e.target.value)}>
+                  {timeSlots.map(t => (<MenuItem key={t} value={t}>{t}</MenuItem>))}
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>取消</Button>
+            <Button onClick={handleAddLesson} variant="contained" disabled={!selectedStudent || !selectedTime || !topic.trim()}>新增課程</Button>
+          </DialogActions>
+        </Dialog>
 
           {/* 學生列表區域 */}
           {activeTab === 'students' && (
-            <div className="students-section" style={{
+            <Box sx={{
               backgroundColor: '#fff',
               borderRadius: '8px',
               padding: '20px',
@@ -500,12 +725,12 @@ export default function SchedulePage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Box>
           )}
 
           {/* 統計資料區域 */}
           {activeTab === 'stats' && (
-            <div className="stats-section" style={{
+            <Box sx={{
               backgroundColor: '#fff',
               borderRadius: '8px',
               padding: '20px',
@@ -544,64 +769,9 @@ export default function SchedulePage() {
                   <div style={{ color: '#f57c00' }}>本週課程</div>
                 </div>
               </div>
-            </div>
+            </Box>
           )}
-        </div>
-      </div>
-
-      {/* 新增課程對話框 */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>新增課程</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <TextField
-              fullWidth
-              label="課程主題"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              margin="normal"
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel>學生</InputLabel>
-              <Select
-                value={selectedStudent}
-                label="學生"
-                onChange={(e) => setSelectedStudent(Number(e.target.value))}
-              >
-                {students.map((student) => (
-                  <MenuItem key={student.id} value={student.id}>
-                    {student.name} ({student.level})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth margin="normal">
-              <InputLabel>開始時間</InputLabel>
-              <Select
-                value={selectedTime}
-                label="開始時間"
-                onChange={(e) => setSelectedTime(e.target.value)}
-              >
-                {timeSlots.map((time) => (
-                  <MenuItem key={time} value={time}>
-                    {time}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>取消</Button>
-          <Button 
-            onClick={handleAddLesson} 
-            variant="contained"
-            disabled={!selectedStudent || !selectedTime || !topic.trim()}
-          >
-            新增課程
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
     </>
   );
 }

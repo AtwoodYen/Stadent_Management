@@ -180,8 +180,7 @@ const CoursesPage: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [filterCategory, setFilterCategory] = useState<string>('');
-  const [filterLevel, setFilterLevel] = useState<string>('');
+
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -250,6 +249,8 @@ const CoursesPage: React.FC = () => {
     fetchCourses();
     fetchCategories();
   }, []);
+
+
 
   // 處理拖拽結束
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -447,19 +448,8 @@ const CoursesPage: React.FC = () => {
     }
   };
 
-  // 過濾和排序後的課程資料
-  const filteredAndSortedCourses = [...courses]
-    .filter(course => {
-      // 分類過濾
-      if (filterCategory && course.category !== filterCategory) {
-        return false;
-      }
-      // 難度過濾
-      if (filterLevel && convertLevel(course.level) !== filterLevel) {
-        return false;
-      }
-      return true;
-    })
+  // 排序後的課程資料
+  const sortedCourses = [...courses]
     .sort((a, b) => {
       // 如果沒有選擇排序欄位，使用自定義排序
       if (!sortField || sortField === 'name') {
@@ -521,101 +511,32 @@ const CoursesPage: React.FC = () => {
         }}
       />
 
-      <Box>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          
           <Box>
-        <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
-          課程管理
-        </Typography>
+            <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
+              課程管理
+            </Typography>
             <Typography variant="body2" sx={{ color: 'white', opacity: 0.8 }}>
               💡 提示：拖拽左側圖示可調整課程順序
             </Typography>
           </Box>
-        <Box display="flex" alignItems="center" gap={2}>
-          {/* 過濾條件 */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel sx={{ color: 'black' }}>分類</InputLabel>
-            <Select
-              value={filterCategory}
-              label="分類"
-              onChange={(e) => setFilterCategory(e.target.value)}
-              sx={{ 
-                bgcolor: 'background.paper',
-                '& .MuiSelect-icon': { color: 'black' },
-                '& .MuiInputLabel-root.Mui-focused': { 
-                  color: 'black',
-                  transform: 'translate(14px, 9px) scale(0.75)'
-                },
-                '& .MuiInputLabel-root': { color: 'black' },
-                '& .MuiInputLabel-root.MuiInputLabel-shrink': {
-                  color: 'black',
-                  transform: 'translate(14px, 9px) scale(0.75)'
-                }
-              }}
+
+          <Box display="flex" alignItems="center" gap={2}>
+            <Typography variant="body2" sx={{ color: 'white', opacity: 0.8 }}>
+              {sortedCourses.length} / {courses.length}
+            </Typography>
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
             >
-              <MenuItem value="">全部</MenuItem>
-              {categories.map((cat) => (
-                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel sx={{ color: 'black' }}>難度</InputLabel>
-            <Select
-              value={filterLevel}
-              label="難度"
-              onChange={(e) => setFilterLevel(e.target.value)}
-              sx={{ 
-                bgcolor: 'background.paper',
-                '& .MuiSelect-icon': { color: 'black' },
-                '& .MuiInputLabel-root.Mui-focused': { 
-                  color: 'black',
-                  transform: 'translate(14px, 9px) scale(0.75)'
-                },
-                '& .MuiInputLabel-root': { color: 'black' },
-                '& .MuiInputLabel-root.MuiInputLabel-shrink': {
-                  color: 'black',
-                  transform: 'translate(14px, 9px) scale(0.75)'
-                }
-              }}
-            >
-              <MenuItem value="">全部</MenuItem>
-              {levels.map((level) => (
-                <MenuItem key={level} value={level}>{level}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => {
-              setFilterCategory('');
-              setFilterLevel('');
-            }}
-            sx={{ 
-              color: 'white', 
-              borderColor: 'white',
-              '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
-            }}
-          >
-            清除
-          </Button>
-
-          <Typography variant="body2" sx={{ color: 'white', opacity: 0.8 }}>
-            {filteredAndSortedCourses.length} / {courses.length}
-          </Typography>
-
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            新增課程
-          </Button>
+              新增課程
+            </Button>
+          </Box>
         </Box>
-      </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -623,7 +544,8 @@ const CoursesPage: React.FC = () => {
           </Alert>
         )}
 
-
+        {/* 內容區塊 */}
+        <Box sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
 
         <DndContext
           sensors={sensors}
@@ -703,10 +625,10 @@ const CoursesPage: React.FC = () => {
 
               <TableBody>
                 <SortableContext
-                  items={filteredAndSortedCourses.map(course => course.id)}
+                  items={sortedCourses.map(course => course.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {filteredAndSortedCourses.map((course) => (
+                  {sortedCourses.map((course) => (
                     <SortableTableRow
                       key={course.id}
                       course={course}
@@ -723,6 +645,8 @@ const CoursesPage: React.FC = () => {
             </Table>
           </TableContainer>
         </DndContext>
+
+        </Box>
 
         {/* 新增/編輯課程對話框 */}
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
@@ -747,6 +671,14 @@ const CoursesPage: React.FC = () => {
                     value={formData.category}
                     label="分類"
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    sx={{
+                      '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'black !important'
+                      },
+                      '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'black !important'
+                      }
+                    }}
                   >
                     {categories.map((cat) => (
                       <MenuItem key={cat} value={cat}>{cat}</MenuItem>
@@ -799,6 +731,14 @@ const CoursesPage: React.FC = () => {
                     value={formData.level}
                     label="難度"
                     onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+                    sx={{
+                      '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'black !important'
+                      },
+                      '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'black !important'
+                      }
+                    }}
                   >
                     {levels.map((level) => (
                       <MenuItem key={level} value={level}>{level}</MenuItem>

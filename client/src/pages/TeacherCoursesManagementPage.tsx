@@ -119,7 +119,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
     direction: 'asc'
   });
 
-      const levels = ['新手', '入門', '進階', '高階', '精英'];
+      const levels = ['新手', '入門', '中階', '高階', '大師'];
 
   // 載入所有資料
   useEffect(() => {
@@ -361,7 +361,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
       switch (sortState.field) {
         case 'max_level':
           // 教學水準排序：初級 < 中級 < 高級
-          const levelOrder = { '新手': 1, '入門': 2, '進階': 3, '高階': 4, '精英': 5 };
+          const levelOrder = { '新手': 1, '入門': 2, '中階': 3, '高階': 4, '大師': 5 };
           aValue = levelOrder[aValue as keyof typeof levelOrder] || 0;
           bValue = levelOrder[bValue as keyof typeof levelOrder] || 0;
           break;

@@ -458,7 +458,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
                 <MenuItem value="">請選擇</MenuItem>
                 <MenuItem value="新手">新手</MenuItem>
                 <MenuItem value="入門">入門</MenuItem>
-                <MenuItem value="進階">進階</MenuItem>
+                <MenuItem value="中階">中階</MenuItem>
                 <MenuItem value="高階">高階</MenuItem>
                 <MenuItem value="精英">精英</MenuItem>
               </Select>

@@ -180,6 +180,8 @@ const CoursesPage: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [filterCategory, setFilterCategory] = useState<string>('全部');
+  const [filterLevel, setFilterLevel] = useState<string>('全部');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -203,7 +205,7 @@ const CoursesPage: React.FC = () => {
     })
   );
 
-  const levels = ['新手', '入門', '進階', '高階', '精英'];
+  const levels = ['初級', '中級', '高級'];
 
   // 載入課程資料
   const fetchCourses = async () => {
@@ -298,9 +300,11 @@ const CoursesPage: React.FC = () => {
   // 轉換舊的難度值為新的難度值
   const convertLevel = (oldLevel: string): string => {
     const levelMap: { [key: string]: string } = {
-      '初級': '新手',
-      '中級': '入門',
-      '高級': '高階'
+      '新手': '初級',
+      '入門': '初級',
+      '進階': '中級',
+      '高階': '高級',
+      '精英': '高級'
     };
     return levelMap[oldLevel] || oldLevel;
   };
@@ -448,8 +452,19 @@ const CoursesPage: React.FC = () => {
     }
   };
 
-  // 排序後的課程資料
-  const sortedCourses = [...courses]
+  // 過濾和排序後的課程資料
+  const filteredAndSortedCourses = [...courses]
+    .filter(course => {
+      // 分類過濾
+      if (filterCategory !== '全部' && course.category !== filterCategory) {
+        return false;
+      }
+      // 難度過濾
+      if (filterLevel !== '全部' && convertLevel(course.level) !== filterLevel) {
+        return false;
+      }
+      return true;
+    })
     .sort((a, b) => {
       // 如果沒有選擇排序欄位，使用自定義排序
       if (!sortField || sortField === 'name') {
@@ -464,7 +479,7 @@ const CoursesPage: React.FC = () => {
 
       // 處理難度排序的特殊邏輯
       if (sortField === 'level') {
-        const levelOrder = { '新手': 1, '入門': 2, '進階': 3, '高階': 4, '精英': 5 };
+        const levelOrder = { '初級': 1, '中級': 2, '高級': 3 };
         // 轉換舊的難度值為新的難度值進行排序
         const convertedAValue = convertLevel(aValue);
         const convertedBValue = convertLevel(bValue);
@@ -523,15 +538,115 @@ const CoursesPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Box display="flex" alignItems="center" gap={2}>
-            <Typography variant="body2" sx={{ color: 'white', opacity: 0.8 }}>
-              {sortedCourses.length} / {courses.length}
+          <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2 }}>
+            {/* 過濾條件 */}
+            <FormControl size="small" sx={{ 
+              position: 'absolute',
+              left: -600,
+              minWidth: 254,
+              flexShrink: 0
+            }}>
+              <InputLabel sx={{ color: 'black !important' }}>分類</InputLabel>
+              <Select
+                value={filterCategory}
+                label="分類"
+                onChange={(e) => setFilterCategory(e.target.value)}
+                sx={{ 
+                  bgcolor: 'background.paper',
+                  '& .MuiSelect-icon': { color: 'black' },
+                  '& .MuiInputLabel-root': { 
+                    color: 'black !important',
+                    transform: 'translate(14px, 9px) scale(0.75) !important'
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': { 
+                    color: 'black !important',
+                    transform: 'translate(14px, 9px) scale(0.75) !important'
+                  },
+                  '& .MuiInputLabel-root.MuiInputLabel-shrink': {
+                    color: 'black !important',
+                    transform: 'translate(14px, 9px) scale(0.75) !important'
+                  },
+                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black !important'
+                  },
+                  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black !important'
+                  },
+                  '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black !important'
+                  }
+                }}
+              >
+                <MenuItem value="全部">全部</MenuItem>
+                {categories.map((cat) => (
+                  <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <FormControl size="small" sx={{ 
+              position: 'absolute',
+              left: -330,
+              minWidth: 120,
+              flexShrink: 0
+            }}>
+              <InputLabel sx={{ color: 'black !important' }}>難度</InputLabel>
+              <Select
+                value={filterLevel}
+                label="難度"
+                onChange={(e) => setFilterLevel(e.target.value)}
+                sx={{ 
+                  bgcolor: 'background.paper',
+                  '& .MuiSelect-icon': { color: 'black' },
+                  '& .MuiInputLabel-root': { 
+                    color: 'black !important',
+                    transform: 'translate(14px, 9px) scale(0.75) !important'
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': { 
+                    color: 'black !important',
+                    transform: 'translate(14px, 9px) scale(0.75) !important'
+                  },
+                  '& .MuiInputLabel-root.MuiInputLabel-shrink': {
+                    color: 'black !important',
+                    transform: 'translate(14px, 9px) scale(0.75) !important'
+                  },
+                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black !important'
+                  },
+                  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black !important'
+                  },
+                  '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'black !important'
+                  }
+                }}
+              >
+                <MenuItem value="全部">全部</MenuItem>
+                {levels.map((level) => (
+                  <MenuItem key={level} value={level}>{level}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Typography variant="body2" sx={{ 
+              position: 'absolute',
+              right: 90,
+              color: 'white', 
+              opacity: 0.8,
+              minWidth: 90
+            }}>
+              {filteredAndSortedCourses.length} / {courses.length}
             </Typography>
 
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
+              sx={{ 
+                position: 'absolute', 
+                right: 0,
+                minWidth: 128
+              }}
             >
               新增課程
             </Button>
@@ -625,10 +740,10 @@ const CoursesPage: React.FC = () => {
 
               <TableBody>
                 <SortableContext
-                  items={sortedCourses.map(course => course.id)}
+                  items={filteredAndSortedCourses.map(course => course.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {sortedCourses.map((course) => (
+                  {filteredAndSortedCourses.map((course) => (
                     <SortableTableRow
                       key={course.id}
                       course={course}

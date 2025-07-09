@@ -657,7 +657,7 @@ const StudentsPage: React.FC = () => {
                   {[
                     { label: '學校', field: 'school', options: schools },
                     { label: '年級', field: 'grade', options: allGrades },
-                    { label: '程度', field: 'level', options: ['新手', '入門', '進階', '高階', '精英'] },
+                    { label: '程度', field: 'level', options: ['新手', '入門', '中階', '高階', '大師'] },
                     { label: '性別', field: 'gender', options: ['男', '女'] },
                     {
                       label: '班別',
@@ -899,7 +899,7 @@ const StudentsPage: React.FC = () => {
                   <Box>
                     <Typography variant="h6" sx={{ mb: 2 }}>程度分布</Typography>
                     <Stack direction="row" spacing={2} flexWrap="wrap">
-                      {['新手', '入門', '進階', '高階', '精英'].map(level => {
+                      {['新手', '入門', '中階', '高階', '大師'].map(level => {
                         const count = students.filter(s => s.level_type === level).length;
                         const colors = getLevelColors(level);
                         return (

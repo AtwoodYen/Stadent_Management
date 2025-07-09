@@ -26,7 +26,7 @@ import {
 import StudentFormOptimized from '../components/StudentFormOptimized';
 import StudentDetailView from '../components/StudentDetailView';
 import CustomAlert from '../components/CustomAlert';
-import { getLevelColors } from '../utils/levelColors';
+import { getLevelColors, getLevelOrder } from '../utils/levelColors';
 import { getGenderColors } from '../utils/genderColors';
 
 interface Student {
@@ -271,6 +271,13 @@ const StudentsPage: React.FC = () => {
       if (!aValue && !bValue) return 0;
       if (!aValue) return 1;
       if (!bValue) return -1;
+
+      // 特殊處理：程度排序
+      if (sortConfig.key === 'level_type') {
+        const aOrder = getLevelOrder(aValue);
+        const bOrder = getLevelOrder(bValue);
+        return sortConfig.direction === 'asc' ? aOrder - bOrder : bOrder - aOrder;
+      }
 
       // 字串比較
       if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -588,7 +595,7 @@ const StudentsPage: React.FC = () => {
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <Button
                     size="small"
-                    onClick={handlePrevPage}
+                    onClick={handlePrevPage} 
                     disabled={currentPage === 1}
                     sx={{
                       backgroundColor: 'black',
@@ -609,7 +616,7 @@ const StudentsPage: React.FC = () => {
                   </Typography>
                   <Button
                     size="small"
-                    onClick={handleNextPage}
+                    onClick={handleNextPage} 
                     disabled={currentPage === totalPages}
                     sx={{
                       backgroundColor: 'black',
@@ -631,7 +638,7 @@ const StudentsPage: React.FC = () => {
                 <FormControl size="small" sx={{ position: 'absolute', left: '25%' }}>
                   <InputLabel>每頁</InputLabel>
                   <Select
-                    value={studentsPerPage}
+                    value={studentsPerPage} 
                     label="每頁"
                     onChange={(e) =>
                       handleStudentsPerPageChange(Number(e.target.value))
@@ -704,7 +711,7 @@ const StudentsPage: React.FC = () => {
                 </Button>
               </Box>
 
-              {/* 學生列表表格 */}
+            {/* 學生列表表格 */}
               <TableContainer component={Paper}>
                 <Table size="small">
                   <TableHead>
@@ -744,7 +751,7 @@ const StudentsPage: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {getCurrentPageStudents().map((student) => (
+                  {getCurrentPageStudents().map((student) => (
                       <TableRow key={student.id} hover>
                         <TableCell>{student.chinese_name}</TableCell>
                         <TableCell>{student.english_name}</TableCell>
@@ -761,8 +768,8 @@ const StudentsPage: React.FC = () => {
                               minWidth: '24px',
                               display: 'inline-block'
                             }}
-                          >
-                            {student.gender || '未設定'}
+                        >
+                          {student.gender || '未設定'}
                           </Box>
                         </TableCell>
                         <TableCell>
@@ -793,16 +800,16 @@ const StudentsPage: React.FC = () => {
                             </Button>
                             <Button
                               size="small"
-                              onClick={() => handleEditStudent(student)}
-                            >
-                              編輯
+                          onClick={() => handleEditStudent(student)}
+                        >
+                          編輯
                             </Button>
                             <Button
                               size="small"
                               color="error"
-                              onClick={() => handleDeleteStudent(student)}
-                            >
-                              刪除
+                          onClick={() => handleDeleteStudent(student)}
+                        >
+                          刪除
                             </Button>
                           </Stack>
                         </TableCell>
@@ -894,10 +901,18 @@ const StudentsPage: React.FC = () => {
                     <Stack direction="row" spacing={2} flexWrap="wrap">
                       {['新手', '入門', '進階', '高階', '精英'].map(level => {
                         const count = students.filter(s => s.level_type === level).length;
+                        const colors = getLevelColors(level);
                         return (
-                          <Paper key={level} sx={{ p: 2, textAlign: 'center', minWidth: 80, flex: '1 1 120px' }}>
-                            <Typography variant="h6" color="success.main">{count}</Typography>
-                            <Typography variant="body2" color="text.secondary">{level}</Typography>
+                          <Paper key={level} sx={{ 
+                            p: 2, 
+                            textAlign: 'center', 
+                            minWidth: 80, 
+                            flex: '1 1 120px',
+                            backgroundColor: colors.backgroundColor,
+                            border: `1px solid ${colors.borderColor}`
+                          }}>
+                            <Typography variant="h6" sx={{ color: colors.color }}>{count}</Typography>
+                            <Typography variant="body2" sx={{ color: colors.color }}>{level}</Typography>
                           </Paper>
                         );
                       })}
@@ -985,7 +1000,7 @@ const StudentsPage: React.FC = () => {
           )}
         </Box>
 
-        {/* 編輯模態框 */}
+      {/* 編輯模態框 */}
         <Dialog 
           open={showEditModal} 
           onClose={closeModals} 
@@ -1000,47 +1015,47 @@ const StudentsPage: React.FC = () => {
             }
           }}
         >
-          <DialogTitle>
-            {selectedStudent ? '編輯學生' : '新增學生'}
-          </DialogTitle>
+        <DialogTitle>
+          {selectedStudent ? '編輯學生' : '新增學生'}
+        </DialogTitle>
           <DialogContent sx={{ mt: -2.5 }}>
-            <Box sx={{ pt: 2 }}>
+          <Box sx={{ pt: 2 }}>
               <StudentFormOptimized
-                student={selectedStudent}
-                onSave={handleSaveStudent}
-                onCancel={closeModals}
-                isLoading={isSaving}
-              />
-            </Box>
-          </DialogContent>
-        </Dialog>
+              student={selectedStudent}
+              onSave={handleSaveStudent}
+              onCancel={closeModals}
+              isLoading={isSaving}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
 
-        {/* 刪除確認模態框 */}
-        <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
-          <DialogTitle>確認刪除</DialogTitle>
-          <DialogContent>
-            <Box sx={{ pt: 2 }}>
-              <Typography variant="body1" sx={{ mb: 2 }}>
-                確定要刪除學生「{selectedStudent?.chinese_name}」嗎？
-              </Typography>
-              <Alert severity="warning">
-                此操作無法復原！
-              </Alert>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={closeModals}>取消</Button>
-            <Button onClick={confirmDeleteStudent} color="error" variant="contained">
-              確認刪除
-            </Button>
-          </DialogActions>
-        </Dialog>
+      {/* 刪除確認模態框 */}
+      <Dialog open={showDeleteModal} onClose={closeModals} maxWidth="sm" fullWidth>
+        <DialogTitle>確認刪除</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              確定要刪除學生「{selectedStudent?.chinese_name}」嗎？
+            </Typography>
+            <Alert severity="warning">
+              此操作無法復原！
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeModals}>取消</Button>
+          <Button onClick={confirmDeleteStudent} color="error" variant="contained">
+            確認刪除
+          </Button>
+        </DialogActions>
+      </Dialog>
 
         {/* 管理員密碼驗證模態框 */}
         <Dialog open={showPasswordModal} onClose={closeModals} maxWidth="sm" fullWidth>
           <DialogTitle>管理員密碼驗證</DialogTitle>
-          <DialogContent>
-            <Box sx={{ pt: 2 }}>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
               <Typography variant="body1" sx={{ mb: 2 }}>
                 ⚠️ 您即將刪除學生：<strong>{selectedStudent?.chinese_name}</strong>
               </Typography>
@@ -1093,17 +1108,17 @@ const StudentsPage: React.FC = () => {
         >
           <DialogContent sx={{ pt: 1 }}>
             <Box sx={{ pt: 0 }}>
-              {selectedStudent && (
-                <StudentDetailView
-                  student={selectedStudent}
-                  onEdit={handleEditFromDetail}
+            {selectedStudent && (
+              <StudentDetailView
+                student={selectedStudent}
+                onEdit={handleEditFromDetail}
                   onDelete={() => handleDeleteStudent(selectedStudent)}
-                  onClose={closeModals}
-                />
-              )}
-            </Box>
-          </DialogContent>
-        </Dialog>
+                onClose={closeModals}
+              />
+            )}
+          </Box>
+        </DialogContent>
+      </Dialog>
 
         {/* 自定義 Alert 組件 */}
         <CustomAlert
@@ -1118,4 +1133,4 @@ const StudentsPage: React.FC = () => {
   );
 };
 
-export default StudentsPage;
+export default StudentsPage; 

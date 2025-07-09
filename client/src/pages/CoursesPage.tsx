@@ -28,7 +28,27 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { getLevelColors } from '../utils/levelColors';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Course {
   id: number;
@@ -39,10 +59,107 @@ interface Course {
   price: number;
   description: string;
   prerequisites: string;
+  sort_order?: number;
 }
 
 type SortField = 'name' | 'category' | 'level' | 'duration_minutes' | 'price';
 type SortOrder = 'asc' | 'desc';
+
+// 可拖拽的表格行組件
+const SortableTableRow: React.FC<{
+  course: Course;
+  onEdit: (course: Course) => void;
+  onDelete: (course: Course) => void;
+  getLevelColor: (level: string) => any;
+  parsePrerequisites: (prerequisites: string) => string[];
+  convertLevel: (level: string) => string;
+}> = ({ course, onEdit, onDelete, getLevelColor, parsePrerequisites, convertLevel }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: course.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} {...attributes}>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton
+            size="small"
+            {...listeners}
+            sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}
+          >
+            <DragIndicatorIcon />
+          </IconButton>
+          <Box>
+            <Typography variant="subtitle1">{course.name}</Typography>
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                lineHeight: '1.2em',
+                maxHeight: '2.4em' // 2行的高度
+              }}
+            >
+              {course.description}
+            </Typography>
+          </Box>
+        </Box>
+      </TableCell>
+      <TableCell>{course.category}</TableCell>
+      <TableCell>
+        <Chip
+          label={convertLevel(course.level)}
+          sx={getLevelColor(convertLevel(course.level))}
+          size="small"
+        />
+      </TableCell>
+
+      <TableCell sx={{ textAlign: 'center', paddingLeft: '0px' }}>{course.duration_minutes}分</TableCell>
+      <TableCell sx={{ textAlign: 'center', paddingLeft: '0px' }}>NT$ {course.price}</TableCell>
+      <TableCell>
+        {parsePrerequisites(course.prerequisites).map((prereq, index) => (
+          <Chip
+            key={index}
+            label={prereq}
+            size="small"
+            variant="outlined"
+            sx={{ mr: 0.5, mb: 0.5 }}
+          />
+        ))}
+      </TableCell>
+
+      <TableCell>
+        <IconButton
+          size="small"
+          onClick={() => onEdit(course)}
+        >
+          <EditIcon />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => onDelete(course)}
+        >
+          <DeleteIcon />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+};
 
 const CoursesPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -67,6 +184,14 @@ const CoursesPage: React.FC = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // 拖拽感應器
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const levels = ['新手', '入門', '進階', '高階', '精英'];
 
   // 載入課程資料
@@ -78,7 +203,14 @@ const CoursesPage: React.FC = () => {
         throw new Error('Failed to fetch courses');
       }
       const data = await response.json();
-      setCourses(data);
+      // 按照 sort_order 排序，如果沒有 sort_order 則按 id 排序
+      const sortedData = data.sort((a: Course, b: Course) => {
+        if (a.sort_order !== undefined && b.sort_order !== undefined) {
+          return a.sort_order - b.sort_order;
+        }
+        return a.id - b.id;
+      });
+      setCourses(sortedData);
       setError(null);
     } catch (err) {
       setError('無法載入課程資料，請稍後再試');
@@ -107,13 +239,66 @@ const CoursesPage: React.FC = () => {
     fetchCategories();
   }, []);
 
+  // 處理拖拽結束
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setCourses((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over?.id);
+
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        
+        // 保存新的排序到後端
+        saveCourseOrder(newItems);
+        
+        return newItems;
+      });
+    }
+  };
+
+  // 保存課程排序到後端
+  const saveCourseOrder = async (orderedCourses: Course[]) => {
+    try {
+      const orderData = orderedCourses.map((course, index) => ({
+        id: course.id,
+        sort_order: index + 1
+      }));
+
+      const response = await fetch('/api/courses/reorder', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ courses: orderData }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to save course order');
+      }
+    } catch (err) {
+      console.error('Error saving course order:', err);
+    }
+  };
+
+  // 轉換舊的難度值為新的難度值
+  const convertLevel = (oldLevel: string): string => {
+    const levelMap: { [key: string]: string } = {
+      '初級': '新手',
+      '中級': '入門',
+      '高級': '高階'
+    };
+    return levelMap[oldLevel] || oldLevel;
+  };
+
   const handleOpenDialog = (course?: Course) => {
     if (course) {
       setEditingCourse(course);
       setFormData({
         name: course.name,
         category: course.category,
-        level: course.level,
+        level: convertLevel(course.level), // 轉換難度值
         duration_minutes: course.duration_minutes,
         price: course.price,
         description: course.description,
@@ -252,14 +437,25 @@ const CoursesPage: React.FC = () => {
 
   // 排序後的課程資料
   const sortedCourses = [...courses].sort((a, b) => {
+    // 如果沒有選擇排序欄位，使用自定義排序
+    if (!sortField || sortField === 'name') {
+      if (a.sort_order !== undefined && b.sort_order !== undefined) {
+        return a.sort_order - b.sort_order;
+      }
+      return a.id - b.id;
+    }
+
     let aValue: any = a[sortField];
     let bValue: any = b[sortField];
 
     // 處理難度排序的特殊邏輯
     if (sortField === 'level') {
       const levelOrder = { '新手': 1, '入門': 2, '進階': 3, '高階': 4, '精英': 5 };
-      aValue = levelOrder[aValue as keyof typeof levelOrder] || 0;
-      bValue = levelOrder[bValue as keyof typeof levelOrder] || 0;
+      // 轉換舊的難度值為新的難度值進行排序
+      const convertedAValue = convertLevel(aValue);
+      const convertedBValue = convertLevel(bValue);
+      aValue = levelOrder[convertedAValue as keyof typeof levelOrder] || 0;
+      bValue = levelOrder[convertedBValue as keyof typeof levelOrder] || 0;
     }
 
     // 處理字串和數字的比較
@@ -303,9 +499,14 @@ const CoursesPage: React.FC = () => {
 
       <Box>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
-            課程管理
-          </Typography>
+          <Box>
+            <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
+              課程管理
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'white', opacity: 0.8 }}>
+              💡 提示：拖拽左側圖示可調整課程順序
+            </Typography>
+          </Box>
           <Box display="flex" alignItems="center" gap={2}>
             <Typography variant="body1" sx={{ color: 'white' }}>
               目前課程數量：{courses.length}
@@ -326,110 +527,104 @@ const CoursesPage: React.FC = () => {
           </Alert>
         )}
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'name'}
-                    direction={sortField === 'name' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('name')}
-                  >
-                    課程名稱
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'category'}
-                    direction={sortField === 'category' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('category')}
-                  >
-                    分類
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'level'}
-                    direction={sortField === 'level' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('level')}
-                  >
-                    難度
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'duration_minutes'}
-                    direction={sortField === 'duration_minutes' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('duration_minutes')}
-                  >
-                    時長(分鐘)
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'price'}
-                    direction={sortField === 'price' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('price')}
-                  >
-                    價格
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>先修課程</TableCell>
-                <TableCell>操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedCourses.map((course) => (
-                <TableRow key={course.id}>
-                  <TableCell>
-                    <Box>
-                      <Typography variant="subtitle1">{course.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {course.description}
-                      </Typography>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ width: '50%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ width: 40 }} /> {/* 為拖拽圖示預留空間 */}
+                      <TableSortLabel
+                        active={sortField === 'name'}
+                        direction={sortField === 'name' ? sortOrder : 'asc'}
+                        onClick={() => handleSort('name')}
+                      >
+                        課程名稱
+                      </TableSortLabel>
                     </Box>
                   </TableCell>
-                  <TableCell>{course.category}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={course.level}
-                      sx={getLevelColor(course.level)}
-                      size="small"
-                    />
+
+                  <TableCell sx={{ width: '10%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ width: 10 }} /> {/* 為置中顯示預留空間 */}
+                      <TableSortLabel
+                        active={sortField === 'category'}
+                        direction={sortField === 'category' ? sortOrder : 'asc'}
+                        onClick={() => handleSort('category')}
+                        >
+                        分類
+                      </TableSortLabel>
+                    </Box>
                   </TableCell>
-                  <TableCell>{course.duration_minutes}</TableCell>
-                  <TableCell>NT$ {course.price}</TableCell>
+
                   <TableCell>
-                    {parsePrerequisites(course.prerequisites).map((prereq, index) => (
-                      <Chip
-                        key={index}
-                        label={prereq}
-                        size="small"
-                        variant="outlined"
-                        sx={{ mr: 0.5, mb: 0.5 }}
-                      />
-                    ))}
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ width: 10 }} /> {/* 為置中顯示預留空間 */}
+                      <TableSortLabel
+                        active={sortField === 'level'}
+                        direction={sortField === 'level' ? sortOrder : 'asc'}
+                        onClick={() => handleSort('level')}
+                      >
+                        難度
+                      </TableSortLabel>
+                    </Box>
                   </TableCell>
+                  
                   <TableCell>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenDialog(course)}
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ width: 5 }} /> {/* 為置中顯示預留空間 */}
+                      <TableSortLabel
+                        active={sortField === 'duration_minutes'}
+                        direction={sortField === 'duration_minutes' ? sortOrder : 'asc'}
+                        onClick={() => handleSort('duration_minutes')}
+                      >
+                        時長
+                      </TableSortLabel>
+                    </Box>
+                  </TableCell>
+
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'price'}
+                      direction={sortField === 'price' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('price')}
                     >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(course)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                      價格
+                    </TableSortLabel>
                   </TableCell>
+
+                  <TableCell>先修課程</TableCell>
+                  <TableCell>操作</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+
+              <TableBody>
+                <SortableContext
+                  items={sortedCourses.map(course => course.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {sortedCourses.map((course) => (
+                    <SortableTableRow
+                      key={course.id}
+                      course={course}
+                      onEdit={handleOpenDialog}
+                      onDelete={handleDelete}
+                      getLevelColor={getLevelColor}
+                      parsePrerequisites={parsePrerequisites}
+                      convertLevel={convertLevel}
+                    />
+                  ))}
+                </SortableContext>
+              </TableBody>
+
+            </Table>
+          </TableContainer>
+        </DndContext>
 
         {/* 新增/編輯課程對話框 */}
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
@@ -510,6 +705,14 @@ const CoursesPage: React.FC = () => {
                     {levels.map((level) => (
                       <MenuItem key={level} value={level}>{level}</MenuItem>
                     ))}
+                    {/* 如果資料庫中有舊的難度值，轉換後顯示 */}
+                    {courses
+                      .map(course => convertLevel(course.level))
+                      .filter(level => !levels.includes(level))
+                      .filter((level, index, arr) => arr.indexOf(level) === index) // 去重
+                      .map((level) => (
+                        <MenuItem key={level} value={level}>{level}</MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </Box>

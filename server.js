@@ -1250,7 +1250,19 @@ app.delete('/api/lessons/:id', async (req, res, next) => {
 // [READ] 取得所有課程
 app.get('/api/courses', async (req, res, next) => {
     try {
-        const result = await pool.request().query('SELECT * FROM courses WHERE is_active = 1 ORDER BY category, level, name');
+        const result = await pool.request().query(`
+            SELECT * FROM courses 
+            WHERE is_active = 1 
+            ORDER BY 
+                CASE 
+                    WHEN sort_order IS NOT NULL THEN 0 
+                    ELSE 1 
+                END,
+                sort_order,
+                category, 
+                level, 
+                name
+        `);
         res.json(result.recordset);
     } catch (err) {
         next(err);
@@ -1334,9 +1346,10 @@ app.post(
                 .input('description', sql.NVarChar, description || '')
                 .input('prerequisites', sql.NVarChar, prerequisites || '')
                 .query(`
-                    INSERT INTO courses (name, category, level, duration_minutes, price, description, prerequisites) 
+                    INSERT INTO courses (name, category, level, duration_minutes, price, description, prerequisites, sort_order) 
                     OUTPUT inserted.* 
-                    VALUES (@name, @category, @level, @duration_minutes, @price, @description, @prerequisites)
+                    VALUES (@name, @category, @level, @duration_minutes, @price, @description, @prerequisites, 
+                           (SELECT ISNULL(MAX(sort_order), 0) + 1 FROM courses WHERE is_active = 1))
                 `);
             res.status(201).json(result.recordset[0]);
         } catch (err) {
@@ -1405,6 +1418,54 @@ app.delete('/api/courses/:id', async (req, res, next) => {
         res.status(204).send();
     } catch (err) {
         next(err);
+    }
+});
+
+// [UPDATE] 更新課程排序順序
+app.put('/api/courses/reorder', async (req, res, next) => {
+    try {
+        const { courses } = req.body;
+        
+        if (!Array.isArray(courses)) {
+            return res.status(400).json({ error: '課程排序資料格式錯誤' });
+        }
+
+        // 開始交易
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // 批次更新所有課程的排序順序
+            for (const course of courses) {
+                if (!course.id || typeof course.sort_order !== 'number') {
+                    throw new Error('課程資料格式錯誤');
+                }
+
+                await transaction.request()
+                    .input('id', sql.Int, course.id)
+                    .input('sort_order', sql.Int, course.sort_order)
+                    .query(`
+                        UPDATE courses 
+                        SET sort_order = @sort_order, updated_at = GETDATE()
+                        WHERE id = @id AND is_active = 1
+                    `);
+            }
+
+            // 提交交易
+            await transaction.commit();
+            
+            logger.info(`課程排序已更新，共 ${courses.length} 筆課程`);
+            res.json({ message: '課程排序已成功更新', updatedCount: courses.length });
+            
+        } catch (err) {
+            // 回滾交易
+            await transaction.rollback();
+            throw err;
+        }
+        
+    } catch (err) {
+        logger.error(`更新課程排序失敗: ${err.message}`);
+        res.status(500).json({ error: '更新課程排序失敗', details: err.message });
     }
 });
 

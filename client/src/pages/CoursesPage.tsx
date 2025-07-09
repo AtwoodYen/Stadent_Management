@@ -522,28 +522,82 @@ const CoursesPage: React.FC = () => {
       />
 
       <Box>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Box>
-            <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
-              課程管理
-            </Typography>
+        <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
+          課程管理
+        </Typography>
             <Typography variant="body2" sx={{ color: 'white', opacity: 0.8 }}>
               💡 提示：拖拽左側圖示可調整課程順序
             </Typography>
           </Box>
-          <Box display="flex" alignItems="center" gap={2}>
-            <Typography variant="body1" sx={{ color: 'white' }}>
-              目前課程數量：{courses.length}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
+        <Box display="flex" alignItems="center" gap={2}>
+          {/* 過濾條件 */}
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel sx={{ color: 'white' }}>分類</InputLabel>
+            <Select
+              value={filterCategory}
+              label="分類"
+              onChange={(e) => setFilterCategory(e.target.value)}
+              sx={{ 
+                bgcolor: 'background.paper',
+                '& .MuiSelect-icon': { color: 'white' }
+              }}
             >
-              新增課程
-            </Button>
-          </Box>
+              <MenuItem value="">全部</MenuItem>
+              {categories.map((cat) => (
+                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel sx={{ color: 'white' }}>難度</InputLabel>
+            <Select
+              value={filterLevel}
+              label="難度"
+              onChange={(e) => setFilterLevel(e.target.value)}
+              sx={{ 
+                bgcolor: 'background.paper',
+                '& .MuiSelect-icon': { color: 'white' }
+              }}
+            >
+              <MenuItem value="">全部</MenuItem>
+              {levels.map((level) => (
+                <MenuItem key={level} value={level}>{level}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => {
+              setFilterCategory('');
+              setFilterLevel('');
+            }}
+            sx={{ 
+              color: 'white', 
+              borderColor: 'white',
+              '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
+            }}
+          >
+            清除
+          </Button>
+
+          <Typography variant="body2" sx={{ color: 'white', opacity: 0.8 }}>
+            {filteredAndSortedCourses.length} / {courses.length}
+          </Typography>
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            新增課程
+          </Button>
         </Box>
+      </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -551,69 +605,7 @@ const CoursesPage: React.FC = () => {
           </Alert>
         )}
 
-        {/* 過濾條件 */}
-        <Box sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: 'white' }}>
-            過濾條件
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel sx={{ color: 'white' }}>分類</InputLabel>
-              <Select
-                value={filterCategory}
-                label="分類"
-                onChange={(e) => setFilterCategory(e.target.value)}
-                sx={{ 
-                  bgcolor: 'background.paper',
-                  '& .MuiSelect-icon': { color: 'white' }
-                }}
-              >
-                <MenuItem value="">全部</MenuItem>
-                {categories.map((cat) => (
-                  <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel sx={{ color: 'white' }}>難度</InputLabel>
-              <Select
-                value={filterLevel}
-                label="難度"
-                onChange={(e) => setFilterLevel(e.target.value)}
-                sx={{ 
-                  bgcolor: 'background.paper',
-                  '& .MuiSelect-icon': { color: 'white' }
-                }}
-              >
-                <MenuItem value="">全部</MenuItem>
-                {levels.map((level) => (
-                  <MenuItem key={level} value={level}>{level}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
 
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setFilterCategory('');
-                setFilterLevel('');
-              }}
-              sx={{ 
-                color: 'white', 
-                borderColor: 'white',
-                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
-              }}
-            >
-              清除過濾
-            </Button>
-          </Box>
-          
-          {/* 顯示過濾結果統計 */}
-          <Typography variant="body2" sx={{ mt: 1, color: 'white', opacity: 0.8 }}>
-            顯示 {filteredAndSortedCourses.length} / {courses.length} 筆課程
-          </Typography>
-        </Box>
 
         <DndContext
           sensors={sensors}

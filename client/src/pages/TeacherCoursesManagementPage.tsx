@@ -119,7 +119,8 @@ const TeacherCoursesManagementPage: React.FC = () => {
     direction: 'asc'
   });
 
-      const levels = ['新手', '入門', '中階', '高階', '大師'];
+  const levels = ['新手', '入門', '中階', '高階', '精英'];
+  const levelOrder = { '新手': 1, '入門': 2, '中階': 3, '高階': 4, '精英': 5 };
 
   // 載入所有資料
   useEffect(() => {
@@ -361,7 +362,6 @@ const TeacherCoursesManagementPage: React.FC = () => {
       switch (sortState.field) {
         case 'max_level':
           // 教學水準排序：初級 < 中級 < 高級
-          const levelOrder = { '新手': 1, '入門': 2, '中階': 3, '高階': 4, '大師': 5 };
           aValue = levelOrder[aValue as keyof typeof levelOrder] || 0;
           bValue = levelOrder[bValue as keyof typeof levelOrder] || 0;
           break;
@@ -425,7 +425,16 @@ const TeacherCoursesManagementPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundAttachment: 'fixed',
+        p: 3,
+        margin: '-24px -24px -24px -24px', // 抵消 Layout 的 padding
+        position: 'relative'
+      }}
+    >
       <Typography variant="h4" gutterBottom sx={{ color: 'white' }}>
         師資課程能力管理
       </Typography>

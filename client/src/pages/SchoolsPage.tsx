@@ -172,13 +172,16 @@ const SchoolsPage: React.FC = () => {
                  background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' }} />
 
       <Box sx={{ p:2, display:'flex', flexDirection:'column', gap:2 }}>
-
-        {/* 頁籤 */}
-        <Stack direction="row" justifyContent="center" gap={2}>
-          <TabButton tab="schools" label="🏫 學校列表"/>
-          <TabButton tab="stats"   label="📊 統計資料"/>
-        </Stack>
-
+        {/* 標題與分頁按鈕同一行 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', letterSpacing: 2 }}>
+            學校管理
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TabButton tab="schools" label="🏫 學校列表"/>
+            <TabButton tab="stats"   label="📊 統計資料"/>
+          </Box>
+        </Box>
         {/* 內容區塊 */}
         <Box sx={{ p:3, bgcolor:'background.paper', borderRadius:1, boxShadow:1 }}>
 

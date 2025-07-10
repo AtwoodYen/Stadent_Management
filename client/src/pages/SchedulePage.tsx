@@ -21,7 +21,8 @@ import {
   DialogContent,
   DialogActions,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  Typography
 } from '@mui/material';
 
 /* date-fns 工具 */
@@ -497,45 +498,48 @@ export default function SchedulePage() {
       />
 
       {/* 主要容器 */}
-      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>        
-
-        {/* 分頁按鈕區域 */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-          <Button
-            variant={activeTab === 'schedule' ? 'contained' : 'outlined'}
-            onClick={() => setActiveTab('schedule')}
-            sx={{
-              backgroundColor: activeTab === 'schedule' ? 'primary.main' : '#e0e0e0',
-              color: activeTab === 'schedule' ? 'white' : '#000000',
-              '&:hover': {
-                backgroundColor: activeTab === 'schedule' ? 'primary.dark' : '#d0d0d0'
-              }
-            }}
-          >📅 課程排程</Button>
-          <Button
-            variant={activeTab === 'students' ? 'contained' : 'outlined'}
-            onClick={() => setActiveTab('students')}
-            sx={{
-              backgroundColor: activeTab === 'students' ? 'primary.main' : '#e0e0e0',
-              color: activeTab === 'students' ? 'white' : '#000000',
-              '&:hover': {
-                backgroundColor: activeTab === 'students' ? 'primary.dark' : '#d0d0d0'
-              }
-            }}
-          >👥 學生列表</Button>
-          <Button
-            variant={activeTab === 'stats' ? 'contained' : 'outlined'}
-            onClick={() => setActiveTab('stats')}
-            sx={{
-              backgroundColor: activeTab === 'stats' ? 'primary.main' : '#e0e0e0',
-              color: activeTab === 'stats' ? 'white' : '#000000',
-              '&:hover': {
-                backgroundColor: activeTab === 'stats' ? 'primary.dark' : '#d0d0d0'
-              }
-            }}
-          >📊 統計資料</Button>
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* 標題與分頁按鈕同一行 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', letterSpacing: 2 }}>
+            課表管理
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant={activeTab === 'schedule' ? 'contained' : 'outlined'}
+              onClick={() => setActiveTab('schedule')}
+              sx={{
+                backgroundColor: activeTab === 'schedule' ? 'primary.main' : '#e0e0e0',
+                color: activeTab === 'schedule' ? 'white' : '#000000',
+                '&:hover': {
+                  backgroundColor: activeTab === 'schedule' ? 'primary.dark' : '#d0d0d0'
+                }
+              }}
+            >📅 課程排程</Button>
+            <Button
+              variant={activeTab === 'students' ? 'contained' : 'outlined'}
+              onClick={() => setActiveTab('students')}
+              sx={{
+                backgroundColor: activeTab === 'students' ? 'primary.main' : '#e0e0e0',
+                color: activeTab === 'students' ? 'white' : '#000000',
+                '&:hover': {
+                  backgroundColor: activeTab === 'students' ? 'primary.dark' : '#d0d0d0'
+                }
+              }}
+            >👥 學生列表</Button>
+            <Button
+              variant={activeTab === 'stats' ? 'contained' : 'outlined'}
+              onClick={() => setActiveTab('stats')}
+              sx={{
+                backgroundColor: activeTab === 'stats' ? 'primary.main' : '#e0e0e0',
+                color: activeTab === 'stats' ? 'white' : '#000000',
+                '&:hover': {
+                  backgroundColor: activeTab === 'stats' ? 'primary.dark' : '#d0d0d0'
+                }
+              }}
+            >📊 統計資料</Button>
+          </Box>
         </Box>
-
         {/* 內容區 */}
         <Box sx={{ 
           p: 2, 

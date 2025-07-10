@@ -116,7 +116,7 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
   const [adminPassword, setAdminPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const levels = ['新手', '入門', '中階', '高階', '大師'];
+  const levels = ['新手', '入門', '中階', '高階', '精英'];
 
   // 排序狀態
   const [sortState, setSortState] = useState<{ field: string; direction: 'asc' | 'desc' }>({ field: 'sort_order', direction: 'asc' });
@@ -129,7 +129,7 @@ const TeacherCourses: React.FC<TeacherCoursesProps> = ({
       let bValue: any = b[sortState.field as keyof TeacherCourse];
       // 特殊處理
       if (sortState.field === 'max_level') {
-        const levelOrder = { '新手': 1, '入門': 2, '中階': 3, '高階': 4, '大師': 5 };
+        const levelOrder = { '新手': 1, '入門': 2, '中階': 3, '高階': 4, '精英': 5 };
         aValue = levelOrder[String(aValue) as keyof typeof levelOrder] || 0;
         bValue = levelOrder[String(bValue) as keyof typeof levelOrder] || 0;
       } else if (sortState.field === 'is_preferred') {

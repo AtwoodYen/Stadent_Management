@@ -649,9 +649,9 @@ app.post(
     body('chinese_name').notEmpty().withMessage('中文姓名為必填'),
     body('english_name').optional(),
     body('school').notEmpty().withMessage('學校為必填'),
-    body('grade').notEmpty().withMessage('年級為必填'),
+    body('grade').notEmpty().withMessage('年級為必填').isIn(['小一', '小二', '小三', '小四', '小五', '小六', '國一', '國二', '國三', '高一', '高二', '高三', '大一', '大二', '大三', '大四']).withMessage('無效的年級'),
     body('gender').isIn(['男', '女']).withMessage('無效的性別'),
-    body('level_type').isIn(['新手', '入門', '中階', '高階', '大師']).withMessage('無效的程度'),
+    body('level_type').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的程度'),
     body('class_type').notEmpty().withMessage('班別為必填'),
     body('student_email').notEmpty().withMessage('學生電子信箱為必填').isEmail().withMessage('無效的學生電子信箱格式'),
     body('father_email').optional().isEmail().withMessage('無效的父親電子信箱格式'),
@@ -723,9 +723,9 @@ app.put(
     body('chinese_name').notEmpty().withMessage('中文姓名為必填'),
     body('english_name').optional(),
     body('school').notEmpty().withMessage('學校為必填'),
-    body('grade').notEmpty().withMessage('年級為必填'),
+    body('grade').notEmpty().withMessage('年級為必填').isIn(['小一', '小二', '小三', '小四', '小五', '小六', '國一', '國二', '國三', '高一', '高二', '高三', '大一', '大二', '大三', '大四']).withMessage('無效的年級'),
     body('gender').isIn(['男', '女']).withMessage('無效的性別'),
-    body('level_type').isIn(['新手', '入門', '中階', '高階', '大師']).withMessage('無效的程度'),
+    body('level_type').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的程度'),
     body('class_type').notEmpty().withMessage('班別為必填'),
     body('student_email').notEmpty().withMessage('學生電子信箱為必填').isEmail().withMessage('無效的學生電子信箱格式'),
     body('enrollment_status').optional().isIn(['進行中', '已畢業', '暫停中']).withMessage('無效的就讀狀態'),
@@ -1323,7 +1323,7 @@ app.post(
     // --- 驗證規則 ---
     body('name').notEmpty().withMessage('課程名稱為必填'),
     body('category').notEmpty().withMessage('課程分類為必填'),
-    body('level').isIn(['新手', '入門', '中階', '高階', '大師']).withMessage('無效的難度等級'),
+    body('level').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的難度等級'),
     body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
     body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
     body('description').optional(),
@@ -1364,7 +1364,7 @@ app.put(
     // --- 驗證規則 ---
     body('name').notEmpty().withMessage('課程名稱為必填'),
     body('category').notEmpty().withMessage('課程分類為必填'),
-    body('level').isIn(['新手', '入門', '中階', '高階', '大師']).withMessage('無效的難度等級'),
+    body('level').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的難度等級'),
     body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
     body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
     body('description').optional(),
@@ -2647,7 +2647,7 @@ app.post(
     '/api/teachers/:id/courses',
     // --- 驗證規則 ---
     body('courseCategory').notEmpty().withMessage('課程分類為必填'),
-    body('maxLevel').isIn(['新手', '入門', '中階', '高階', '大師']).withMessage('無效的課程難度'),
+    body('maxLevel').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的課程難度'),
     body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
     // --- 路由處理器 ---
     async (req, res, next) => {
@@ -2705,7 +2705,7 @@ app.put(
     '/api/teachers/:teacherId/courses/:courseId',
     // --- 驗證規則 ---
     body('courseCategory').notEmpty().withMessage('課程分類為必填'),
-    body('maxLevel').isIn(['新手', '入門', '中階', '高階', '大師']).withMessage('無效的課程難度'),
+    body('maxLevel').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的課程難度'),
     body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
     // --- 路由處理器 ---
     async (req, res, next) => {
@@ -3293,132 +3293,28 @@ app.get('/api/student-course-progress', async (req, res, next) => {
             INNER JOIN courses c ON scp.course_id = c.id
             WHERE scp.is_active = 1
         `;
+
         const params = [];
         if (student_id) {
-            query += ' AND scp.student_id = @student_id';
-            params.push({ name: 'student_id', type: sql.Int, value: student_id });
+            query += ' AND scp.student_id = ?';
+            params.push(student_id);
         }
         if (course_id) {
-            query += ' AND scp.course_id = @course_id';
-            params.push({ name: 'course_id', type: sql.Int, value: course_id });
+            query += ' AND scp.course_id = ?';
+            params.push(course_id);
         }
-        query += ' ORDER BY s.chinese_name, c.name';
-        const request = pool.request();
-        for (const p of params) {
-            request.input(p.name, p.type, p.value);
-        }
-        const result = await request.query(query);
-        res.json(result.recordset);
+
+        query += ' ORDER BY scp.last_updated DESC';
+
+        const [rows] = await pool.execute(query, params);
+        res.json(rows);
     } catch (err) {
         next(err);
     }
 });
 
-// [API] 查詢學生 class_type 能力
-app.get('/api/student-class-type-abilities', async (req, res, next) => {
-    try {
-        const { student_id, class_type } = req.query;
-        let query = `
-            SELECT 
-                sca.id,
-                sca.student_id,
-                s.chinese_name AS student_name,
-                sca.class_type,
-                ct.class_name AS class_type_name,
-                sca.ability_level,
-                sca.assessment_date,
-                sca.notes
-            FROM student_class_type_abilities sca
-            INNER JOIN students s ON sca.student_id = s.id
-            INNER JOIN class_types ct ON sca.class_type = ct.class_code
-            WHERE sca.is_active = 1
-        `;
-        const params = [];
-        if (student_id) {
-            query += ' AND sca.student_id = @student_id';
-            params.push({ name: 'student_id', value: student_id, type: sql.Int });
-        }
-        if (class_type) {
-            query += ' AND sca.class_type = @class_type';
-            params.push({ name: 'class_type', value: class_type, type: sql.NVarChar });
-        }
-        query += ' ORDER BY s.chinese_name, ct.class_name';
-
-        const request = pool.request();
-        params.forEach(param => {
-            request.input(param.name, param.type, param.value);
-        });
-        const result = await request.query(query);
-        res.json(result.recordset);
-    } catch (err) {
-        next(err);
-    }
+// 啟動伺服器
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`伺服器運行在端口 ${PORT}`);
 });
-
-// [API] 新增學生 class_type 能力
-app.post('/api/student-class-type-abilities', async (req, res, next) => {
-    try {
-        const { student_id, class_type, ability_level, assessment_date, notes } = req.body;
-        
-        const result = await pool.request()
-            .input('student_id', sql.Int, student_id)
-            .input('class_type', sql.NVarChar, class_type)
-            .input('ability_level', sql.NVarChar, ability_level)
-            .input('assessment_date', sql.Date, assessment_date || new Date())
-            .input('notes', sql.NVarChar, notes || '')
-            .query(`
-                INSERT INTO student_class_type_abilities (student_id, class_type, ability_level, assessment_date, notes)
-                OUTPUT inserted.*
-                VALUES (@student_id, @class_type, @ability_level, @assessment_date, @notes)
-            `);
-        
-        res.status(201).json(result.recordset[0]);
-    } catch (err) {
-        next(err);
-    }
-});
-
-// [API] 更新學生 class_type 能力
-app.put('/api/student-class-type-abilities/:id', async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const { ability_level, assessment_date, notes } = req.body;
-        
-        const result = await pool.request()
-            .input('id', sql.Int, id)
-            .input('ability_level', sql.NVarChar, ability_level)
-            .input('assessment_date', sql.Date, assessment_date)
-            .input('notes', sql.NVarChar, notes || '')
-            .query(`
-                UPDATE student_class_type_abilities 
-                SET ability_level = @ability_level, assessment_date = @assessment_date, notes = @notes, updated_at = GETDATE()
-                WHERE id = @id AND is_active = 1;
-                SELECT * FROM student_class_type_abilities WHERE id = @id AND is_active = 1;
-            `);
-        
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ error: 'Student class type ability not found' });
-        }
-        res.json(result.recordset[0]);
-    } catch (err) {
-        next(err);
-    }
-});
-
-// [API] 刪除學生 class_type 能力
-app.delete('/api/student-class-type-abilities/:id', async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const result = await pool.request()
-            .input('id', sql.Int, id)
-            .query('UPDATE student_class_type_abilities SET is_active = 0, updated_at = GETDATE() WHERE id = @id AND is_active = 1');
-        
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ error: 'Student class type ability not found' });
-        }
-        res.status(204).send();
-    } catch (err) {
-        next(err);
-    }
-});
-

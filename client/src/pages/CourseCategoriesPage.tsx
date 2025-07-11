@@ -29,7 +29,9 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  DragIndicator as DragIndicatorIcon
+  DragIndicator as DragIndicatorIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -69,6 +71,56 @@ interface FormData {
   sort_order: number;
   is_active: boolean;
 }
+
+// 可排序的表頭組件
+const SortableTableHeader = ({ 
+  field, 
+  label, 
+  currentSortField, 
+  currentSortDirection, 
+  onSort,
+  width,
+  align = 'left',
+  sx = {}
+}: {
+  field: string;
+  label: string;
+  currentSortField: string;
+  currentSortDirection: 'asc' | 'desc';
+  onSort: (field: string) => void;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+  sx?: any;
+}) => {
+  const isActive = currentSortField === field;
+  
+  return (
+    <TableCell 
+      width={width} 
+      align={align} 
+      sx={{ 
+        cursor: 'pointer', 
+        userSelect: 'none',
+        '&:hover': { backgroundColor: 'action.hover' },
+        ...sx
+      }}
+      onClick={() => onSort(field)}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: align === 'center' ? 'center' : 'flex-start' }}>
+        <Typography variant="body2" sx={{ mr: 0.5 }}>
+          {label}
+        </Typography>
+        {isActive ? (
+          currentSortDirection === 'asc' ? 
+            <ArrowUpwardIcon fontSize="small" color="primary" /> : 
+            <ArrowDownwardIcon fontSize="small" color="primary" />
+        ) : (
+          <Box sx={{ width: 20, height: 20 }} />
+        )}
+      </Box>
+    </TableCell>
+  );
+};
 
 // 可拖曳的表格行組件
 const SortableTableRow = ({ category, index, onEdit, onDelete, onToggleActive }: {
@@ -119,16 +171,31 @@ const SortableTableRow = ({ category, index, onEdit, onDelete, onToggleActive }:
           <DragIndicatorIcon color="action" />
         </Box>
       </TableCell>
-      <TableCell>{category.category_name}</TableCell>
-      <TableCell>
+      <TableCell sx={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {category.category_name}
+      </TableCell>
+      <TableCell sx={{ width: '12%' }}>
         <Chip 
           label={category.category_code} 
           size="small" 
           variant="outlined"
         />
       </TableCell>
-      <TableCell>
-        {category.description || '-'}
+      <TableCell sx={{ width: '300px', paddingLeft: '30px' }}>
+        <Box
+          sx={{
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            lineHeight: '1.2em',
+            maxHeight: '2.4em'
+          }}
+        >
+          {category.description || '-'}
+        </Box>
       </TableCell>
       <TableCell align="center">{category.sort_order}</TableCell>
       <TableCell align="center">
@@ -205,6 +272,8 @@ const CourseCategoriesPage: React.FC = () => {
   const [categoryToDelete, setCategoryToDelete] = useState<CourseCategory | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [sortField, setSortField] = useState<string>('sort_order');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -236,6 +305,59 @@ const CourseCategoriesPage: React.FC = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // 排序函數
+  const handleSort = (field: string) => {
+    console.log('排序欄位:', field, '當前資料:', categories);
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // 排序資料
+  const sortedCategories = [...categories].sort((a, b) => {
+    let aValue: any = a[sortField as keyof CourseCategory];
+    let bValue: any = b[sortField as keyof CourseCategory];
+
+    // 調試資訊
+    console.log('排序比較:', {
+      field: sortField,
+      aValue: aValue,
+      bValue: bValue,
+      aType: typeof aValue,
+      bType: typeof bValue
+    });
+
+    // 處理 null 或 undefined 值
+    if (aValue === null || aValue === undefined) aValue = '';
+    if (bValue === null || bValue === undefined) bValue = '';
+
+    // 處理字串比較
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+
+    // 處理數字比較
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+
+    // 處理布林值比較
+    if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+      return sortDirection === 'asc' ? 
+        (aValue === bValue ? 0 : aValue ? 1 : -1) : 
+        (aValue === bValue ? 0 : aValue ? -1 : 1);
+    }
+
+    // 處理字串比較
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   // 開啟新增/編輯對話框
   const handleOpenDialog = (category?: CourseCategory) => {
@@ -510,28 +632,90 @@ const CourseCategoriesPage: React.FC = () => {
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <TableContainer>
-              <Table stickyHeader>
+            <TableContainer sx={{ maxHeight: '70vh' }}>
+              <Table stickyHeader sx={{ tableLayout: 'fixed' }}>
                 <TableHead>
                   <TableRow>
                     <TableCell width={50}></TableCell>
-                    <TableCell>分類名稱</TableCell>
-                    <TableCell>分類代碼</TableCell>
-                    <TableCell>描述</TableCell>
-                    <TableCell align="center">排序</TableCell>
-                    <TableCell align="center">課程數量</TableCell>
-                    <TableCell align="center">師資數量</TableCell>
-                    <TableCell align="center">學生數量</TableCell>
-                    <TableCell align="center">狀態</TableCell>
+                    <SortableTableHeader
+                      field="category_name"
+                      label="分類名稱"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="11%"
+                    />
+                    <SortableTableHeader
+                      field="category_code"
+                      label="分類代碼"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="8%"
+                    />
+                    <SortableTableHeader
+                      field="description"
+                      label="描述"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="33%"
+                      sx={{ paddingLeft: '30px' }}
+                    />
+                    <SortableTableHeader
+                      field="sort_order"
+                      label="排序"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="6%"
+                      align="center"
+                    />
+                    <SortableTableHeader
+                      field="course_count"
+                      label="課程數量"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="8%"
+                      align="center"
+                    />
+                    <SortableTableHeader
+                      field="teacher_count"
+                      label="師資數量"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="8%"
+                      align="center"
+                    />
+                    <SortableTableHeader
+                      field="student_count"
+                      label="學生數量"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="8%"
+                      align="center"
+                    />
+                    <SortableTableHeader
+                      field="is_active"
+                      label="狀態"
+                      currentSortField={sortField}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      width="6%"
+                      align="center"
+                    />
                     <TableCell align="center">操作</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   <SortableContext
-                    items={categories.map(cat => cat.id.toString())}
+                    items={sortedCategories.map(cat => cat.id.toString())}
                     strategy={verticalListSortingStrategy}
                   >
-                    {categories.map((category, index) => (
+                    {sortedCategories.map((category, index) => (
                       <SortableTableRow
                         key={category.id}
                         category={category}

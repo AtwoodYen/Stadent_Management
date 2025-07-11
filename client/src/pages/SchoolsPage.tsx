@@ -26,6 +26,12 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { getEducationLevelColors } from '../utils/educationLevelColors';
+import SchoolDetailView from '../components/SchoolDetailView';
+import SchoolEditForm from '../components/SchoolEditForm';
+import {
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon
+} from '@mui/icons-material';
 
 interface School {
   id: number;
@@ -70,6 +76,8 @@ const SchoolsPage: React.FC = () => {
   const [showDetailModal, setShowDetailModal]       = useState(false);
   const [adminPassword, setAdminPassword]           = useState('');
   const [passwordError, setPasswordError]           = useState('');
+  const [sortField, setSortField] = useState<string>('school_name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   /* ---------------- APIs ---------------- */
   const fetchSchools = async () => {
@@ -88,6 +96,33 @@ const SchoolsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const saveSchool = async (data: Partial<School>) => {
+    try {
+      const url = selectedSchool ? `/api/schools/${selectedSchool.id}` : '/api/schools';
+      const method = selectedSchool ? 'PUT' : 'POST';
+      
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || '儲存失敗');
+      }
+
+      // 重新載入學校資料
+      await fetchSchools();
+      closeModals();
+    } catch (e: any) {
+      setError(e.message ?? '儲存失敗');
+    }
+  };
   const fetchStats = async () => {
     const res = await fetch('/api/schools/stats');
     res.ok && setStats(await res.json());
@@ -99,9 +134,58 @@ const SchoolsPage: React.FC = () => {
 
   useEffect(() => { fetchSchools(); fetchStats(); fetchDistricts(); }, [sortOptions]);
 
+  // 排序函數
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // 排序資料
+  const sortedSchools = [...schools].sort((a, b) => {
+    let aValue: any = a[sortField as keyof School];
+    let bValue: any = b[sortField as keyof School];
+
+    // 處理 null 或 undefined 值
+    if (aValue === null || aValue === undefined) aValue = '';
+    if (bValue === null || bValue === undefined) bValue = '';
+
+    // 特殊處理教育階段排序
+    if (sortField === 'education_level') {
+      const levelOrder = ['國小', '國中', '高中', '高職', '大學'];
+      const aIndex = levelOrder.indexOf(aValue);
+      const bIndex = levelOrder.indexOf(bValue);
+      
+      // 如果找不到對應的順序，放在最後
+      const aOrder = aIndex === -1 ? levelOrder.length : aIndex;
+      const bOrder = bIndex === -1 ? levelOrder.length : bIndex;
+      
+      return sortDirection === 'asc' ? aOrder - bOrder : bOrder - aOrder;
+    }
+
+    // 處理字串比較
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+
+    // 處理數字比較
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+
+    // 處理字串比較
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   /* ---------------- 分頁 & 篩選 ---------------- */
-  const totalPages   = Math.ceil(schools.length / schoolsPerPage);
-  const pagedSchools = schools.slice((currentPage - 1) * schoolsPerPage, currentPage * schoolsPerPage);
+  const totalPages   = Math.ceil(sortedSchools.length / schoolsPerPage);
+  const pagedSchools = sortedSchools.slice((currentPage - 1) * schoolsPerPage, currentPage * schoolsPerPage);
   const handleFilter = (field: string, val: string) => { setSortOptions(o => ({ ...o, [field]: val })); setCurrentPage(1); };
 
   /* ---------------- 事件 ---------------- */
@@ -143,6 +227,56 @@ const SchoolsPage: React.FC = () => {
       {label}
     </Button>
   );
+
+  // 可排序的表頭組件
+  const SortableTableHeader = ({ 
+    field, 
+    label, 
+    currentSortField, 
+    currentSortDirection, 
+    onSort,
+    width,
+    align = 'left',
+    sx = {}
+  }: {
+    field: string;
+    label: string;
+    currentSortField: string;
+    currentSortDirection: 'asc' | 'desc';
+    onSort: (field: string) => void;
+    width?: string;
+    align?: 'left' | 'center' | 'right';
+    sx?: any;
+  }) => {
+    const isActive = currentSortField === field;
+    
+    return (
+      <TableCell 
+        width={width} 
+        align={align} 
+        sx={{ 
+          cursor: 'pointer', 
+          userSelect: 'none',
+          '&:hover': { backgroundColor: 'action.hover' },
+          ...sx
+        }}
+        onClick={() => onSort(field)}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: align === 'center' ? 'center' : 'flex-start' }}>
+          <Typography variant="body2" sx={{ mr: 0.5 }}>
+            {label}
+          </Typography>
+          {isActive ? (
+            currentSortDirection === 'asc' ? 
+              <ArrowUpwardIcon fontSize="small" color="primary" /> : 
+              <ArrowDownwardIcon fontSize="small" color="primary" />
+          ) : (
+            <Box sx={{ width: 20, height: 20 }} />
+          )}
+        </Box>
+      </TableCell>
+    );
+  };
 
   const FilterSelect = (
     { label, field, options }:
@@ -192,9 +326,35 @@ const SchoolsPage: React.FC = () => {
               <Stack direction="row" flexWrap="wrap" gap={2} mb={2} alignItems="center">
                 {/* 分頁控制 */}
                 <Stack direction="row" gap={1} alignItems="center">
-                  <Button size="small" disabled={currentPage===1} onClick={()=>setCurrentPage(p=>p-1)}>‹ 上一頁</Button>
+                  <Button 
+                    size="small" 
+                    disabled={currentPage===1} 
+                    onClick={()=>setCurrentPage(p=>p-1)}
+                    sx={{
+                      backgroundColor: currentPage === 1 ? 'grey.300' : 'primary.main',
+                      color: currentPage === 1 ? 'grey.500' : 'white',
+                      '&:hover': {
+                        backgroundColor: currentPage === 1 ? 'grey.300' : 'primary.dark'
+                      }
+                    }}
+                  >
+                    ‹ 上一頁
+                  </Button>
                   <Typography>{currentPage} / {totalPages}</Typography>
-                  <Button size="small" disabled={currentPage===totalPages} onClick={()=>setCurrentPage(p=>p+1)}>下一頁 ›</Button>
+                  <Button 
+                    size="small" 
+                    disabled={currentPage===totalPages} 
+                    onClick={()=>setCurrentPage(p=>p+1)}
+                    sx={{
+                      backgroundColor: currentPage === totalPages ? 'grey.300' : 'primary.main',
+                      color: currentPage === totalPages ? 'grey.500' : 'white',
+                      '&:hover': {
+                        backgroundColor: currentPage === totalPages ? 'grey.300' : 'primary.dark'
+                      }
+                    }}
+                  >
+                    下一頁 ›
+                  </Button>
                   <FormControl size="small" sx={{ minWidth:80 }}>
                     <InputLabel>每頁</InputLabel>
                     <Select
@@ -211,7 +371,7 @@ const SchoolsPage: React.FC = () => {
                 <Stack direction="row" gap={1} flexWrap="wrap" sx={{ flexGrow:1 }}>
                   <FilterSelect label="學校類型" field="type"     options={['公立','國立','私立']} />
                   <FilterSelect label="行政區"   field="district" options={districts} />
-                  <FilterSelect label="教育階段" field="level"    options={['小學','國中','高中','大學']} />
+                  <FilterSelect label="教育階段" field="level"    options={['國小','國中','高中','高職','大學']} />
                 </Stack>
 
                 {/* 新增 */}
@@ -225,9 +385,74 @@ const SchoolsPage: React.FC = () => {
                 <Table stickyHeader size="small">
                   <TableHead>
                     <TableRow>
-                      {['學校名稱','簡稱','類型','行政區','階段','電話','地址','學生數','操作'].map(h=>(
-                        <TableCell key={h}>{h}</TableCell>
-                      ))}
+                      <SortableTableHeader
+                        field="school_name"
+                        label="學校名稱"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="20%"
+                      />
+                      <SortableTableHeader
+                        field="short_name"
+                        label="簡稱"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="10%"
+                      />
+                      <SortableTableHeader
+                        field="school_type"
+                        label="類型"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="7%"
+                        align="center"
+                      />
+                      <SortableTableHeader
+                        field="district"
+                        label="行政區"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="8%"
+                      />
+                      <SortableTableHeader
+                        field="education_level"
+                        label="階段"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="8%"
+                        align="center"
+                      />
+                      <SortableTableHeader
+                        field="phone"
+                        label="電話"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="10%"
+                      />
+                      <SortableTableHeader
+                        field="address"
+                        label="地址"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="26%"
+                      />
+                      <SortableTableHeader
+                        field="our_student_count"
+                        label="學生數"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        width="8%"
+                        align="center"
+                      />
+                      <TableCell align="center">操作</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -274,10 +499,10 @@ const SchoolsPage: React.FC = () => {
               {/* 基本統計卡片 */}
               <Stack direction="row" flexWrap="wrap" gap={2} mb={3}>
                 {[
-                  { label:'總學校數',  value: stats[0]?.total_schools,      color:'primary' },
-                  { label:'公立',      value: stats[0]?.public_schools,     color:'success' },
-                  { label:'國立',      value: stats[0]?.national_schools,   color:'warning' },
-                  { label:'私立',      value: stats[0]?.private_schools,    color:'error'   },
+                  { label:'總學校數',  value: stats.find(s => s.district === null)?.total_schools,      color:'primary' },
+                  { label:'公立',      value: stats.find(s => s.district === null)?.public_schools,     color:'success' },
+                  { label:'國立',      value: stats.find(s => s.district === null)?.national_schools,   color:'warning' },
+                  { label:'私立',      value: stats.find(s => s.district === null)?.private_schools,    color:'error'   },
                 ].map(({label,value,color})=>(
                   <Box key={label} sx={{ p:2, flex:'1 1 200px', bgcolor:`${color}.light`, borderRadius:1, textAlign:'center' }}>
                     <Typography variant="h4">{value ?? 0}</Typography>
@@ -288,7 +513,7 @@ const SchoolsPage: React.FC = () => {
 
               {/* 我們的學生總數 */}
               <Box sx={{ mb:3, p:3, bgcolor:'primary.light', borderRadius:1, textAlign:'center' }}>
-                <Typography variant="h3">{stats[0]?.total_our_students ?? 0}</Typography>
+                <Typography variant="h3">{stats.find(s => s.district === null)?.total_our_students ?? 0}</Typography>
                 <Typography>我們的學生數</Typography>
               </Box>
 
@@ -296,14 +521,31 @@ const SchoolsPage: React.FC = () => {
               {stats.filter(s=>s.district).length>0 && (
                 <>
                   <Typography variant="subtitle1" mb={1}>🗺️ 行政區分布</Typography>
-                  <Stack direction="row" flexWrap="wrap" gap={2}>
+                  <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                    gap: 2 
+                  }}>
                     {stats.filter(s=>s.district).map(d=>(
-                      <Box key={d.district} sx={{ p:2, flex:'1 1 220px', bgcolor:'background.default', borderRadius:1, boxShadow:1 }}>
-                        <Typography fontWeight="bold">{d.district}</Typography>
-                        <Typography>{d.district_count} 所</Typography>
+                      <Box key={d.district} sx={{ 
+                        p: 2, 
+                        height: '80px',
+                        bgcolor: 'background.default', 
+                        borderRadius: 1, 
+                        boxShadow: 1,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <Typography fontWeight="bold" variant="body1">
+                          {d.district}
+                        </Typography>
+                        <Typography variant="h6" color="primary">
+                          {d.district_count} 所
+                        </Typography>
                       </Box>
                     ))}
-                  </Stack>
+                  </Box>
                 </>
               )}
             </>
@@ -317,7 +559,12 @@ const SchoolsPage: React.FC = () => {
       <Dialog open={showEditModal} onClose={closeModals} maxWidth="md" fullWidth>
         <DialogTitle>{selectedSchool ? '編輯學校' : '新增學校'}</DialogTitle>
         <DialogContent>
-          <SchoolEditForm school={selectedSchool} onSave={()=>{}} onCancel={closeModals}/>
+          <SchoolEditForm 
+            school={selectedSchool} 
+            onSave={saveSchool} 
+            onCancel={closeModals}
+            districts={districts}
+          />
         </DialogContent>
       </Dialog>
 
@@ -360,26 +607,33 @@ const SchoolsPage: React.FC = () => {
         <DialogTitle>學校詳情</DialogTitle>
         <DialogContent dividers>
           {selectedSchool && (
-            <Box>
-              <Typography variant="h5" mb={2}>{selectedSchool.school_name}</Typography>
-              {/* 其餘資訊… */}
-            </Box>
+            <SchoolDetailView
+              school={selectedSchool}
+              onEdit={() => {
+                setShowDetailModal(false);
+                setShowEditModal(true);
+              }}
+              onClose={closeModals}
+            />
           )}
         </DialogContent>
-        <DialogActions><Button onClick={closeModals}>關閉</Button></DialogActions>
+        <DialogActions>
+          <Button onClick={closeModals}>關閉</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              setShowDetailModal(false);
+              setShowEditModal(true);
+            }}
+          >
+            編輯
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );
 };
 
-/* ---------------- SchoolEditForm (保留原邏輯，僅補少量 MUI) ---------------- */
-const SchoolEditForm: React.FC<{
-  school: School | null;
-  onSave: (data: Partial<School>) => void;
-  onCancel: () => void;
-}> = () => {
-  /* 省略 – 與你現有邏輯相同，可慢慢移植到 MUI */
-  return <Box p={2}>待實作表單…</Box>;
-};
+
 
 export default SchoolsPage; 

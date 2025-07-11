@@ -4,10 +4,14 @@ import {
   Box, 
   Typography,
   Divider,
-  Chip
+  Chip,
+  Card,
+  CardContent,
+  Stack
 } from '@mui/material';
 import FormRow from './FormRow';
 import FormContainer from './FormContainer';
+import StudentCourseAbilitiesReadOnly from './StudentCourseAbilitiesReadOnly';
 import { getLevelColors } from '../utils/levelColors';
 import { getGenderColors } from '../utils/genderColors';
 import {
@@ -115,15 +119,14 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
     <FormContainer 
       title="學生詳細資料"
       maxWidth={800}
-
     >
       {/* 基本資料區域 */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
-          📝 基本資料
+        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main', fontSize: '1.3rem' }}>
+          基本資料
         </Typography>
         
-        {/* 第一行：中文姓名、英文姓名、班別 */}
+        {/* 第一行：中文姓名、英文姓名、性別 */}
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, mb: 1 }}>
           <FormRow label="中文姓名" labelWidth={80}>
             <DisplayText value={student.chinese_name} />
@@ -133,7 +136,57 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
             <DisplayText value={student.english_name} />
           </FormRow>
           
-          <FormRow label="班別" labelWidth={60}>
+          <FormRow label="性別" labelWidth={80}>
+            <Chip 
+              label={student.gender || '未設定'} 
+              size="small"
+              sx={{
+                backgroundColor: student.gender ? getGenderColors(student.gender).backgroundColor : '#f5f5f5',
+                color: student.gender ? getGenderColors(student.gender).color : '#757575',
+                border: student.gender ? '1px solid' : 'none',
+                borderColor: student.gender ? getGenderColors(student.gender).borderColor : 'transparent'
+              }}
+            />
+          </FormRow>
+        </Box>
+
+        {/* 第二行：學校、年級、班級排程類型 */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, mb: 1 }}>
+          <FormRow label="學校" labelWidth={80}>
+            <Chip 
+              label={student.school || '未設定'} 
+              size="small"
+              color={student.school ? 'primary' : 'default'}
+              variant="outlined"
+            />
+          </FormRow>
+          
+          <FormRow label="年級" labelWidth={80}>
+            <Chip 
+              label={student.grade || '未設定'} 
+              size="small"
+              color={student.grade ? 'secondary' : 'default'}
+              variant="outlined"
+            />
+          </FormRow>
+          
+          <FormRow label="班級排程類型" labelWidth={80}>
+            <Chip
+              label={student.class_schedule_type || '未設定'}
+              size="small"
+              sx={{
+                backgroundColor: student.class_schedule_type === '常態班' ? '#e3f2fd' : student.class_schedule_type === '短期班' ? '#fff3e0' : '#f5f5f5',
+                color: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : '#757575',
+                border: student.class_schedule_type ? '1px solid' : 'none',
+                borderColor: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : 'transparent'
+              }}
+            />
+          </FormRow>
+        </Box>
+
+        {/* 第三行：班別、程度、就讀狀態 */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+          <FormRow label="班別" labelWidth={80}>
             <Chip 
               label={getClassTypeName(student.class_type) || '未設定'} 
               size="small"
@@ -166,44 +219,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
               }}
             />
           </FormRow>
-        </Box>
-
-        {/* 第二行：學校、年級、性別 */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, mb: 1 }}>
-          <FormRow label="學校" labelWidth={80}>
-            <Chip 
-              label={student.school || '未設定'} 
-              size="small"
-              color={student.school ? 'primary' : 'default'}
-              variant="outlined"
-            />
-          </FormRow>
           
-          <FormRow label="年級" labelWidth={80}>
-            <Chip 
-              label={student.grade || '未設定'} 
-              size="small"
-              color={student.grade ? 'secondary' : 'default'}
-              variant="outlined"
-            />
-          </FormRow>
-          
-          <FormRow label="性別" labelWidth={60}>
-            <Chip 
-              label={student.gender || '未設定'} 
-              size="small"
-              sx={{
-                backgroundColor: student.gender ? getGenderColors(student.gender).backgroundColor : '#f5f5f5',
-                color: student.gender ? getGenderColors(student.gender).color : '#757575',
-                border: student.gender ? '1px solid' : 'none',
-                borderColor: student.gender ? getGenderColors(student.gender).borderColor : 'transparent'
-              }}
-            />
-          </FormRow>
-        </Box>
-
-        {/* 第三行：程度、就讀狀態 */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
           <FormRow label="程度" labelWidth={80}>
             <Chip 
               label={student.level_type || '未設定'} 
@@ -238,28 +254,27 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
               }}
             />
           </FormRow>
-          
-          <FormRow label="班級排程類型" labelWidth={100}>
-            <Chip
-              label={student.class_schedule_type || '未設定'}
-              size="small"
-              sx={{
-                backgroundColor: student.class_schedule_type === '常態班' ? '#e3f2fd' : student.class_schedule_type === '短期班' ? '#fff3e0' : '#f5f5f5',
-                color: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : '#757575',
-                border: student.class_schedule_type ? '1px solid' : 'none',
-                borderColor: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : 'transparent'
-              }}
-            />
-          </FormRow>
         </Box>
       </Box>
 
       <Divider sx={{ my: 3 }} />
 
+      {/* 學習程度區域 */}
+      {student.id && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 0, fontWeight: 'bold', color: 'primary.main', fontSize: '1.3rem' }}>
+            學習程度
+          </Typography>
+          <StudentCourseAbilitiesReadOnly studentId={student.id} />
+        </Box>
+      )}
+
+      <Divider sx={{ my: 3 }} />
+
       {/* 聯絡資訊區域 */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
-          📞 聯絡資訊
+        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main', fontSize: '1.3rem' }}>
+          聯絡資訊
         </Typography>
         
         {/* 學生聯絡方式 */}
@@ -321,7 +336,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
 
       {/* 備註區域 */}
       <Box sx={{ mt: 4, mb: 3 }}>
-        <FormRow label="備註" labelWidth={80} mb={2}>
+        <FormRow label="備註" labelWidth={50} mb={2}>
           <Box 
             sx={{ 
               p: 2, 
@@ -352,8 +367,8 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
         <>
           <Divider sx={{ my: 3 }} />
           <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
-              ℹ️ 系統資訊
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main', fontSize: '1.3rem' }}>
+              系統資訊
             </Typography>
             
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>

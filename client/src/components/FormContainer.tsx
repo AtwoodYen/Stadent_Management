@@ -32,7 +32,7 @@ const FormContainer: React.FC<FormContainerProps> = ({
       >
         {title && (
           <>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', fontSize: '1.8rem' }}>
               {title}
             </Typography>
             <Divider sx={{ mb: 3 }} />

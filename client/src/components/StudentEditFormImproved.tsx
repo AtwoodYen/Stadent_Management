@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import FormRow from './FormRow';
 import FormContainer from './FormContainer';
+import StudentCourseAbilities from './StudentCourseAbilities';
 
 interface Student {
   id?: number;
@@ -393,7 +394,7 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
         <Divider sx={{ my: 3 }} />
 
         {/* 備註區域 */}
-        <FormRow label="備註" labelWidth={80} mb={3}>
+        <FormRow label="備註" labelWidth={80} mb={1.5}>
           <TextField
             multiline
             rows={3}
@@ -403,6 +404,13 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
             placeholder="請輸入備註事項..."
           />
         </FormRow>
+
+        {/* 課程程度管理區域 */}
+        {student?.id && (
+          <StudentCourseAbilities studentId={student.id} />
+        )}
+
+        <Divider sx={{ my: 1.5 }} />
 
         {/* 按鈕區域 */}
         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 2 }}>

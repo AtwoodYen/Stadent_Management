@@ -15,6 +15,7 @@ import {
   FormHelperText
 } from '@mui/material';
 import CustomAlert from './CustomAlert';
+import StudentCourseAbilities from './StudentCourseAbilities';
 
 interface Student {
   id?: number;
@@ -83,6 +84,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
 
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [schools, setSchools] = useState<string[]>([]);
+  const [classTypesLoading, setClassTypesLoading] = useState(true);
 
   // 自定義 Alert 狀態
   const [customAlert, setCustomAlert] = useState({
@@ -110,6 +112,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
   useEffect(() => {
     const fetchClassTypes = async () => {
       try {
+        setClassTypesLoading(true);
         const response = await fetch('/api/class-types');
         if (response.ok) {
           const data = await response.json();
@@ -119,6 +122,8 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
         }
       } catch (error) {
         console.error('載入班別資料時發生錯誤:', error);
+      } finally {
+        setClassTypesLoading(false);
       }
     };
 
@@ -271,8 +276,8 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
         </Typography>
         
         {/* 基本資料：第一行 */}
-        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-          <Box sx={{ width: '14%' }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, width: 'fit-content' }}>
+          <Box sx={{ width: '140px' }}>
             <FormControl fullWidth size="small">
               <InputLabel
                 sx={{
@@ -300,7 +305,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
           
-          <Box sx={{ width: '16.8%' }}>
+          <Box sx={{ width: '168px' }}>
             <FormControl fullWidth size="small">
               <InputLabel
                 sx={{
@@ -327,7 +332,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
           
-          <Box sx={{ width: '12%' }}>
+          <Box sx={{ width: '120px' }}>
             <FormControl fullWidth size="small">
               <InputLabel
                 sx={{
@@ -372,7 +377,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
           
-          <Box sx={{ width: '12%', pl: 0.75 }}>
+          <Box sx={{ width: '120px' }}>
             <FormControl fullWidth size="small">
               <InputLabel>
                 年級<span style={{ color: '#d32f2f' }}>*</span>
@@ -414,7 +419,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
           
-          <Box sx={{ width: '14.4%', pl: 1.25 }}>
+          <Box sx={{ width: '100px' }}>
             <FormControl fullWidth size="small">
               <InputLabel>
                 性別<span style={{ color: '#d32f2f' }}>*</span>
@@ -437,11 +442,41 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
               </Select>
             </FormControl>
           </Box>
-        </Stack>
+        </Box>
 
         {/* 基本資料：第二行 */}
-        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-          <Box sx={{ width: '10%' }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, width: 'fit-content' }}>
+          <Box sx={{ width: '180px' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>
+                班別<span style={{ color: '#d32f2f' }}>*</span>
+              </InputLabel>
+              <Select
+                value={classTypesLoading || classTypes.length === 0 ? '' : (formData.class_type || '')}
+                onChange={(e) => handleChange('class_type', e.target.value)}
+                required
+                size="small"
+                disabled={classTypesLoading}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    fontSize: '14px'
+                  }
+                }}
+              >
+                <MenuItem value="">
+                  {classTypesLoading ? '載入中...' : '請選擇'}
+                </MenuItem>
+                {classTypes.map((classType) => (
+                  <MenuItem key={classType.class_code} value={classType.class_code}>
+                    {classType.class_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ width: '100px' }}>
             <FormControl fullWidth size="small">
               <InputLabel>程度</InputLabel>
               <Select
@@ -465,34 +500,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
           
-          <Box sx={{ width: '18.2%' }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>
-                班別<span style={{ color: '#d32f2f' }}>*</span>
-              </InputLabel>
-              <Select
-                value={formData.class_type}
-                onChange={(e) => handleChange('class_type', e.target.value)}
-                required
-                size="small"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    height: '40px',
-                    fontSize: '14px'
-                  }
-                }}
-              >
-                <MenuItem value="">請選擇</MenuItem>
-                {classTypes.map((classType) => (
-                  <MenuItem key={classType.class_code} value={classType.class_code}>
-                    {classType.class_name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-          
-          <Box sx={{ width: '20%', pl: 3.75 }}>
+          <Box sx={{ width: '120px' }}>
             <FormControl fullWidth size="small">
               <InputLabel>就讀狀態</InputLabel>
               <Select
@@ -513,7 +521,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
 
-          <Box sx={{ width: '20%', pl: 10 }}>
+          <Box sx={{ width: '150px' }}>
             <FormControl fullWidth size="small">
               <InputLabel>
                 班級排程類型<span style={{ color: '#d32f2f' }}>*</span>
@@ -524,7 +532,6 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
                 required
                 size="small"
                 sx={{
-                  width: '160%',
                   '& .MuiOutlinedInput-root': {
                     height: '40px',
                     fontSize: '14px'
@@ -536,7 +543,30 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
               </Select>
             </FormControl>
           </Box>
-        </Stack>
+        </Box>
+
+        {/* 課程程度管理區域 */}
+        {student?.id && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: 'black',
+                mb: 2,
+                pb: 1,
+                borderBottom: '2px solid #e3f2fd',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              課程程度管理
+            </Typography>
+            <StudentCourseAbilities studentId={student.id} />
+          </Box>
+        )}
 
         {/* 聯絡資訊區域 */}
         <Box sx={{ mb: 3 }}>

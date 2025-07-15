@@ -178,8 +178,28 @@ export default function SchedulePage() {
       return;
     }
     
+    // 驗證時間格式
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(time)) {
+      console.error('無效的時間格式:', time);
+      alert('無效的時間格式，請稍後再試');
+      setDraggedStudent(null);
+      setIsDragging(false);
+      return;
+    }
+    
     // 計算結束時間（預設1小時）
-    const endTime = format(addMinutes(parseTimeString(time), 60), 'HH:mm');
+    const [hours, minutes] = time.split(':').map(Number);
+    const endHours = hours + 1;
+    const endTime = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    
+    console.log('準備傳送的資料:', {
+      student_id: draggedStudent.id,
+      day_of_week: dayOfWeek,
+      start_time: time,
+      end_time: endTime,
+      course_name: `${draggedStudent.name}的課程`
+    });
     
     // 準備要傳送到後端的資料
     const scheduleData = {

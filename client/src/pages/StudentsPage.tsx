@@ -949,27 +949,26 @@ const StudentsPage: React.FC = () => {
                     <Box sx={{ 
                       backgroundColor: 'white', 
                       borderRadius: 2, 
-                      p: 3, 
+                      p: 2, 
                       mb: 0,
                       border: '2px solid #e0e0e0'
                     }}>
-                      <Typography variant="h6" sx={{ mb: 2 }}>學校分布</Typography>
+                      <Typography variant="h6" sx={{ mb: 1 }}>學校分布</Typography>
                       <Box sx={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, 140px)', 
-                        gap: 2,
+                        gridTemplateColumns: 'repeat(auto-fill, 120px)', 
+                        gap: 1.5,
                         justifyContent: 'start'
                       }}>
                         {schoolStats
                           .filter(stat => stat.count > 0)
                           .sort((a, b) => b.count - a.count)
-                          .slice(0, 8)
                           .map((stat, index) => (
                             <Paper key={stat.school} sx={{ 
-                              p: 2, 
+                              p: 1.5, 
                               textAlign: 'center', 
-                              width: 140, 
-                              height: 100,
+                              width: 120, 
+                              height: 80,
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'center',
@@ -988,12 +987,17 @@ const StudentsPage: React.FC = () => {
                   <Box sx={{ 
                     backgroundColor: '#e3f2fd', 
                     borderRadius: 2, 
-                    p: 3, 
+                    p: 2, 
                     mb: 0,
                     border: '2px solid #e0e0e0'
                   }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>年級分布</Typography>
-                    <Stack direction="row" spacing={2} flexWrap="wrap">
+                    <Typography variant="h6" sx={{ mb: 1 }}>年級分布</Typography>
+                    <Box sx={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, 120px)', 
+                      gap: 1.5,
+                      justifyContent: 'start'
+                    }}>
                       {gradeStats
                         .sort((a, b) => {
                           const gradeOrder = ['小一', '小二', '小三', '小四', '小五', '小六', '國一', '國二', '國三', '高一', '高二', '高三', '大一', '大二', '大三', '大四'];
@@ -1001,7 +1005,7 @@ const StudentsPage: React.FC = () => {
                         })
                         .map((stat, index) => (
                           <Paper key={stat.grade} sx={{ 
-                            p: 2, 
+                            p: 1.5, 
                             textAlign: 'center', 
                             width: 120, 
                             height: 80,
@@ -1015,7 +1019,7 @@ const StudentsPage: React.FC = () => {
                             <Typography variant="body2" color="text.secondary">{stat.grade}</Typography>
                           </Paper>
                         ))}
-                    </Stack>
+                    </Box>
                   </Box>
 
                   {/* 程度分布統計 */}

@@ -35,6 +35,26 @@ import PersonIcon from '@mui/icons-material/Person';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface User {
   id: number;
@@ -60,6 +80,104 @@ interface SortState {
   field: SortField | null;
   order: SortOrder;
 }
+
+// 可拖拽的表格行組件
+const SortableTableRow: React.FC<{
+  user: User;
+  roleLabels: Record<string, string>;
+  roleColors: Record<string, any>;
+  roleIcons: Record<string, React.ReactElement>;
+  onEdit: (user: User) => void;
+  onDelete: (user: User) => void;
+  onToggleStatus: (id: number) => void;
+}> = ({ user, roleLabels, roleColors, roleIcons, onEdit, onDelete, onToggleStatus }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: user.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : (user.is_active ? 1 : 0.6),
+    height: '48px',
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} {...attributes}>
+      <TableCell>
+        <IconButton
+          size="small"
+          {...listeners}
+          sx={{ cursor: 'grab', p: 0.5 }}
+        >
+          <DragIndicatorIcon fontSize="small" />
+        </IconButton>
+      </TableCell>
+      <TableCell>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+            {roleIcons[user.role]}
+          </Avatar>
+          <Box>
+            <Typography variant="body2" fontWeight="bold">
+              {user.full_name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              @{user.username}
+            </Typography>
+          </Box>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={roleLabels[user.role]}
+          color={roleColors[user.role]}
+          size="small"
+          icon={roleIcons[user.role]}
+        />
+      </TableCell>
+      <TableCell>{user.department || '-'}</TableCell>
+      <TableCell>
+        <Typography variant="body2">{user.email}</Typography>
+        <Typography variant="caption" color="text.secondary">
+          {user.phone || '-'}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={user.is_active}
+              onChange={() => onToggleStatus(user.id)}
+              size="small"
+            />
+          }
+          label={user.is_active ? "啟用" : "停用"}
+        />
+      </TableCell>
+      <TableCell>
+        <IconButton
+          size="small"
+          onClick={() => onEdit(user)}
+        >
+          <EditIcon />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => onDelete(user)}
+          disabled={user.role === 'admin' && user.id === 1}
+        >
+          <DeleteIcon />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+};
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -88,6 +206,14 @@ const UsersPage: React.FC = () => {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // 拖拽相關設定
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // 載入用戶資料
   const fetchUsers = async () => {
@@ -170,6 +296,42 @@ const UsersPage: React.FC = () => {
 
   // 排序後的用戶資料
   const sortedUsers = sortUsers(users);
+
+  // 處理拖拽結束
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setUsers((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over?.id);
+
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // 重新計算排序值（每10個為一組）
+        const updatedItems = newItems.map((item, index) => ({
+          ...item,
+          sort_order: (index + 1) * 10
+        }));
+
+        // 非同步更新資料庫
+        updateDatabaseOrder(updatedItems);
+
+        return updatedItems;
+      });
+    }
+  };
+
+  // 更新資料庫中的排序
+  const updateDatabaseOrder = async (updatedUsers: User[]) => {
+    try {
+      // 這裡可以添加更新資料庫排序的 API 調用
+      // 例如：await fetch('/api/users/reorder', { method: 'PUT', body: JSON.stringify(updatedUsers) });
+      console.log('用戶排序已更新:', updatedUsers);
+    } catch (error) {
+      console.error('更新用戶排序失敗:', error);
+    }
+  };
 
   const roleLabels = {
     admin: '系統管理員',
@@ -391,115 +553,75 @@ const UsersPage: React.FC = () => {
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortState.field === 'full_name'}
-                    direction={sortState.field === 'full_name' ? sortState.order : 'asc'}
-                    onClick={() => handleSort('full_name')}
-                  >
-                    用戶名稱
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortState.field === 'role'}
-                    direction={sortState.field === 'role' ? sortState.order : 'asc'}
-                    onClick={() => handleSort('role')}
-                  >
-                    角色
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortState.field === 'department'}
-                    direction={sortState.field === 'department' ? sortState.order : 'asc'}
-                    onClick={() => handleSort('department')}
-                  >
-                    部門
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>聯絡方式</TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortState.field === 'is_active'}
-                    direction={sortState.field === 'is_active' ? sortState.order : 'asc'}
-                    onClick={() => handleSort('is_active')}
-                  >
-                    狀態
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedUsers.map((user) => (
-                <TableRow key={user.id} sx={{ opacity: user.is_active ? 1 : 0.6 }}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <TableContainer component={Paper}>
+            <Table sx={{ '& .MuiTableCell-root': { padding: '8px 16px' } }}>
+              <TableHead>
+                <TableRow sx={{ height: '48px' }}>
+                  <TableCell>拖拽</TableCell>
                   <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                        {roleIcons[user.role]}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body2" fontWeight="bold">
-                          {user.full_name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          @{user.username}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={roleLabels[user.role]}
-                      color={roleColors[user.role]}
-                      size="small"
-                      icon={roleIcons[user.role]}
-                    />
-                  </TableCell>
-                  <TableCell>{user.department || '-'}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{user.email}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {user.phone || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={user.is_active}
-                          onChange={() => toggleUserStatus(user.id)}
-                          size="small"
-                        />
-                      }
-                      label={user.is_active ? "啟用" : "停用"}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenDialog(user)}
+                    <TableSortLabel
+                      active={sortState.field === 'full_name'}
+                      direction={sortState.field === 'full_name' ? sortState.order : 'asc'}
+                      onClick={() => handleSort('full_name')}
                     >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(user)}
-                      disabled={user.role === 'admin' && user.id === 1}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                      用戶名稱
+                    </TableSortLabel>
                   </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortState.field === 'role'}
+                      direction={sortState.field === 'role' ? sortState.order : 'asc'}
+                      onClick={() => handleSort('role')}
+                    >
+                      角色
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortState.field === 'department'}
+                      direction={sortState.field === 'department' ? sortState.order : 'asc'}
+                      onClick={() => handleSort('department')}
+                    >
+                      部門
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>聯絡方式</TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortState.field === 'is_active'}
+                      direction={sortState.field === 'is_active' ? sortState.order : 'asc'}
+                      onClick={() => handleSort('is_active')}
+                    >
+                      狀態
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>操作</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                <SortableContext items={sortedUsers.map(user => user.id)} strategy={verticalListSortingStrategy}>
+                  {sortedUsers.map((user) => (
+                    <SortableTableRow
+                      key={user.id}
+                      user={user}
+                      roleLabels={roleLabels}
+                      roleColors={roleColors}
+                      roleIcons={roleIcons}
+                      onEdit={handleOpenDialog}
+                      onDelete={handleDelete}
+                      onToggleStatus={toggleUserStatus}
+                    />
+                  ))}
+                </SortableContext>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DndContext>
 
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
           <DialogTitle>

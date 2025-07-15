@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -25,6 +25,16 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
   type = 'info',
   onClose
 }) => {
+  // 當顯示成功訊息時，3秒後自動關閉
+  useEffect(() => {
+    if (open && type === 'success') {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [open, type, onClose]);
   const getIcon = () => {
     switch (type) {
       case 'success':

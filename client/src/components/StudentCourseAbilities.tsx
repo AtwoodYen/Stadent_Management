@@ -222,6 +222,7 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
 
   // 更新班別程度
   const handleUpdateClassAbility = async (abilityId: number, updates: Partial<ClassAbility>) => {
+    console.log('🔧 handleUpdateClassAbility 被調用:', { abilityId, updates });
     try {
       const response = await fetch(`/api/students/${studentId}/class-abilities/${abilityId}`, {
         method: 'PUT',
@@ -233,38 +234,38 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
 
       if (response.ok) {
         const updatedAbility = await response.json();
-        setClassAbilities(prev => 
-          prev.map(ability => 
+        console.log('✅ 更新成功，伺服器回傳:', updatedAbility);
+        setClassAbilities(prev => {
+          const newAbilities = prev.map(ability => 
             ability.id === abilityId ? updatedAbility : ability
-          )
-        );
+          );
+          console.log('🔄 更新本地狀態後:', newAbilities);
+          return newAbilities;
+        });
         setError(null); // 清除錯誤訊息
       } else {
         const errorData = await response.json();
+        console.error('❌ 更新失敗:', errorData);
         setError(errorData.error || '更新失敗');
       }
     } catch (err) {
+      console.error('❌ 更新班別程度錯誤:', err);
       setError('更新班別程度時發生錯誤');
-      console.error('更新班別程度錯誤:', err);
     }
   };
 
   // 處理班別下拉選單關閉事件
   const handleClassTypeSelectClose = async (abilityId: number, currentClassType: string) => {
-    // 如果班別為空，自動刪除這筆資料（不詢問確認）
-    if (!currentClassType || currentClassType === '') {
-      console.log('班別為空，自動刪除記錄 ID:', abilityId);
-      await handleDeleteClassAbilitySilent(abilityId);
-    }
+    console.log('🔧 handleClassTypeSelectClose 被調用:', { abilityId, currentClassType });
+    // 暫時移除自動刪除功能，讓用戶手動管理空白記錄
+    console.log('ℹ️ 自動刪除功能已停用，用戶可以手動刪除空白記錄');
   };
 
   // 處理課程下拉選單關閉事件
   const handleCourseSelectClose = async (progressId: number, currentCourseId: number | null) => {
-    // 如果課程ID為null、0或無效值，自動刪除這筆資料（不詢問確認）
-    if (!currentCourseId || currentCourseId === 0 || currentCourseId === null) {
-      console.log('課程ID無效，自動刪除記錄 ID:', progressId);
-      await handleDeleteCourseProgressSilent(progressId);
-    }
+    console.log('🔧 handleCourseSelectClose 被調用:', { progressId, currentCourseId });
+    // 暫時移除自動刪除功能，讓用戶手動管理空白記錄
+    console.log('ℹ️ 自動刪除功能已停用，用戶可以手動刪除空白記錄');
   };
 
   // 更新課程進度
@@ -298,20 +299,27 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
 
   // 刪除班別程度（靜默刪除，不詢問確認）
   const handleDeleteClassAbilitySilent = async (abilityId: number) => {
+    console.log('🗑️ handleDeleteClassAbilitySilent 被調用:', { abilityId });
     try {
       const response = await fetch(`/api/students/${studentId}/class-abilities/${abilityId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        setClassAbilities(prev => prev.filter(ability => ability.id !== abilityId));
+        console.log('✅ 刪除成功');
+        setClassAbilities(prev => {
+          const newAbilities = prev.filter(ability => ability.id !== abilityId);
+          console.log('🔄 刪除後本地狀態:', newAbilities);
+          return newAbilities;
+        });
         setError(null); // 清除錯誤訊息
       } else {
+        console.error('❌ 刪除失敗:', response.status);
         setError('刪除失敗');
       }
     } catch (err) {
+      console.error('❌ 刪除班別程度錯誤:', err);
       setError('刪除班別程度時發生錯誤');
-      console.error('刪除班別程度錯誤:', err);
     }
   };
 
@@ -447,8 +455,21 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
                         <FormControl size="small" sx={{ width: '60%' }}>
                           <Select
                             value={classTypes.length > 0 && ability.class_type ? ability.class_type : ''}
-                            onChange={(e) => handleUpdateClassAbility(ability.id, { class_type: e.target.value })}
-                            onClose={() => handleClassTypeSelectClose(ability.id, ability.class_type)}
+                            onChange={(e) => {
+                              console.log('🎯 Select onChange 被觸發:', { 
+                                abilityId: ability.id, 
+                                oldValue: ability.class_type, 
+                                newValue: e.target.value 
+                              });
+                              handleUpdateClassAbility(ability.id, { class_type: e.target.value });
+                            }}
+                            onClose={() => {
+                              console.log('🎯 Select onClose 被觸發:', { 
+                                abilityId: ability.id, 
+                                currentClassType: ability.class_type 
+                              });
+                              handleClassTypeSelectClose(ability.id, ability.class_type);
+                            }}
                             disabled={classTypes.length === 0}
                             sx={{ fontSize: '0.875rem', height: '32px' }}
                           >

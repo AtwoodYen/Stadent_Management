@@ -139,7 +139,7 @@ export default function SchedulePage() {
     };
 
     try {
-      const response = await fetch('http://localhost:3000/api/schedules', {
+      const response = await fetch('/api/schedules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -234,7 +234,7 @@ export default function SchedulePage() {
   /* ---------- API 資料載入 ---------- */
   const fetchStudents = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/students');
+      const response = await fetch('/api/students');
       if (response.ok) {
         const data = await response.json();
         // 轉換資料格式以符合現有介面
@@ -252,7 +252,7 @@ export default function SchedulePage() {
 
   const fetchLessons = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/schedules/calendar');
+      const response = await fetch('/api/schedules/calendar');
       if (response.ok) {
         const data = await response.json();
         // 轉換資料格式以符合現有介面

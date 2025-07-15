@@ -973,15 +973,27 @@ app.post(
 							.input('abilityLevel', sql.NVarChar, ability_level)
 							.input('assessmentDate', sql.Date, assessment_date || new Date())
 							.input('notes', sql.NVarChar, notes || null)
-													.query(`
+							.query(`
 							INSERT INTO student_class_type_abilities (
 									student_id, class_type, ability_level, assessment_date, notes
 							) 
-							OUTPUT inserted.*
-							VALUES (@studentId, @classCode, @abilityLevel, @assessmentDate, @notes)
-					`);
+							VALUES (@studentId, @classCode, @abilityLevel, @assessmentDate, @notes);
 							
-					res.status(201).json(result.recordset[0]);
+							SELECT SCOPE_IDENTITY() as id;
+					`);
+					
+					// 取得新插入的記錄ID
+					const insertId = result.recordset[0]?.id;
+					
+					// 重新查詢插入的資料
+					const insertedResult = await pool.request()
+							.input('insertId', sql.Int, insertId)
+							.query(`
+									SELECT * FROM student_class_type_abilities 
+									WHERE id = @insertId
+							`);
+							
+					res.status(201).json(insertedResult.recordset[0]);
 			} catch (err) {
 					next(err);
 			}
@@ -1077,7 +1089,6 @@ app.put(
 					const result = await request.query(`
 							UPDATE student_class_type_abilities 
 							SET ${updateFields.join(', ')}
-							OUTPUT inserted.*
 							WHERE id = @abilityId AND student_id = @studentId
 					`);
 					
@@ -1085,7 +1096,19 @@ app.put(
 							return res.status(404).json({ error: '找不到指定的程度記錄' });
 					}
 					
-					res.json(result.recordset[0]);
+					// 重新查詢更新後的資料
+					const updatedResult = await pool.request()
+							.input('abilityId', sql.Int, abilityId)
+							.query(`
+									SELECT * FROM student_class_type_abilities 
+									WHERE id = @abilityId
+							`);
+					
+					if (updatedResult.recordset.length === 0) {
+							return res.status(404).json({ error: '找不到指定的程度記錄' });
+					}
+					
+					res.json(updatedResult.recordset[0]);
 			} catch (err) {
 					next(err);
 			}
@@ -1477,11 +1500,16 @@ app.post(
 							.input('prerequisites', sql.NVarChar, prerequisites || '')
 							.query(`
 									INSERT INTO courses (name, category, level, duration_minutes, price, description, prerequisites, sort_order) 
-									OUTPUT inserted.* 
 									VALUES (@name, @category, @level, @duration_minutes, @price, @description, @prerequisites, 
-												 (SELECT ISNULL(MAX(sort_order), 0) + 1 FROM courses WHERE is_active = 1))
+												 (SELECT ISNULL(MAX(sort_order), 0) + 1 FROM courses WHERE is_active = 1));
+									SELECT SCOPE_IDENTITY() as id;
 							`);
-					res.status(201).json(result.recordset[0]);
+					
+					const newId = result.recordset[0].id;
+					const newCourse = await pool.request()
+							.input('id', sql.Int, newId)
+							.query('SELECT * FROM courses WHERE id = @id');
+					res.status(201).json(newCourse.recordset[0]);
 			} catch (err) {
 					next(err);
 			}
@@ -1642,8 +1670,17 @@ app.post(
 							.input('lesson_type', sql.NVarChar, lesson_type)
 							.input('status', sql.NVarChar, status)
 							.input('notes', sql.NText, notes)
-							.query('INSERT INTO lessons (student_id, lesson_date, lesson_time, duration_minutes, lesson_type, status, notes) OUTPUT inserted.* VALUES (@student_id, @lesson_date, @lesson_time, @duration_minutes, @lesson_type, @status, @notes)');
-					res.status(201).json(result.recordset[0]);
+							.query(`
+									INSERT INTO lessons (student_id, lesson_date, lesson_time, duration_minutes, lesson_type, status, notes) 
+									VALUES (@student_id, @lesson_date, @lesson_time, @duration_minutes, @lesson_type, @status, @notes);
+									SELECT SCOPE_IDENTITY() as id;
+							`);
+					
+					const newId = result.recordset[0].id;
+					const newLesson = await pool.request()
+							.input('id', sql.Int, newId)
+							.query('SELECT * FROM lessons WHERE id = @id');
+					res.status(201).json(newLesson.recordset[0]);
 			} catch (err) {
 					next(err);
 			}
@@ -1882,12 +1919,17 @@ app.post(
                     INSERT INTO student_schedules (
                         student_id, day_of_week, start_time, end_time, course_name, teacher_name
                     ) 
-                    OUTPUT inserted.* 
                     VALUES (
                         @student_id, @day_of_week, @start_time, @end_time, @course_name, @teacher_name
-                    )
+                    );
+                    SELECT SCOPE_IDENTITY() as id;
                 `);
-            res.status(201).json(result.recordset[0]);
+            
+            const newId = result.recordset[0].id;
+            const newSchedule = await pool.request()
+                .input('id', sql.Int, newId)
+                .query('SELECT * FROM student_schedules WHERE id = @id');
+            res.status(201).json(newSchedule.recordset[0]);
         } catch (err) {
             next(err);
         }
@@ -2500,10 +2542,15 @@ app.post(
 							.input('notes', sql.NVarChar, notes || null)
 							.query(`
 									INSERT INTO schools (school_name, short_name, school_type, district, education_level, phone, address, website, email, notes) 
-									OUTPUT inserted.* 
-									VALUES (@school_name, @short_name, @school_type, @district, @education_level, @phone, @address, @website, @email, @notes)
+									VALUES (@school_name, @short_name, @school_type, @district, @education_level, @phone, @address, @website, @email, @notes);
+									SELECT SCOPE_IDENTITY() as id;
 							`);
-					res.status(201).json(result.recordset[0]);
+					
+					const newId = result.recordset[0].id;
+					const newSchool = await pool.request()
+							.input('id', sql.Int, newId)
+							.query('SELECT * FROM schools WHERE id = @id');
+					res.status(201).json(newSchool.recordset[0]);
 			} catch (err) {
 					next(err);
 			}
@@ -2753,11 +2800,16 @@ app.post(
 							.input('is_active', sql.Bit, isActive)
 							.query(`
 									INSERT INTO teachers (name, email, phone, available_days, hourly_rate, experience, bio, is_active) 
-									OUTPUT inserted.*
-									VALUES (@name, @email, @phone, @available_days, @hourly_rate, @experience, @bio, @is_active)
+									VALUES (@name, @email, @phone, @available_days, @hourly_rate, @experience, @bio, @is_active);
+									SELECT SCOPE_IDENTITY() as id;
 							`);
 					
-					const teacher = result.recordset[0];
+					const newId = result.recordset[0].id;
+					const newTeacher = await pool.request()
+							.input('id', sql.Int, newId)
+							.query('SELECT * FROM teachers WHERE id = @id');
+					
+					const teacher = newTeacher.recordset[0];
 					// 解析 JSON 字串為陣列
 					teacher.availableDays = teacher.available_days ? JSON.parse(teacher.available_days) : [];
 					
@@ -3130,10 +3182,15 @@ app.post(
 							.input('is_preferred', sql.Bit, isPreferred)
 							.query(`
 									INSERT INTO teacher_courses (teacher_id, course_category, category_id, max_level, is_preferred) 
-									OUTPUT inserted.*
-									VALUES (@teacher_id, @course_category, @category_id, @max_level, @is_preferred)
+									VALUES (@teacher_id, @course_category, @category_id, @max_level, @is_preferred);
+									SELECT SCOPE_IDENTITY() as id;
 							`);
-					res.status(201).json(result.recordset[0]);
+					
+					const newId = result.recordset[0].id;
+					const newTeacherCourse = await pool.request()
+							.input('id', sql.Int, newId)
+							.query('SELECT * FROM teacher_courses WHERE id = @id');
+					res.status(201).json(newTeacherCourse.recordset[0]);
 			} catch (err) {
 					if (err.number === 2627) { // 唯一約束違反
 							return res.status(400).json({ error: '該師資已有此課程分類的記錄' });
@@ -3370,11 +3427,16 @@ app.post('/api/course-categories', async (req, res, next) => {
 					.input('is_active', sql.Bit, is_active !== false)
 					.query(`
 							INSERT INTO courses_categories (category_code, category_name, description, sort_order, is_active)
-							OUTPUT inserted.*
-							VALUES (@category_code, @category_name, @description, @sort_order, @is_active)
+							VALUES (@category_code, @category_name, @description, @sort_order, @is_active);
+							SELECT SCOPE_IDENTITY() as id;
 					`);
 			
-			res.status(201).json(result.recordset[0]);
+			const newId = result.recordset[0].id;
+			const newCategory = await pool.request()
+					.input('id', sql.Int, newId)
+					.query('SELECT * FROM courses_categories WHERE id = @id');
+			
+			res.status(201).json(newCategory.recordset[0]);
 	} catch (err) {
 			next(err);
 	}
@@ -3699,10 +3761,18 @@ app.post(
                 .input('department', sql.NVarChar, department || null)
                 .query(`
                     INSERT INTO users (username, email, password_hash, full_name, role, is_active, phone, department, password_changed_at) 
-                    OUTPUT inserted.id, inserted.username, inserted.email, inserted.full_name, inserted.role, inserted.is_active, inserted.phone, inserted.department, inserted.created_at, inserted.updated_at
-                    VALUES (@username, @email, @password_hash, @full_name, @role, @is_active, @phone, @department, GETDATE())
+                    VALUES (@username, @email, @password_hash, @full_name, @role, @is_active, @phone, @department, GETDATE());
+                    SELECT SCOPE_IDENTITY() as id;
                 `);
-            res.status(201).json(result.recordset[0]);
+            
+            const newId = result.recordset[0].id;
+            const newUser = await pool.request()
+                .input('id', sql.Int, newId)
+                .query(`
+                    SELECT id, username, email, full_name, role, is_active, phone, department, created_at, updated_at 
+                    FROM users WHERE id = @id
+                `);
+            res.status(201).json(newUser.recordset[0]);
         } catch (err) {
             if (err.number === 2627) { // 唯一約束違反
                 return res.status(400).json({ error: '用戶名稱或電子信箱已存在' });

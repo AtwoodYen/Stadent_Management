@@ -233,7 +233,31 @@ const StudentsPage: React.FC = () => {
 
   // 計算統計資料
   const totalStudents = students.length;
-  const totalPages = Math.ceil(totalStudents / studentsPerPage);
+  
+  // 計算根據過濾條件的學生人數
+  const getFilteredStudentsCount = () => {
+    return students.filter(student => {
+      // 檢查學校過濾
+      if (sortOptions.school && student.school !== sortOptions.school) return false;
+      // 檢查年級過濾
+      if (sortOptions.grade && student.grade !== sortOptions.grade) return false;
+      // 檢查程度過濾
+      if (sortOptions.level && student.level_type !== sortOptions.level) return false;
+      // 檢查性別過濾
+      if (sortOptions.gender && student.gender !== sortOptions.gender) return false;
+      // 檢查班別過濾
+      if (sortOptions.classType && getClassTypeName(student.class_type) !== sortOptions.classType) return false;
+      // 檢查排程類型過濾
+      if (sortOptions.classScheduleType && student.class_schedule_type !== sortOptions.classScheduleType) return false;
+      // 檢查就讀狀態過濾
+      if (sortOptions.enrollmentStatus && student.enrollment_status !== sortOptions.enrollmentStatus) return false;
+      
+      return true;
+    }).length;
+  };
+  
+  const filteredStudentsCount = getFilteredStudentsCount();
+  const totalPages = Math.ceil(filteredStudentsCount / studentsPerPage);
 
   // 按學校統計
   const schoolStats = schools.map(school => ({
@@ -307,7 +331,27 @@ const StudentsPage: React.FC = () => {
 
   // 獲取當前頁面的學生
   const getCurrentPageStudents = () => {
-    const sortedStudents = sortStudents(students);
+    // 先根據過濾條件篩選學生
+    const filteredStudents = students.filter(student => {
+      // 檢查學校過濾
+      if (sortOptions.school && student.school !== sortOptions.school) return false;
+      // 檢查年級過濾
+      if (sortOptions.grade && student.grade !== sortOptions.grade) return false;
+      // 檢查程度過濾
+      if (sortOptions.level && student.level_type !== sortOptions.level) return false;
+      // 檢查性別過濾
+      if (sortOptions.gender && student.gender !== sortOptions.gender) return false;
+      // 檢查班別過濾
+      if (sortOptions.classType && getClassTypeName(student.class_type) !== sortOptions.classType) return false;
+      // 檢查排程類型過濾
+      if (sortOptions.classScheduleType && student.class_schedule_type !== sortOptions.classScheduleType) return false;
+      // 檢查就讀狀態過濾
+      if (sortOptions.enrollmentStatus && student.enrollment_status !== sortOptions.enrollmentStatus) return false;
+      
+      return true;
+    });
+    
+    const sortedStudents = sortStudents(filteredStudents);
     const startIndex = (currentPage - 1) * studentsPerPage;
     const endIndex = startIndex + studentsPerPage;
     return sortedStudents.slice(startIndex, endIndex);
@@ -647,7 +691,7 @@ const StudentsPage: React.FC = () => {
                 </Stack>
 
                 {/* 每頁筆數 */}
-                <FormControl size="small" sx={{ position: 'absolute', left: '25%' }}>
+                <FormControl size="small" sx={{ position: 'absolute', left: '23%' }}>
                   <InputLabel>每頁</InputLabel>
                   <Select
                     value={studentsPerPage} 
@@ -665,7 +709,7 @@ const StudentsPage: React.FC = () => {
                 </FormControl>
 
                 {/* 篩選選單 */}
-                <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ marginLeft: '20px' }}>
                   {[
                     { label: '學校', field: 'school', options: schools },
                     { label: '年級', field: 'grade', options: allGrades },
@@ -716,6 +760,28 @@ const StudentsPage: React.FC = () => {
                     );
                   })}
                 </Stack>
+
+                {/* 學生人數顯示 */}
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  px: 1.4,
+                  py: 1,
+                  marginLeft: '45px'
+                }}>
+                  <Typography variant="body2" color="primary.main" fontWeight="bold">
+                    學生人數：
+                  </Typography>
+                  <Typography variant="h6" color="primary.main" fontWeight="bold">
+                    {filteredStudentsCount}
+                  </Typography>
+                  {filteredStudentsCount !== totalStudents && (
+                    <Typography variant="caption" color="text.secondary">
+                      (共 {totalStudents} 人)
+                    </Typography>
+                  )}
+                </Box>
 
                 {/* 新增學生按鈕 */}
                 <Button variant="contained" onClick={handleAddStudent}>

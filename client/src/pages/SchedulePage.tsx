@@ -155,7 +155,7 @@ export default function SchedulePage() {
   }, [isDragging]);
 
   // 處理滑鼠放開事件，排定課程
-  const handleMouseUp = (e: React.MouseEvent, date: Date, time: string) => {
+  const handleMouseUp = async (e: React.MouseEvent, date: Date, time: string) => {
     if (!draggedStudent) return;
     
     e.preventDefault();
@@ -165,26 +165,78 @@ export default function SchedulePage() {
     const target = e.target as HTMLElement;
     if (target.closest('.lesson-item')) return;
     
-    // 建立新課程
-    const newLesson: Omit<Lesson, 'id'> = {
-      studentId: draggedStudent.id,
-      date: format(date, 'yyyy-MM-dd'),
-      startTime: time,
-      endTime: format(addMinutes(parseTimeString(time), 60), 'HH:mm'),
-      subject: `${draggedStudent.name}的課程`,
-      notes: '',
-      status: 'scheduled' as const
+    // 取得星期幾（後端 API 要求的格式）
+    const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const dayOfWeek = dayNames[date.getDay()];
+    
+    // 檢查是否為有效的星期格式
+    if (!['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'].includes(dayOfWeek)) {
+      console.error('無效的星期格式:', dayOfWeek);
+      alert('無效的星期格式，請稍後再試');
+      setDraggedStudent(null);
+      setIsDragging(false);
+      return;
+    }
+    
+    // 計算結束時間（預設1小時）
+    const endTime = format(addMinutes(parseTimeString(time), 60), 'HH:mm');
+    
+    // 準備要傳送到後端的資料
+    const scheduleData = {
+      student_id: draggedStudent.id,
+      day_of_week: dayOfWeek,
+      start_time: time,
+      end_time: endTime,
+      course_name: `${draggedStudent.name}的課程`,
+      teacher_name: null
     };
     
-    // 更新課程列表
-    setLessons(prev => [...prev, { ...newLesson, id: Date.now() }]);
-    
-    // 顯示成功訊息
-    console.log('新增課程:', newLesson);
-    
-    // 重置拖曳狀態
-    setDraggedStudent(null);
-    setIsDragging(false);
+    try {
+      // 呼叫 API 儲存到資料庫
+      const response = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scheduleData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('新增課程失敗:', errorData);
+        alert(`新增課程失敗: ${errorData.errors?.[0]?.msg || '未知錯誤'}`);
+        return;
+      }
+      
+      // 從後端取得新增的課程資料
+      const newSchedule = await response.json();
+      
+      // 建立新課程物件
+      const newLesson: Lesson = {
+        id: newSchedule.id,
+        studentId: newSchedule.student_id,
+        date: new Date(newSchedule.lesson_date || date),
+        startTime: newSchedule.start_time,
+        endTime: newSchedule.end_time,
+        subject: newSchedule.course_name || `${draggedStudent.name}的課程`,
+        notes: '',
+        status: 'scheduled' as const
+      };
+      
+      // 重新載入課表資料以確保資料一致性
+      await fetchLessons();
+      
+      // 顯示成功訊息
+      console.log('新增課程成功:', newLesson);
+      
+    } catch (error) {
+      console.error('新增課程時發生錯誤:', error);
+      alert('新增課程時發生錯誤，請稍後再試');
+    } finally {
+      // 重置拖曳狀態
+      setDraggedStudent(null);
+      setIsDragging(false);
+    }
   };
 
   // 輔助函數：將時間字符串轉換為Date對象
@@ -655,34 +707,66 @@ export default function SchedulePage() {
 
   const fetchLessons = async () => {
     try {
-      const response = await fetch('/api/schedules/calendar');
+      console.log('開始載入課表資料...');
+      const response = await fetch('/api/schedules');
       if (response.ok) {
         const data = await response.json();
-        // 轉換資料格式以符合現有介面
-        const formattedLessons = data.map((schedule: any) => {
-          try {
-            const lessonDate = new Date(schedule.lesson_date);
-            if (isNaN(lessonDate.getTime())) {
-              console.warn('無效的課程日期:', schedule.lesson_date);
-              return null;
-            }
-            
-            return {
-              id: schedule.id,
-              studentId: schedule.student_id,
-              date: lessonDate,
-              startTime: schedule.start_time,
-              endTime: schedule.end_time,
-              subject: schedule.subject || '課程',
-              notes: '',
-              status: schedule.status || 'scheduled'
+        console.log('課表 API 回傳資料:', data);
+        
+        // 將週期性課表轉換為具體日期的課程
+        const formattedLessons: Lesson[] = [];
+        const currentDate = new Date();
+        
+        // 為接下來的4週生成具體課程
+        for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
+          const weekStart = addWeeks(currentDate, weekOffset);
+          
+          data.forEach((schedule: any) => {
+            const dayMap: { [key: string]: number } = {
+              '星期日': 0, '星期一': 1, '星期二': 2, '星期三': 3,
+              '星期四': 4, '星期五': 5, '星期六': 6
             };
-          } catch (error) {
-            console.error('處理課程資料時出錯:', error, schedule);
-            return null;
-          }
-        }).filter(Boolean); // 過濾掉 null 值
+            
+            const dayOfWeek = dayMap[schedule.day_of_week];
+            if (dayOfWeek !== undefined) {
+              const lessonDate = addDays(weekStart, dayOfWeek);
+              
+              // 處理時間格式
+              const extractTime = (timeStr: string): string => {
+                if (!timeStr) return '09:00';
+                try {
+                  // 格式: "1970-01-01T15:15:00.000Z" -> "15:15"
+                  const timePart = timeStr.split('T')[1];
+                  if (timePart) {
+                    return timePart.slice(0, 5); // 取 HH:mm 部分
+                  }
+                  return '09:00';
+                } catch {
+                  return '09:00';
+                }
+              };
+              
+              const startTime = extractTime(schedule.start_time);
+              const endTime = extractTime(schedule.end_time);
+              
+              formattedLessons.push({
+                id: schedule.id + weekOffset * 1000, // 為每週的課程生成唯一ID
+                studentId: schedule.student_id,
+                date: lessonDate,
+                startTime,
+                endTime,
+                subject: schedule.course_name || schedule.subject || '課程',
+                notes: '',
+                status: 'scheduled' as const
+              });
+            }
+          });
+        }
+        
+        console.log('轉換後的課程資料:', formattedLessons);
         setLessons(formattedLessons);
+      } else {
+        console.error('課表 API 回應錯誤:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('載入課程資料失敗:', error);

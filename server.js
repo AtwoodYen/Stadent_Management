@@ -2720,6 +2720,57 @@ app.get('/api/teachers', async (req, res, next) => {
 	}
 });
 
+// [GET] 取得師資統計資訊
+app.get('/api/teachers/stats', async (req, res, next) => {
+	try {
+			const result = await pool.request().query(`
+					SELECT 
+							COUNT(*) as total_teachers,
+							SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_teachers,
+							SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_teachers,
+							AVG(CAST(hourly_rate AS FLOAT)) as avg_hourly_rate,
+							AVG(CAST(experience AS FLOAT)) as avg_experience,
+							MIN(hourly_rate) as min_hourly_rate,
+							MAX(hourly_rate) as max_hourly_rate
+					FROM teachers
+					WHERE is_deleted = 0
+			`);
+			res.json(result.recordset[0]);
+	} catch (err) {
+			next(err);
+	}
+});
+
+// [GET] 取得可授課日列表
+app.get('/api/teachers/available-days', async (req, res, next) => {
+	try {
+			const availableDays = [
+					'週一', '週二', '週三', '週四', '週五', '週六', '週日'
+			];
+			res.json(availableDays);
+	} catch (err) {
+			next(err);
+	}
+});
+
+// [GET] 取得課程分類列表（用於師資篩選）
+app.get('/api/teachers/course-categories', async (req, res, next) => {
+	try {
+			// 從 courses_categories 表提取所有啟用的課程分類
+			const result = await pool.request().query(`
+					SELECT cc.category_name
+					FROM courses_categories cc
+					WHERE cc.is_active = 1
+					ORDER BY cc.sort_order, cc.category_name
+			`);
+			
+			const categories = result.recordset.map(row => row.category_name);
+			res.json(categories);
+	} catch (err) {
+			next(err);
+	}
+});
+
 // [READ] 取得單一師資
 app.get('/api/teachers/:id', async (req, res, next) => {
 	try {
@@ -3001,38 +3052,7 @@ app.patch('/api/teachers/reorder', async (req, res, next) => {
 	}
 });
 
-// [GET] 取得師資統計資訊
-app.get('/api/teachers/stats', async (req, res, next) => {
-	try {
-			const result = await pool.request().query(`
-					SELECT 
-							COUNT(*) as total_teachers,
-							SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_teachers,
-							SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_teachers,
-							AVG(CAST(hourly_rate AS FLOAT)) as avg_hourly_rate,
-							AVG(CAST(experience AS FLOAT)) as avg_experience,
-							MIN(hourly_rate) as min_hourly_rate,
-							MAX(hourly_rate) as max_hourly_rate
-					FROM teachers
-					WHERE is_deleted = 0
-			`);
-			res.json(result.recordset[0]);
-	} catch (err) {
-			next(err);
-	}
-});
 
-// [GET] 取得可授課日列表
-app.get('/api/teachers/available-days', async (req, res, next) => {
-	try {
-			const availableDays = [
-					'週一', '週二', '週三', '週四', '週五', '週六', '週日'
-			];
-			res.json(availableDays);
-	} catch (err) {
-			next(err);
-	}
-});
 
 
 // ==========================================================================================================
@@ -3319,28 +3339,6 @@ app.post('/api/teachers/:teacherId/courses/reorder', async (req, res, next) => {
 			  .execute('sp_reorder_teacher_courses');
 					
 			res.json({ message: '課程能力重新排序成功' });
-	} catch (err) {
-			next(err);
-	}
-});
-
-// ============================================
-// 師資課程能力管理 API 端點
-// ============================================
-
-// [GET] 取得課程分類列表（用於師資篩選）
-app.get('/api/teachers/course-categories', async (req, res, next) => {
-	try {
-			// 從 courses_categories 表提取所有啟用的課程分類
-			const result = await pool.request().query(`
-					SELECT cc.category_name
-					FROM courses_categories cc
-					WHERE cc.is_active = 1
-					ORDER BY cc.sort_order, cc.category_name
-			`);
-			
-			const categories = result.recordset.map(row => row.category_name);
-			res.json(categories);
 	} catch (err) {
 			next(err);
 	}

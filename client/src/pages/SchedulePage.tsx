@@ -193,6 +193,15 @@ export default function SchedulePage() {
     const endHours = hours + 1;
     const endTime = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     
+    console.log('=== 調試資訊 ===');
+    console.log('原始時間參數:', time);
+    console.log('時間類型:', typeof time);
+    console.log('時間長度:', time.length);
+    console.log('時間字元:', Array.from(time).map(c => c.charCodeAt(0)));
+    console.log('計算的結束時間:', endTime);
+    console.log('結束時間類型:', typeof endTime);
+    console.log('結束時間長度:', endTime.length);
+    
     console.log('準備傳送的資料:', {
       student_id: draggedStudent.id,
       day_of_week: dayOfWeek,
@@ -224,7 +233,9 @@ export default function SchedulePage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('新增課程失敗:', errorData);
-        alert(`新增課程失敗: ${errorData.errors?.[0]?.msg || '未知錯誤'}`);
+        console.error('HTTP 狀態碼:', response.status);
+        console.error('回應標頭:', Object.fromEntries(response.headers.entries()));
+        alert(`新增課程失敗: ${errorData.errors?.[0]?.msg || errorData.error || '未知錯誤'}`);
         return;
       }
       
@@ -323,6 +334,12 @@ export default function SchedulePage() {
     '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
     '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
   ];
+  
+  // 調試 timeSlots
+  console.log('timeSlots 定義:', timeSlots);
+  console.log('timeSlots 第一個元素:', timeSlots[0]);
+  console.log('timeSlots 第一個元素字元:', Array.from(timeSlots[0]).map(c => c.charCodeAt(0)));
+  console.log('timeSlots 第一個元素正則測試:', /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeSlots[0]));
 
   // 模擬載入學生資料
   useEffect(() => {

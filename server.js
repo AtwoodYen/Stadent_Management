@@ -1908,6 +1908,11 @@ app.post(
         try {
             const { student_id, day_of_week, start_time, end_time, course_name, teacher_name } = req.body;
             
+            // 加入詳細的調試日誌
+            logger.info(`POST /api/schedules - 接收到的資料: ${JSON.stringify(req.body)}`);
+            logger.info(`start_time 類型: ${typeof start_time}, 值: ${start_time}`);
+            logger.info(`end_time 類型: ${typeof end_time}, 值: ${end_time}`);
+            
             const result = await pool.request()
                 .input('student_id', sql.Int, student_id)
                 .input('day_of_week', sql.NVarChar, day_of_week)
@@ -1931,6 +1936,8 @@ app.post(
                 .query('SELECT * FROM student_schedules WHERE id = @id');
             res.status(201).json(newSchedule.recordset[0]);
         } catch (err) {
+            logger.error(`POST /api/schedules 錯誤: ${err.message}`);
+            logger.error(`錯誤堆疊: ${err.stack}`);
             next(err);
         }
     }

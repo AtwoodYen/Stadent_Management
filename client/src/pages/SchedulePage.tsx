@@ -309,6 +309,20 @@ export default function SchedulePage() {
     console.log('activeStudents 長度:', activeStudents.length);
   }, [activeTab, activeStudents]);
 
+  // 定義時間段（移到組件頂部，確保在渲染時可用）
+  const timeSlots = [
+    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+    '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+  ];
+  
+  // 調試 timeSlots
+  console.log('timeSlots 定義:', timeSlots);
+  console.log('timeSlots 第一個元素:', timeSlots[0]);
+  console.log('timeSlots 第一個元素字元:', Array.from(timeSlots[0]).map(c => c.charCodeAt(0)));
+  console.log('timeSlots 第一個元素正則測試:', /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeSlots[0]));
+
   // 點擊外部關閉下拉選單並清除選擇（僅當下拉選單開啟時）
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -327,19 +341,6 @@ export default function SchedulePage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isStudentSelectOpen]); // 添加依賴，當 isStudentSelectOpen 變化時重新綁定事件
-
-  const timeSlots = [
-    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-    '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
-  ];
-  
-  // 調試 timeSlots
-  console.log('timeSlots 定義:', timeSlots);
-  console.log('timeSlots 第一個元素:', timeSlots[0]);
-  console.log('timeSlots 第一個元素字元:', Array.from(timeSlots[0]).map(c => c.charCodeAt(0)));
-  console.log('timeSlots 第一個元素正則測試:', /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeSlots[0]));
 
   // 模擬載入學生資料
   useEffect(() => {

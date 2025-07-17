@@ -9,7 +9,7 @@ PRINT '=== 開始新增介紹人欄位 ===';
 -- 步驟1: 新增 referrer 欄位
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('students') AND name = 'referrer')
 BEGIN
-    ALTER TABLE students ADD referrer NVARCHAR(100) NULL;
+    ALTER TABLE students ADD referrer NVARCHAR(50) NULL;
     PRINT '✓ 已新增 referrer 欄位';
 END
 ELSE

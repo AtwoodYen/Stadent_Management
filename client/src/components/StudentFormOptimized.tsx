@@ -582,11 +582,8 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
               </Select>
             </FormControl>
           </Box>
-        </Box>
-
-        {/* 基本資料：第三行 - 介紹人 */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, width: 'fit-content' }}>
-          <Box sx={{ width: '200px' }}>
+          
+          <Box sx={{ width: '140px' }}>
             <FormControl fullWidth size="small">
               <InputLabel
                 sx={{

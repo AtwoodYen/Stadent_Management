@@ -9,7 +9,7 @@ IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('students')
 BEGIN
     -- 新增 referrer 欄位
     ALTER TABLE students 
-    ADD referrer NVARCHAR(100) NULL;
+    ADD referrer NVARCHAR(50) NULL;
     
     PRINT '✓ 已新增 referrer 欄位';
     

@@ -16,7 +16,7 @@ BEGIN
     PRINT '正在新增 referrer 欄位...';
     
     -- 新增 referrer 欄位
-    ALTER TABLE students ADD referrer NVARCHAR(100) NULL;
+    ALTER TABLE students ADD referrer NVARCHAR(50) NULL;
     
     PRINT '✓ 已新增 referrer 欄位';
 END

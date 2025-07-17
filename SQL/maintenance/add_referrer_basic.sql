@@ -7,7 +7,7 @@
 PRINT '=== 新增介紹人欄位 ===';
 
 -- 新增 referrer 欄位
-ALTER TABLE students ADD referrer NVARCHAR(100) NULL;
+ALTER TABLE students ADD referrer NVARCHAR(50) NULL;
 
 PRINT '✓ referrer 欄位已新增';
 

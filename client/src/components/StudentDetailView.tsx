@@ -151,8 +151,8 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
           </FormRow>
         </Box>
 
-        {/* 第二行：學校、年級、班級排程類型 */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, mb: 1 }}>
+        {/* 第二行：學校、年級、班級排程類型、介紹人 */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 3, mb: 1 }}>
           <FormRow label="學校" labelWidth={80}>
             <Chip 
               label={student.school || '未設定'} 
@@ -182,6 +182,10 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                 borderColor: student.class_schedule_type === '常態班' ? '#1976d2' : student.class_schedule_type === '短期班' ? '#f57c00' : 'transparent'
               }}
             />
+          </FormRow>
+          
+          <FormRow label="介紹人" labelWidth={80}>
+            <DisplayText value={student.referrer || ''} />
           </FormRow>
         </Box>
 
@@ -254,13 +258,6 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                             'transparent'
               }}
             />
-          </FormRow>
-        </Box>
-
-        {/* 第四行：介紹人 */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 3 }}>
-          <FormRow label="介紹人" labelWidth={80}>
-            <DisplayText value={student.referrer || ''} />
           </FormRow>
         </Box>
       </Box>

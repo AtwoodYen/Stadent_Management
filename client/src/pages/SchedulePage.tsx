@@ -339,7 +339,9 @@ export default function SchedulePage() {
       };
       
       // 重新載入課表資料以確保資料一致性
+      console.log('=== 開始重新載入課表資料 ===');
       await fetchLessons();
+      console.log('=== 課表資料重新載入完成 ===');
       
       // 顯示成功訊息
       console.log('新增課程成功:', newLesson);
@@ -913,11 +915,31 @@ export default function SchedulePage() {
   const fetchLessons = async () => {
     try {
       console.log('=== 開始載入課程資料 ===');
+      console.log('當前時間:', new Date().toISOString());
+      
       const response = await fetch('/api/schedules');
       if (response.ok) {
         const data = await response.json();
         console.log('從 API 獲取到的原始課程資料:', data);
         console.log('原始資料筆數:', data.length);
+        
+        // 檢查是否有重複的學生課程
+        const studentCourseCounts = data.reduce((acc: any, schedule: any) => {
+          const studentId = schedule.student_id;
+          acc[studentId] = (acc[studentId] || 0) + 1;
+          return acc;
+        }, {});
+        
+        console.log('每個學生的課程數量:', studentCourseCounts);
+        
+        // 檢查重複的學生
+        const duplicateStudents = Object.entries(studentCourseCounts)
+          .filter(([studentId, count]) => (count as number) > 1)
+          .map(([studentId, count]) => ({ studentId, count }));
+        
+        if (duplicateStudents.length > 0) {
+          console.warn('發現重複的學生課程:', duplicateStudents);
+        }
         
         // 檢查學生編號19的資料
         const student19Data = data.filter((schedule: any) => schedule.student_id === 19);
@@ -1011,6 +1033,16 @@ export default function SchedulePage() {
         
         setLessons(formattedLessons);
         console.log('=== 課程資料載入完成 ===');
+        console.log('最終課程狀態:', formattedLessons);
+        
+        // 再次檢查轉換後的課程是否有重複
+        const finalStudentCourseCounts = formattedLessons.reduce((acc: any, lesson: any) => {
+          const studentId = lesson.studentId;
+          acc[studentId] = (acc[studentId] || 0) + 1;
+          return acc;
+        }, {});
+        
+        console.log('轉換後每個學生的課程數量:', finalStudentCourseCounts);
       } else {
         console.error('課表 API 回應錯誤:', response.status, response.statusText);
       }

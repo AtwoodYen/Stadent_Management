@@ -1969,27 +1969,58 @@ app.post(
             logger.info(`start_time 類型: ${typeof start_time}, 值: ${start_time}`);
             logger.info(`end_time 類型: ${typeof end_time}, 值: ${end_time}`);
             
-            const result = await pool.request()
-                .input('student_id', sql.Int, student_id)
-                .input('day_of_week', sql.NVarChar, day_of_week)
-                .input('start_time', sql.VarChar, start_time)
-                .input('end_time', sql.VarChar, end_time || null)
-                .input('subject', sql.NVarChar, course_name || null)
-                .query(`
-                    INSERT INTO student_schedules (
-                        student_id, day_of_week, start_time, end_time, subject
-                    ) 
-                    VALUES (
-                        @student_id, @day_of_week, @start_time, @end_time, @subject
-                    );
-                    SELECT SCOPE_IDENTITY() as id;
-                `);
+            // 使用事務來確保資料一致性
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin();
             
-            const newId = result.recordset[0].id;
-            const newSchedule = await pool.request()
-                .input('id', sql.Int, newId)
-                .query('SELECT * FROM student_schedules WHERE id = @id');
-            res.status(201).json(newSchedule.recordset[0]);
+            try {
+                // 先設定 SET 選項
+                await transaction.request().query('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON;');
+                
+                // 先檢查並刪除該學生在舊時段的課程（軟刪除）
+                logger.info(`檢查學生 ${student_id} 在舊時段的課程`);
+                const deleteResult = await transaction.request()
+                    .input('student_id', sql.Int, student_id)
+                    .query(`
+                        UPDATE student_schedules 
+                        SET is_active = 0, updated_at = GETDATE() 
+                        WHERE student_id = @student_id AND is_active = 1
+                    `);
+                
+                logger.info(`已軟刪除 ${deleteResult.rowsAffected[0]} 筆舊課程`);
+                
+                // 新增新課程
+                const result = await transaction.request()
+                    .input('student_id', sql.Int, student_id)
+                    .input('day_of_week', sql.NVarChar, day_of_week)
+                    .input('start_time', sql.VarChar, start_time)
+                    .input('end_time', sql.VarChar, end_time || null)
+                    .input('subject', sql.NVarChar, course_name || null)
+                    .query(`
+                        INSERT INTO student_schedules (
+                            student_id, day_of_week, start_time, end_time, subject
+                        ) 
+                        VALUES (
+                            @student_id, @day_of_week, @start_time, @end_time, @subject
+                        );
+                        SELECT SCOPE_IDENTITY() as id;
+                    `);
+                
+                const newId = result.recordset[0].id;
+                
+                // 提交事務
+                await transaction.commit();
+                
+                // 取得新增的課程資料
+                const newSchedule = await pool.request()
+                    .input('id', sql.Int, newId)
+                    .query('SELECT * FROM student_schedules WHERE id = @id');
+                res.status(201).json(newSchedule.recordset[0]);
+                
+            } catch (err) {
+                await transaction.rollback();
+                throw err;
+            }
         } catch (err) {
             logger.error(`POST /api/schedules 錯誤: ${err.message}`);
             logger.error(`錯誤堆疊: ${err.stack}`);

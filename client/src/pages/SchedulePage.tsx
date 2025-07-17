@@ -57,6 +57,7 @@ import {
   Today as TodayIcon,
   DateRange as DateRangeIcon
 } from '@mui/icons-material';
+import { getLevelColors } from '../utils/levelColors';
 
 /* ---------- 型別定義 ---------- */
 type ViewType = 'month' | 'week' | 'day';
@@ -1212,7 +1213,24 @@ export default function SchedulePage() {
                   }}
                 >
                   <Box sx={{ fontWeight: 'bold', flex: 1, fontSize: '0.7rem' }}>
-                    {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
+                    {studentInfo.name}：{studentInfo.classType} - 
+                    <Box
+                      component="span"
+                      sx={{
+                        ...getLevelColors(studentInfo.levelType),
+                        px: 0.5,
+                        py: 0.25,
+                        borderRadius: 0.5,
+                        fontSize: '0.6rem',
+                        fontWeight: 'bold',
+                        display: 'inline-block',
+                        ml: 0.5,
+                        minWidth: '24px',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {studentInfo.levelType}
+                    </Box>
                   </Box>
                   <Box sx={{ 
                     fontSize: '0.5rem', 
@@ -1314,6 +1332,25 @@ export default function SchedulePage() {
                 animation: 'pulse 1s infinite'
               }} />
               正在拖曳: {draggedStudent.name}
+              {draggedStudent.originalData?.level_type && (
+                <Box
+                  component="span"
+                  sx={{
+                    ...getLevelColors(draggedStudent.originalData.level_type),
+                    px: 0.5,
+                    py: 0.25,
+                    borderRadius: 0.5,
+                    fontSize: '0.6rem',
+                    fontWeight: 'bold',
+                    display: 'inline-block',
+                    ml: 0.5,
+                    minWidth: '24px',
+                    textAlign: 'center'
+                  }}
+                >
+                  {draggedStudent.originalData.level_type}
+                </Box>
+              )}
             </div>
           </div>
         )}
@@ -1454,7 +1491,24 @@ export default function SchedulePage() {
                           }}
                         >
                           <Box sx={{ fontWeight: 'bold', flex: 1 }}>
-                            {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
+                            {studentInfo.name}：{studentInfo.classType} - 
+                            <Box
+                              component="span"
+                              sx={{
+                                ...getLevelColors(studentInfo.levelType),
+                                px: 0.5,
+                                py: 0.25,
+                                borderRadius: 0.5,
+                                fontSize: '0.6rem',
+                                fontWeight: 'bold',
+                                display: 'inline-block',
+                                ml: 0.5,
+                                minWidth: '24px',
+                                textAlign: 'center'
+                              }}
+                            >
+                              {studentInfo.levelType}
+                            </Box>
                           </Box>
                           <Box sx={{ 
                             fontSize: '0.6rem', 
@@ -1556,7 +1610,24 @@ export default function SchedulePage() {
                   }}
                 >
                   <Box sx={{ fontWeight: 'bold' }}>
-                    {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
+                    {studentInfo.name}：{studentInfo.classType} - 
+                    <Box
+                      component="span"
+                      sx={{
+                        ...getLevelColors(studentInfo.levelType),
+                        px: 0.5,
+                        py: 0.25,
+                        borderRadius: 0.5,
+                        fontSize: '0.6rem',
+                        fontWeight: 'bold',
+                        display: 'inline-block',
+                        ml: 0.5,
+                        minWidth: '24px',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {studentInfo.levelType}
+                    </Box>
                   </Box>
                   <Box sx={{ 
                     fontSize: '0.75rem', 

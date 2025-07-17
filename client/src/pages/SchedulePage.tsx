@@ -1188,13 +1188,13 @@ export default function SchedulePage() {
                   }}
                   sx={{
                     mt: 0.5,
-                    p: 0.75,
+                    p: 0.5,
                     bgcolor: 'primary.light',
                     borderRadius: 1,
-                    fontSize: '0.75rem',
+                    fontSize: '0.7rem',
                     color: 'primary.contrastText',
                     cursor: 'grab',
-                    minHeight: '35px',
+                    minHeight: '28px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -1221,7 +1221,7 @@ export default function SchedulePage() {
                         px: 0.5,
                         py: 0.25,
                         borderRadius: 0.5,
-                        fontSize: '0.6rem',
+                        fontSize: '0.55rem',
                         fontWeight: 'bold',
                         display: 'inline-block',
                         ml: 0.5,
@@ -1340,7 +1340,7 @@ export default function SchedulePage() {
                     px: 0.5,
                     py: 0.25,
                     borderRadius: 0.5,
-                    fontSize: '0.6rem',
+                    fontSize: '0.55rem',
                     fontWeight: 'bold',
                     display: 'inline-block',
                     ml: 0.5,
@@ -1466,13 +1466,13 @@ export default function SchedulePage() {
                           }}
                           sx={{
                             mb: 0.5,
-                            p: 1,
+                            p: 0.75,
                             bgcolor: 'primary.light',
                             borderRadius: 1,
-                            fontSize: '0.75rem',
+                            fontSize: '0.7rem',
                             color: 'primary.contrastText',
                             cursor: 'grab',
-                            minHeight: '40px',
+                            minHeight: '32px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -1499,7 +1499,7 @@ export default function SchedulePage() {
                                 px: 0.5,
                                 py: 0.25,
                                 borderRadius: 0.5,
-                                fontSize: '0.6rem',
+                                fontSize: '0.55rem',
                                 fontWeight: 'bold',
                                 display: 'inline-block',
                                 ml: 0.5,
@@ -1556,7 +1556,7 @@ export default function SchedulePage() {
         <Fragment key={time}>
           <Box sx={{ p: 1, textAlign: 'center', bgcolor: 'grey.100' }}>{time}</Box>
           <Box sx={{
-            p: 1,
+            p: 0.75,
             minHeight: 112,
             bgcolor: 'background.paper',
             overflow: 'hidden'
@@ -1584,13 +1584,13 @@ export default function SchedulePage() {
                   }}
                   sx={{
                     mb: 0.5,
-                    p: 1,
+                    p: 0.75,
                     bgcolor: 'primary.light',
                     borderRadius: 1,
-                    fontSize: '0.75rem',
+                    fontSize: '0.7rem',
                     color: 'primary.main',
                     cursor: 'grab',
-                    minHeight: '50px',
+                    minHeight: '40px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -1618,7 +1618,7 @@ export default function SchedulePage() {
                         px: 0.5,
                         py: 0.25,
                         borderRadius: 0.5,
-                        fontSize: '0.6rem',
+                        fontSize: '0.55rem',
                         fontWeight: 'bold',
                         display: 'inline-block',
                         ml: 0.5,
@@ -1630,7 +1630,7 @@ export default function SchedulePage() {
                     </Box>
                   </Box>
                   <Box sx={{ 
-                    fontSize: '0.75rem', 
+                    fontSize: '0.7rem', 
                     mt: 0.25,
                     display: 'flex',
                     alignItems: 'center',

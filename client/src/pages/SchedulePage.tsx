@@ -1123,19 +1123,32 @@ export default function SchedulePage() {
             {getLessonsForDate(d).map(l => {
               const studentInfo = getStudentInfo(l.studentId);
               return (
-                <Box key={l.id} sx={{
-                  mt: 0.5,
-                  p: 0.5,
-                  bgcolor: 'primary.light',
-                  borderRadius: 0.5,
-                  fontSize: '0.75rem',
-                  color: 'primary.contrastText',
-                  '&:hover': {
-                    transform: 'scale(1.02)',
-                    transition: 'transform 0.2s',
-                    boxShadow: 1
-                  }
-                }}>
+                <Box 
+                  key={l.id} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // 找到對應的學生並開始拖曳
+                    const student = activeStudents.find(s => s.id === l.studentId);
+                    if (student) {
+                      handleStudentClick(student);
+                    }
+                  }}
+                  sx={{
+                    mt: 0.5,
+                    p: 0.5,
+                    bgcolor: 'primary.light',
+                    borderRadius: 0.5,
+                    fontSize: '0.75rem',
+                    color: 'primary.contrastText',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      transform: 'scale(1.02)',
+                      transition: 'transform 0.2s',
+                      boxShadow: 1,
+                      bgcolor: 'primary.main'
+                    }
+                  }}
+                >
                   <Box sx={{ fontWeight: 'bold' }}>
                     {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
                   </Box>
@@ -1303,6 +1316,14 @@ export default function SchedulePage() {
                       return (
                         <Box 
                           key={lesson.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // 找到對應的學生並開始拖曳
+                            const student = activeStudents.find(s => s.id === lesson.studentId);
+                            if (student) {
+                              handleStudentClick(student);
+                            }
+                          }}
                           sx={{
                             mb: 0.5,
                             p: 0.5,
@@ -1310,10 +1331,12 @@ export default function SchedulePage() {
                             borderRadius: 0.5,
                             fontSize: '0.75rem',
                             color: 'primary.contrastText',
+                            cursor: 'pointer',
                             '&:hover': {
                               transform: 'scale(1.02)',
                               transition: 'transform 0.2s',
-                              boxShadow: 1
+                              boxShadow: 1,
+                              bgcolor: 'primary.main'
                             }
                           }}
                         >
@@ -1354,14 +1377,33 @@ export default function SchedulePage() {
             {getLessonsForTimeSlot(currentDate, time).map(l => {
               const studentInfo = getStudentInfo(l.studentId);
               return (
-                <Box key={l.id} sx={{
-                  mb: 0.5,
-                  p: 0.5,
-                  bgcolor: 'primary.light',
-                  borderRadius: 0.5,
-                  fontSize: '0.75rem',
-                  color: 'primary.main'
-                }}>
+                <Box 
+                  key={l.id} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // 找到對應的學生並開始拖曳
+                    const student = activeStudents.find(s => s.id === l.studentId);
+                    if (student) {
+                      handleStudentClick(student);
+                    }
+                  }}
+                  sx={{
+                    mb: 0.5,
+                    p: 0.5,
+                    bgcolor: 'primary.light',
+                    borderRadius: 0.5,
+                    fontSize: '0.75rem',
+                    color: 'primary.main',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      transform: 'scale(1.02)',
+                      transition: 'transform 0.2s',
+                      boxShadow: 1,
+                      bgcolor: 'primary.main',
+                      color: 'primary.contrastText'
+                    }
+                  }}
+                >
                   <Box sx={{ fontWeight: 'bold' }}>
                     {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
                   </Box>

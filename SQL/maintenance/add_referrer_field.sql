@@ -17,7 +17,7 @@ BEGIN
     CREATE INDEX IX_students_referrer ON students(referrer);
     PRINT '✓ 已建立 referrer 索引';
     
-    -- 顯示更新結果
+    -- 顯示更新結果 (在欄位新增後才查詢)
     SELECT 
         'students' as table_name,
         COUNT(*) as total_students,
@@ -30,6 +30,15 @@ END
 ELSE
 BEGIN
     PRINT '⚠ referrer 欄位已存在';
+    
+    -- 如果欄位已存在，顯示現有資料統計
+    SELECT 
+        'students' as table_name,
+        COUNT(*) as total_students,
+        COUNT(referrer) as students_with_referrer,
+        COUNT(*) - COUNT(referrer) as students_without_referrer
+    FROM students 
+    WHERE is_active = 1;
 END
 
 -- 檢查索引是否存在

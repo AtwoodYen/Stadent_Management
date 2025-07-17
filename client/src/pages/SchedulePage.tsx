@@ -654,6 +654,12 @@ export default function SchedulePage() {
     };
   };
 
+  // 判斷學生是否為暫停狀態
+  const isStudentPaused = (student: Student): boolean => {
+    const status = student.originalData?.enrollment_status || student.originalData?.status;
+    return status === 'inactive' || status === '暫停中' || status === 'Inactive';
+  };
+
   // 獲取指定日期的課程
   const getLessonsForDate = (date: Date): Lesson[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -872,12 +878,13 @@ export default function SchedulePage() {
         }));
         setStudents(formattedStudents);
         
-        // 篩選在學中的學生（排除畢業和暫停的學生）
+        // 篩選在學中的學生（包含進行中和暫停中的學生，排除已畢業的學生）
         const activeStudentsList = data
           .filter((student: any) => {
             const status = student.enrollment_status || student.status;
             console.log(`學生 ${student.chinese_name || student.name} 狀態: ${status}`);
-            return status === 'active' || status === '進行中' || status === 'Active';
+            return status === 'active' || status === '進行中' || status === 'Active' || 
+                   status === 'inactive' || status === '暫停中' || status === 'Inactive';
           })
           .map((student: any) => {
             // 解析年級和學校階段
@@ -1791,10 +1798,14 @@ export default function SchedulePage() {
                                 cursor: 'pointer',
                                 backgroundColor: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.main'
-                                  : 'action.selected',
+                                  : isStudentPaused(student)
+                                    ? 'grey.400'
+                                    : 'action.selected',
                                 color: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.contrastText'
-                                  : 'text.primary',
+                                  : isStudentPaused(student)
+                                    ? 'grey.700'
+                                    : 'text.primary',
                                 width: '85%',  // 減少寬度10%
                                 maxWidth: '100px',
                                 height: '24px',
@@ -1847,10 +1858,14 @@ export default function SchedulePage() {
                                 cursor: 'pointer',
                                 backgroundColor: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.main'
-                                  : 'action.selected',
+                                  : isStudentPaused(student)
+                                    ? 'grey.400'
+                                    : 'action.selected',
                                 color: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.contrastText'
-                                  : 'text.primary',
+                                  : isStudentPaused(student)
+                                    ? 'grey.700'
+                                    : 'text.primary',
                                 width: '85%',  // 減少寬度10%
                                 maxWidth: '100px',
                                 height: '24px',
@@ -1903,10 +1918,14 @@ export default function SchedulePage() {
                                 cursor: 'pointer',
                                 backgroundColor: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.main'
-                                  : 'action.selected',
+                                  : isStudentPaused(student)
+                                    ? 'grey.400'
+                                    : 'action.selected',
                                 color: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.contrastText'
-                                  : 'text.primary',
+                                  : isStudentPaused(student)
+                                    ? 'grey.700'
+                                    : 'text.primary',
                                 width: '85%',  // 減少寬度10%
                                 maxWidth: '100px',
                                 height: '24px',
@@ -1959,10 +1978,14 @@ export default function SchedulePage() {
                                 cursor: 'pointer',
                                 backgroundColor: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.main'
-                                  : 'action.selected',
+                                  : isStudentPaused(student)
+                                    ? 'grey.400'
+                                    : 'action.selected',
                                 color: selectedStudents.some(s => s.id === student.id)
                                   ? 'primary.contrastText'
-                                  : 'text.primary',
+                                  : isStudentPaused(student)
+                                    ? 'grey.700'
+                                    : 'text.primary',
                                 width: '85%',  // 減少寬度10%
                                 maxWidth: '100px',
                                 height: '24px',

@@ -539,6 +539,12 @@ export default function SchedulePage() {
     
     const filteredLessons = lessons.filter(lesson => {
       try {
+        // 如果正在拖曳該學生，則不顯示該學生的課程
+        if (isDragging && draggedStudent && lesson.studentId === draggedStudent.id) {
+          console.log(`學生${lesson.studentId}正在被拖曳，隱藏其課程`);
+          return false;
+        }
+        
         // 對於定期班，我們需要檢查：
         // 1. 課程的星期幾是否匹配當前查詢的星期幾
         // 2. 課程的開始時間是否匹配當前查詢的時間
@@ -660,6 +666,12 @@ export default function SchedulePage() {
     
     const filteredLessons = lessons.filter(lesson => {
       try {
+        // 如果正在拖曳該學生，則不顯示該學生的課程
+        if (isDragging && draggedStudent && lesson.studentId === draggedStudent.id) {
+          console.log(`學生${lesson.studentId}正在被拖曳，隱藏其課程`);
+          return false;
+        }
+        
         // 檢查是否有定期班資訊
         if (lesson.dayOfWeek) {
           // 使用定期班邏輯：檢查星期幾是否匹配
@@ -1223,18 +1235,22 @@ export default function SchedulePage() {
     // 拖曳預覽樣式
     const dragPreviewStyle: React.CSSProperties = {
       position: 'fixed',
-      left: `${dragPosition.x + 10}px`,
-      top: `${dragPosition.y + 10}px`,
+      left: `${dragPosition.x}px`,
+      top: `${dragPosition.y}px`,
       zIndex: 1500,
       pointerEvents: 'none',
-      backgroundColor: 'rgba(25, 118, 210, 0.9)',
+      backgroundColor: 'rgba(25, 118, 210, 0.95)',
       color: 'white',
-      padding: '8px 16px',
-      borderRadius: '4px',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+      padding: '12px 20px',
+      borderRadius: '8px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
       whiteSpace: 'nowrap',
       transform: 'translate(-50%, -50%)',
-      display: isDragging ? 'block' : 'none'
+      display: isDragging ? 'block' : 'none',
+      fontSize: '14px',
+      fontWeight: 'bold',
+      border: '2px solid rgba(255, 255, 255, 0.3)',
+      backdropFilter: 'blur(4px)'
     };
 
     return (
@@ -1251,7 +1267,16 @@ export default function SchedulePage() {
         {/* 拖曳預覽 */}
         {draggedStudent && (
           <div style={dragPreviewStyle}>
-            正在排課: {draggedStudent.name}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ 
+                width: '8px', 
+                height: '8px', 
+                backgroundColor: 'white', 
+                borderRadius: '50%',
+                animation: 'pulse 1s infinite'
+              }} />
+              正在拖曳: {draggedStudent.name}
+            </div>
           </div>
         )}
 

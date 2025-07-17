@@ -1171,30 +1171,68 @@ export default function SchedulePage() {
                   key={l.id} 
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
+                    console.log('月視圖課程項目被點擊:', l.id, studentInfo.name);
                     // 找到對應的學生並開始拖曳
                     const student = activeStudents.find(s => s.id === l.studentId);
                     if (student) {
+                      console.log('開始拖曳學生:', student.name);
                       handleStudentClick(student);
+                    } else {
+                      console.warn('找不到對應的學生:', l.studentId);
                     }
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
                   }}
                   sx={{
                     mt: 0.5,
-                    p: 0.5,
+                    p: 0.75,
                     bgcolor: 'primary.light',
-                    borderRadius: 0.5,
+                    borderRadius: 1,
                     fontSize: '0.75rem',
                     color: 'primary.contrastText',
-                    cursor: 'pointer',
+                    cursor: 'grab',
+                    minHeight: '35px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    position: 'relative',
                     '&:hover': {
                       transform: 'scale(1.02)',
-                      transition: 'transform 0.2s',
-                      boxShadow: 1,
-                      bgcolor: 'primary.main'
+                      transition: 'all 0.2s ease',
+                      boxShadow: 2,
+                      bgcolor: 'primary.main',
+                      cursor: 'grabbing'
+                    },
+                    '&:active': {
+                      cursor: 'grabbing',
+                      transform: 'scale(0.98)'
                     }
                   }}
                 >
-                  <Box sx={{ fontWeight: 'bold' }}>
+                  <Box sx={{ fontWeight: 'bold', flex: 1, fontSize: '0.7rem' }}>
                     {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
+                  </Box>
+                  <Box sx={{ 
+                    fontSize: '0.5rem', 
+                    opacity: 0.8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px'
+                  }}>
+                    <span>拖曳</span>
+                    <Box sx={{ 
+                      width: '8px', 
+                      height: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1px'
+                    }}>
+                      <Box sx={{ width: '100%', height: '1px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                      <Box sx={{ width: '100%', height: '1px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                      <Box sx={{ width: '100%', height: '1px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                    </Box>
                   </Box>
                 </Box>
               );
@@ -1375,30 +1413,68 @@ export default function SchedulePage() {
                           key={lesson.id}
                           onClick={(e) => {
                             e.stopPropagation();
+                            e.preventDefault();
+                            console.log('課程項目被點擊:', lesson.id, studentInfo.name);
                             // 找到對應的學生並開始拖曳
                             const student = activeStudents.find(s => s.id === lesson.studentId);
                             if (student) {
+                              console.log('開始拖曳學生:', student.name);
                               handleStudentClick(student);
+                            } else {
+                              console.warn('找不到對應的學生:', lesson.studentId);
                             }
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
                           }}
                           sx={{
                             mb: 0.5,
-                            p: 0.5,
+                            p: 1,
                             bgcolor: 'primary.light',
-                            borderRadius: 0.5,
+                            borderRadius: 1,
                             fontSize: '0.75rem',
                             color: 'primary.contrastText',
-                            cursor: 'pointer',
+                            cursor: 'grab',
+                            minHeight: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            position: 'relative',
                             '&:hover': {
                               transform: 'scale(1.02)',
-                              transition: 'transform 0.2s',
-                              boxShadow: 1,
-                              bgcolor: 'primary.main'
+                              transition: 'all 0.2s ease',
+                              boxShadow: 2,
+                              bgcolor: 'primary.main',
+                              cursor: 'grabbing'
+                            },
+                            '&:active': {
+                              cursor: 'grabbing',
+                              transform: 'scale(0.98)'
                             }
                           }}
                         >
-                          <Box sx={{ fontWeight: 'bold' }}>
+                          <Box sx={{ fontWeight: 'bold', flex: 1 }}>
                             {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
+                          </Box>
+                          <Box sx={{ 
+                            fontSize: '0.6rem', 
+                            opacity: 0.8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <span>拖曳</span>
+                            <Box sx={{ 
+                              width: '12px', 
+                              height: '12px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1px'
+                            }}>
+                              <Box sx={{ width: '100%', height: '2px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                              <Box sx={{ width: '100%', height: '2px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                              <Box sx={{ width: '100%', height: '2px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                            </Box>
                           </Box>
                         </Box>
                       );
@@ -1438,33 +1514,79 @@ export default function SchedulePage() {
                   key={l.id} 
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
+                    console.log('日視圖課程項目被點擊:', l.id, studentInfo.name);
                     // 找到對應的學生並開始拖曳
                     const student = activeStudents.find(s => s.id === l.studentId);
                     if (student) {
+                      console.log('開始拖曳學生:', student.name);
                       handleStudentClick(student);
+                    } else {
+                      console.warn('找不到對應的學生:', l.studentId);
                     }
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
                   }}
                   sx={{
                     mb: 0.5,
-                    p: 0.5,
+                    p: 1,
                     bgcolor: 'primary.light',
-                    borderRadius: 0.5,
+                    borderRadius: 1,
                     fontSize: '0.75rem',
                     color: 'primary.main',
-                    cursor: 'pointer',
+                    cursor: 'grab',
+                    minHeight: '50px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    position: 'relative',
                     '&:hover': {
                       transform: 'scale(1.02)',
-                      transition: 'transform 0.2s',
-                      boxShadow: 1,
+                      transition: 'all 0.2s ease',
+                      boxShadow: 2,
                       bgcolor: 'primary.main',
-                      color: 'primary.contrastText'
+                      color: 'primary.contrastText',
+                      cursor: 'grabbing'
+                    },
+                    '&:active': {
+                      cursor: 'grabbing',
+                      transform: 'scale(0.98)'
                     }
                   }}
                 >
                   <Box sx={{ fontWeight: 'bold' }}>
                     {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
                   </Box>
-                  <Box sx={{ fontSize: '0.75rem', mt: 0.25 }}>{l.startTime} - {l.endTime}</Box>
+                  <Box sx={{ 
+                    fontSize: '0.75rem', 
+                    mt: 0.25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span>{l.startTime} - {l.endTime}</span>
+                    <Box sx={{ 
+                      fontSize: '0.6rem', 
+                      opacity: 0.8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span>拖曳</span>
+                      <Box sx={{ 
+                        width: '10px', 
+                        height: '10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1px'
+                      }}>
+                        <Box sx={{ width: '100%', height: '2px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                        <Box sx={{ width: '100%', height: '2px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                        <Box sx={{ width: '100%', height: '2px', bgcolor: 'currentColor', borderRadius: '1px' }} />
+                      </Box>
+                    </Box>
+                  </Box>
                 </Box>
               );
             })}

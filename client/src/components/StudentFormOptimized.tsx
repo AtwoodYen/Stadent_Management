@@ -206,34 +206,49 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // 建立錯誤訊息陣列
+    const errors: string[] = [];
+    
     // 驗證必填欄位
     if (!formData.chinese_name?.trim()) {
-      showAlert('請填寫中文姓名', 'warning');
-      return;
+      errors.push('中文姓名');
     }
     
     if (!formData.student_email?.trim()) {
-      showAlert('請填寫學生信箱', 'warning');
-      return;
+      errors.push('學生信箱');
     }
     
     if (!formData.school?.trim()) {
-      showAlert('請選擇學校', 'warning');
-      return;
+      errors.push('學校');
     }
     
     if (!formData.grade?.trim()) {
-      showAlert('請選擇年級', 'warning');
-      return;
+      errors.push('年級');
     }
     
     if (!formData.gender?.trim()) {
-      showAlert('請選擇性別', 'warning');
-      return;
+      errors.push('性別');
+    }
+    
+    if (!formData.level_type?.trim()) {
+      errors.push('程度');
     }
     
     if (!formData.class_type?.trim()) {
-      showAlert('請選擇班別', 'warning');
+      errors.push('班別');
+    }
+    
+    // 如果有錯誤，顯示所有缺失的欄位
+    if (errors.length > 0) {
+      const errorMessage = `請填寫以下必要欄位：\n${errors.join('、')}`;
+      showAlert(errorMessage, 'warning', '表單驗證失敗');
+      return;
+    }
+    
+    // 驗證信箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.student_email || '')) {
+      showAlert('請輸入有效的學生信箱格式', 'warning', '信箱格式錯誤');
       return;
     }
     

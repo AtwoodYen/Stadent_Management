@@ -165,19 +165,83 @@ export default function SchedulePage() {
       e.preventDefault();
       setDraggedStudent(null);
       setIsDragging(false);
+      setSelectedStudents([]); // 清除選中的學生
     }
   }, [isDragging]);
 
+  // 處理全局滑鼠點擊，檢查是否點擊在合理範圍外
+  const handleGlobalMouseDown = useCallback((e: MouseEvent) => {
+    console.log('=== handleGlobalMouseDown 觸發 ===');
+    console.log('isDragging:', isDragging);
+    console.log('draggedStudent:', draggedStudent);
+    if (isDragging) {
+      const target = e.target as HTMLElement;
+      console.log('點擊的目標元素:', target);
+      console.log('目標元素的 className:', target.className);
+      console.log('目標元素的 tagName:', target.tagName);
+      // 檢查是否點擊在課表區域（需在課表容器加 data-schedule-area 屬性）
+      const isInScheduleArea = target.closest('[data-schedule-area]');
+      const isInStudentSelect = target.closest('.student-select-container');
+      console.log('isInScheduleArea:', isInScheduleArea);
+      console.log('isInStudentSelect:', isInStudentSelect);
+      // 如果點擊在課表區域外且不在學生選擇區域內，則只取消拖曳，不清除已選學生
+      if (!isInScheduleArea && !isInStudentSelect) {
+        console.log('點擊在課表區域外，取消拖曳');
+        setDraggedStudent(null);
+        setIsDragging(false);
+        // 不要 setSelectedStudents([])
+      } else {
+        console.log('點擊在課表區域內或學生選擇區，保持拖曳狀態');
+      }
+    } else {
+      console.log('未在拖曳狀態，不處理');
+    }
+  }, [isDragging, draggedStudent]);
+
+  // 掛載全域 mousedown 事件
+  useEffect(() => {
+    document.addEventListener('mousedown', handleGlobalMouseDown);
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalMouseDown);
+    };
+  }, [handleGlobalMouseDown]);
+
   // 處理滑鼠放開事件，排定課程
   const handleMouseUp = async (e: React.MouseEvent, date: Date, time: string) => {
-    if (!draggedStudent) return;
+    console.log('=== handleMouseUp 觸發 ===');
+    console.log('draggedStudent:', draggedStudent);
+    console.log('isDragging:', isDragging);
+    console.log('date:', date, 'time:', time);
+    
+    if (!draggedStudent) {
+      console.log('handleMouseUp 結束：沒有 draggedStudent');
+      return;
+    }
     
     e.preventDefault();
     e.stopPropagation();
     
-    // 檢查是否點擊在課程格內
+    // 檢查點擊位置是否有效
     const target = e.target as HTMLElement;
-    if (target.closest('.lesson-item')) return;
+    const isInScheduleArea = target.closest('[data-schedule-area]');
+    const isInStudentSelect = target.closest('.student-select-container');
+    const isInLessonItem = target.closest('.lesson-item');
+    
+    console.log('點擊位置檢查:', {
+      isInScheduleArea,
+      isInStudentSelect,
+      isInLessonItem,
+      targetElement: target
+    });
+    
+    // 如果點擊在無效區域，取消拖曳和選擇
+    if (!isInScheduleArea || isInLessonItem) {
+      console.log('點擊在無效區域，取消拖曳和學生選擇');
+      setDraggedStudent(null);
+      setIsDragging(false);
+      setSelectedStudents([]); // 清除左上角的學生選擇
+      return;
+    }
     
     // 取得星期幾（後端 API 要求的格式）
     const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -189,6 +253,7 @@ export default function SchedulePage() {
       alert('無效的星期格式，請稍後再試');
       setDraggedStudent(null);
       setIsDragging(false);
+      setSelectedStudents([]); // 清除選中的學生
       return;
     }
     
@@ -199,6 +264,7 @@ export default function SchedulePage() {
       alert('無效的時間格式，請稍後再試');
       setDraggedStudent(null);
       setIsDragging(false);
+      setSelectedStudents([]); // 清除選中的學生
       return;
     }
     
@@ -285,6 +351,7 @@ export default function SchedulePage() {
       // 重置拖曳狀態
       setDraggedStudent(null);
       setIsDragging(false);
+      setSelectedStudents([]); // 清除選中的學生
     }
   };
 
@@ -479,9 +546,9 @@ export default function SchedulePage() {
             // 使用定期班邏輯
             const matchesDay = lesson.dayOfWeek === currentDayName;
             const matchesTime = lesson.startTime === time;
-            
+            /*
             // 記錄所有學生的定期班課程檢查
-            console.log(`學生${lesson.studentId}定期班課程檢查:`, {
+            console.log(`學生${lesson.studentId}定期班課程檢查(1):`, {
               lessonId: lesson.id,
               studentId: lesson.studentId,
               lessonDayOfWeek: lesson.dayOfWeek,
@@ -493,7 +560,7 @@ export default function SchedulePage() {
               subject: lesson.subject,
               fullLesson: lesson
             });
-            
+            */
             return matchesDay && matchesTime;
           } else {
             // 備用方案：使用日期匹配（適用於非定期班課程）
@@ -512,7 +579,7 @@ export default function SchedulePage() {
             const matchesTime = lesson.startTime === time;
             
             // 記錄所有學生的非定期班課程檢查
-            console.log(`學生${lesson.studentId}非定期班課程檢查:`, {
+            console.log(`學生${lesson.studentId}非定期班課程檢查(2):`, {
               lessonId: lesson.id,
               studentId: lesson.studentId,
               lessonDate,
@@ -595,24 +662,11 @@ export default function SchedulePage() {
         if (lesson.dayOfWeek) {
           // 使用定期班邏輯：檢查星期幾是否匹配
           const matchesDay = lesson.dayOfWeek === currentDayName;
-          
-          // 特別檢查學生編號19的課程
-          if (lesson.studentId === 19) {
-            console.log(`學生19定期班課程檢查:`, {
-              lessonId: lesson.id,
-              lessonDayOfWeek: lesson.dayOfWeek,
-              queryDayOfWeek: currentDayName,
-              matchesDay,
-              subject: lesson.subject,
-              startTime: lesson.startTime
-            });
-          }
-          
+          console.log(`學生${lesson.studentId}定期班課程檢查(3): lessonId=${lesson.id}, dayOfWeek=${lesson.dayOfWeek}, queryDay=${currentDayName}, matches=${matchesDay}, subject=${lesson.subject}, time=${lesson.startTime}`);
           return matchesDay;
         } else {
           // 備用方案：使用日期匹配（適用於非定期班課程）
           let lessonDate: string;
-          
           if (typeof lesson.date === 'string') {
             lessonDate = lesson.date.split('T')[0];
           } else if (isValidDate(lesson.date)) {
@@ -621,21 +675,9 @@ export default function SchedulePage() {
             console.warn('無效的課程日期:', lesson.date);
             return false;
           }
-          
           const matchesDate = lessonDate === dateStr;
-          
-          // 特別檢查學生編號19的課程
-          if (lesson.studentId === 19) {
-            console.log(`學生19非定期班課程檢查:`, {
-              lessonId: lesson.id,
-              lessonDate,
-              queryDate: dateStr,
-              matchesDate,
-              subject: lesson.subject,
-              startTime: lesson.startTime
-            });
-          }
-          
+          // 所有學生都印 log
+          console.log(`學生${lesson.studentId}非定期班課程檢查(4): lessonId=${lesson.id}, lessonDate=${lessonDate}, queryDate=${dateStr}, matches=${matchesDate}, subject=${lesson.subject}, time=${lesson.startTime}`);
           return matchesDate;
         }
       } catch (error) {
@@ -1032,7 +1074,7 @@ export default function SchedulePage() {
     }
 
     return (
-      <Box sx={{
+      <Box data-schedule-area sx={{
         display: 'grid',
         gridTemplateColumns: 'repeat(7,1fr)',
         gridTemplateRows: 'auto repeat(5, 2fr)',
@@ -1152,6 +1194,7 @@ export default function SchedulePage() {
 
     return (
       <Box 
+        data-schedule-area
         sx={{ 
           display: 'flex',
           flexDirection: 'column',
@@ -1292,7 +1335,7 @@ export default function SchedulePage() {
 
   /* ---------- 日視圖 ---------- */
   const renderDayView = () => (
-    <Box sx={{
+    <Box data-schedule-area sx={{
       display: 'grid',
       gridTemplateColumns: '80px 1fr',
       gridAutoRows: 'auto',

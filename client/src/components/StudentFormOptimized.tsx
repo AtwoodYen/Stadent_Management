@@ -38,6 +38,7 @@ interface Student {
   enrollment_status: string;
   notes: string;
   class_schedule_type?: string; // 新增
+  referrer?: string; // 新增：介紹人
 }
 
 interface ClassType {
@@ -79,11 +80,13 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
     class_type: '',
     enrollment_status: '進行中',
     notes: '',
-    class_schedule_type: '常態班' // 新增
+    class_schedule_type: '常態班', // 新增
+    referrer: '' // 新增：介紹人
   });
 
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [schools, setSchools] = useState<string[]>([]);
+  const [referrers, setReferrers] = useState<string[]>([]);
   const [classTypesLoading, setClassTypesLoading] = useState(true);
 
   // 自定義 Alert 狀態
@@ -149,6 +152,25 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
     fetchSchools();
   }, []);
 
+  // 載入介紹人資料
+  useEffect(() => {
+    const fetchReferrers = async () => {
+      try {
+        const response = await fetch('/api/students/referrers');
+        if (response.ok) {
+          const data = await response.json();
+          setReferrers(data);
+        } else {
+          console.error('無法載入介紹人資料');
+        }
+      } catch (error) {
+        console.error('載入介紹人資料時發生錯誤:', error);
+      }
+    };
+
+    fetchReferrers();
+  }, []);
+
   useEffect(() => {
     if (student) {
       // 編輯現有學生
@@ -171,7 +193,8 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
         class_type: student.class_type || '',
         enrollment_status: student.enrollment_status || '進行中',
         notes: student.notes || '',
-        class_schedule_type: student.class_schedule_type || '常態班' // 新增
+        class_schedule_type: student.class_schedule_type || '常態班', // 新增
+        referrer: student.referrer || '' // 新增：介紹人
       });
     } else {
       // 新增學生，重置表單資料
@@ -194,7 +217,8 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
         class_type: '',
         enrollment_status: '進行中',
         notes: '',
-        class_schedule_type: '常態班' // 新增
+        class_schedule_type: '常態班', // 新增
+        referrer: '' // 新增：介紹人
       });
     }
   }, [student]);
@@ -556,6 +580,53 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
                 <MenuItem value="常態班">常態班</MenuItem>
                 <MenuItem value="短期班">短期班</MenuItem>
               </Select>
+            </FormControl>
+          </Box>
+        </Box>
+
+        {/* 基本資料：第三行 - 介紹人 */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, width: 'fit-content' }}>
+          <Box sx={{ width: '200px' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel
+                sx={{
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  '&.Mui-focused': {
+                    transform: 'translate(14px, -9px) scale(0.75)'
+                  }
+                }}
+              >
+                介紹人
+              </InputLabel>
+              <Autocomplete
+                options={referrers}
+                value={formData.referrer}
+                onChange={(event, newValue) => handleChange('referrer', newValue || '')}
+                onInputChange={(event, newInputValue) => {
+                  if (!referrers.includes(newInputValue)) {
+                    handleChange('referrer', newInputValue);
+                  }
+                }}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="請輸入或選擇介紹人"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: '40px',
+                        fontSize: '14px'
+                      }
+                    }}
+                  />
+                )}
+                sx={{
+                  '& .MuiAutocomplete-input': {
+                    padding: '8px 12px !important'
+                  }
+                }}
+              />
             </FormControl>
           </Box>
         </Box>

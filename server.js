@@ -600,6 +600,16 @@ app.get('/api/students/schools', async (req, res, next) => {
     }
 });
 
+// [GET] 在學生管理中取得介紹人列表(用於下拉選單)
+app.get('/api/students/referrers', async (req, res, next) => {
+    try {
+        const result = await pool.request().query('SELECT DISTINCT referrer FROM students WHERE is_active = 1 AND referrer IS NOT NULL AND referrer != \'\' ORDER BY referrer');
+        res.json(result.recordset.map(row => row.referrer));
+    } catch (err) {
+        next(err);
+    }
+});
+
 // [READ] 取得單一學生
 app.get('/api/students/:id', async (req, res, next) => {
 	try {
@@ -645,7 +655,7 @@ app.post(
 							chinese_name, english_name, student_phone, student_email, student_line,
 							father_name, father_phone, father_line,
 							mother_name, mother_phone, mother_line,
-							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type
+							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer
 					} = req.body;
 					
 					const result = await pool.request()
@@ -668,18 +678,19 @@ app.post(
 							.input('enrollment_status', sql.NVarChar, enrollment_status || '進行中')
 							.input('notes', sql.NVarChar, notes || null)
 							.input('class_schedule_type', sql.NVarChar, class_schedule_type || '常態班')
+							.input('referrer', sql.NVarChar, referrer || null)
 							.query(`
 									INSERT INTO students (
 											chinese_name, english_name, student_phone, student_email, student_line,
 											father_name, father_phone, father_line,
 											mother_name, mother_phone, mother_line,
-											school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type
+											school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer
 									) 
 									VALUES (
 											@chinese_name, @english_name, @student_phone, @student_email, @student_line,
 											@father_name, @father_phone, @father_line,
 											@mother_name, @mother_phone, @mother_line,
-											@school, @grade, @gender, @level_type, @class_type, @enrollment_status, @notes, @class_schedule_type
+											@school, @grade, @gender, @level_type, @class_type, @enrollment_status, @notes, @class_schedule_type, @referrer
 									);
 									SELECT * FROM students WHERE id = SCOPE_IDENTITY() AND is_active = 1;
 							`);
@@ -718,7 +729,7 @@ app.put(
 							chinese_name, english_name, student_phone, student_email, student_line,
 							father_name, father_phone, father_line,
 							mother_name, mother_phone, mother_line,
-							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type
+							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer
 					} = req.body;
 					
 					const result = await pool.request()
@@ -742,6 +753,7 @@ app.put(
 							.input('enrollment_status', sql.NVarChar, enrollment_status || '進行中')
 							.input('notes', sql.NVarChar, notes || null)
 							.input('class_schedule_type', sql.NVarChar, class_schedule_type || '常態班')
+							.input('referrer', sql.NVarChar, referrer || null)
 							.query(`
 									UPDATE students 
 									SET chinese_name = @chinese_name, english_name = @english_name, 
@@ -749,7 +761,7 @@ app.put(
 											father_name = @father_name, father_phone = @father_phone, father_line = @father_line,
 											mother_name = @mother_name, mother_phone = @mother_phone, mother_line = @mother_line,
 											school = @school, grade = @grade, gender = @gender, 
-											level_type = @level_type, class_type = @class_type, enrollment_status = @enrollment_status, notes = @notes, class_schedule_type = @class_schedule_type, updated_at = GETDATE()
+											level_type = @level_type, class_type = @class_type, enrollment_status = @enrollment_status, notes = @notes, class_schedule_type = @class_schedule_type, referrer = @referrer, updated_at = GETDATE()
 									WHERE id = @id AND is_active = 1;
 									SELECT * FROM students WHERE id = @id AND is_active = 1;
 							`);

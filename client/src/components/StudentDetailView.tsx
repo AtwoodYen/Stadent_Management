@@ -47,6 +47,7 @@ interface Student {
   created_at?: string;
   updated_at?: string;
   class_schedule_type?: string; // 新增
+  referrer?: string; // 新增：介紹人
 }
 
 interface ClassType {
@@ -185,7 +186,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
         </Box>
 
         {/* 第三行：班別、程度、就讀狀態 */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, mb: 1 }}>
           <FormRow label="班別" labelWidth={80}>
             <Chip 
               label={getClassTypeName(student.class_type) || '未設定'} 
@@ -253,6 +254,13 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                             'transparent'
               }}
             />
+          </FormRow>
+        </Box>
+
+        {/* 第四行：介紹人 */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 3 }}>
+          <FormRow label="介紹人" labelWidth={80}>
+            <DisplayText value={student.referrer || ''} />
           </FormRow>
         </Box>
       </Box>

@@ -53,6 +53,7 @@ interface Student {
   updated_at: string;
   is_active: boolean;
   class_schedule_type: string; // 新增：常態班/短期班
+  referrer?: string; // 新增：介紹人
 }
 
 interface ClassType {
@@ -827,6 +828,7 @@ const StudentsPage: React.FC = () => {
                         { key: 'class_type_name', label: '班別' },
                         { key: 'class_schedule_type', label: '排程類型' },
                         { key: 'enrollment_status', label: '就讀狀態' },
+                        { key: 'referrer', label: '介紹人' },
                         { key: 'actions', label: '操作' },
                       ].map(({ key, label }) => (
                         <TableCell key={key}>
@@ -891,6 +893,7 @@ const StudentsPage: React.FC = () => {
                         <TableCell>{getClassTypeName(student.class_type)}</TableCell>
                         <TableCell>{student.class_schedule_type}</TableCell>
                         <TableCell>{student.enrollment_status}</TableCell>
+                        <TableCell>{student.referrer || '-'}</TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1}>
                             <Button

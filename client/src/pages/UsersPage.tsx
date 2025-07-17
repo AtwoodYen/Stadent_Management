@@ -70,6 +70,7 @@ interface User {
   department?: string;
   login_count?: number;
   email_verified?: boolean;
+  sort_order?: number;
 }
 
 // 排序類型定義
@@ -90,7 +91,8 @@ const SortableTableRow: React.FC<{
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   onToggleStatus: (id: number) => void;
-}> = ({ user, roleLabels, roleColors, roleIcons, onEdit, onDelete, onToggleStatus }) => {
+  isDragMode: boolean;
+}> = ({ user, roleLabels, roleColors, roleIcons, onEdit, onDelete, onToggleStatus, isDragMode }) => {
   const {
     attributes,
     listeners,
@@ -110,13 +112,15 @@ const SortableTableRow: React.FC<{
   return (
     <TableRow ref={setNodeRef} style={style} {...attributes}>
       <TableCell>
-        <IconButton
-          size="small"
-          {...listeners}
-          sx={{ cursor: 'grab', p: 0.5 }}
-        >
-          <DragIndicatorIcon fontSize="small" />
-        </IconButton>
+        {isDragMode && (
+          <IconButton
+            size="small"
+            {...listeners}
+            sx={{ cursor: 'grab', p: 0.5 }}
+          >
+            <DragIndicatorIcon fontSize="small" />
+          </IconButton>
+        )}
       </TableCell>
       <TableCell>
         <Box display="flex" alignItems="center" gap={1}>
@@ -190,6 +194,9 @@ const UsersPage: React.FC = () => {
     order: 'asc'
   });
 
+  // 模式切換狀態
+  const [isDragMode, setIsDragMode] = useState(false);
+
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
@@ -239,6 +246,7 @@ const UsersPage: React.FC = () => {
 
   // 排序處理函數
   const handleSort = (field: SortField) => {
+    setIsDragMode(false); // 排序時退出拖拽模式
     setSortState(prevState => ({
       field,
       order: prevState.field === field && prevState.order === 'asc' ? 'desc' : 'asc'
@@ -296,12 +304,18 @@ const UsersPage: React.FC = () => {
 
   // 排序後的用戶資料
   const sortedUsers = sortUsers(users);
+  
+  // 根據模式決定顯示哪個資料
+  const displayUsers = isDragMode ? users : sortedUsers;
 
   // 處理拖拽結束
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (active.id !== over?.id) {
+      setSortState({ field: null, order: 'asc' }); // 拖拽時清除排序
+      setIsDragMode(true);
+      
       setUsers((items) => {
         const oldIndex = items.findIndex(item => item.id === active.id);
         const newIndex = items.findIndex(item => item.id === over?.id);
@@ -543,18 +557,33 @@ const UsersPage: React.FC = () => {
             <Typography variant="h6" sx={{ color: '#ccc' }}>
               總用戶數：{users.length}
             </Typography>
+            <Typography variant="body2" sx={{ color: '#ccc' }}>
+              {isDragMode ? '拖拽模式' : '排序模式'}
+            </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            新增用戶
-          </Button>
+          <Box display="flex" gap={2}>
+            <Button
+              variant={isDragMode ? "contained" : "outlined"}
+              onClick={() => setIsDragMode(!isDragMode)}
+              sx={{ 
+                backgroundColor: isDragMode ? 'primary.main' : 'transparent',
+                color: isDragMode ? 'white' : 'primary.main'
+              }}
+            >
+              {isDragMode ? '退出拖拽' : '拖拽排序'}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
+            >
+              新增用戶
+            </Button>
+          </Box>
         </Box>
 
         <DndContext
-          sensors={sensors}
+          sensors={isDragMode ? sensors : []}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
@@ -562,12 +591,13 @@ const UsersPage: React.FC = () => {
             <Table sx={{ '& .MuiTableCell-root': { padding: '8px 16px' } }}>
               <TableHead>
                 <TableRow sx={{ height: '48px' }}>
-                  <TableCell>拖拽</TableCell>
+                  {isDragMode && <TableCell>拖拽</TableCell>}
                   <TableCell>
                     <TableSortLabel
                       active={sortState.field === 'full_name'}
                       direction={sortState.field === 'full_name' ? sortState.order : 'asc'}
-                      onClick={() => handleSort('full_name')}
+                      onClick={() => !isDragMode && handleSort('full_name')}
+                      disabled={isDragMode}
                     >
                       用戶名稱
                     </TableSortLabel>
@@ -576,7 +606,8 @@ const UsersPage: React.FC = () => {
                     <TableSortLabel
                       active={sortState.field === 'role'}
                       direction={sortState.field === 'role' ? sortState.order : 'asc'}
-                      onClick={() => handleSort('role')}
+                      onClick={() => !isDragMode && handleSort('role')}
+                      disabled={isDragMode}
                     >
                       角色
                     </TableSortLabel>
@@ -585,7 +616,8 @@ const UsersPage: React.FC = () => {
                     <TableSortLabel
                       active={sortState.field === 'department'}
                       direction={sortState.field === 'department' ? sortState.order : 'asc'}
-                      onClick={() => handleSort('department')}
+                      onClick={() => !isDragMode && handleSort('department')}
+                      disabled={isDragMode}
                     >
                       部門
                     </TableSortLabel>
@@ -595,7 +627,8 @@ const UsersPage: React.FC = () => {
                     <TableSortLabel
                       active={sortState.field === 'is_active'}
                       direction={sortState.field === 'is_active' ? sortState.order : 'asc'}
-                      onClick={() => handleSort('is_active')}
+                      onClick={() => !isDragMode && handleSort('is_active')}
+                      disabled={isDragMode}
                     >
                       狀態
                     </TableSortLabel>
@@ -604,8 +637,8 @@ const UsersPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                <SortableContext items={sortedUsers.map(user => user.id)} strategy={verticalListSortingStrategy}>
-                  {sortedUsers.map((user) => (
+                <SortableContext items={displayUsers.map(user => user.id)} strategy={verticalListSortingStrategy}>
+                  {displayUsers.map((user) => (
                     <SortableTableRow
                       key={user.id}
                       user={user}
@@ -615,6 +648,7 @@ const UsersPage: React.FC = () => {
                       onEdit={handleOpenDialog}
                       onDelete={handleDelete}
                       onToggleStatus={toggleUserStatus}
+                      isDragMode={isDragMode}
                     />
                   ))}
                 </SortableContext>

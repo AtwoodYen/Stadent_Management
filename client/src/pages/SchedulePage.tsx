@@ -85,6 +85,9 @@ interface Lesson {
   subject: string;
   notes: string;
   status?: LessonStatus;
+  // 定期班相關欄位
+  dayOfWeek?: string;
+  originalSchedule?: any;
 }
 
 interface TimeSlot {
@@ -101,6 +104,17 @@ export default function SchedulePage() {
   const [view, setView] = useState<ViewType>('month');
   const [students, setStudents] = useState<Student[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  
+  // 監聽 lessons 狀態變化
+  useEffect(() => {
+    console.log('=== lessons 狀態更新 ===');
+    console.log('課程總數:', lessons.length);
+    console.log('所有課程:', lessons);
+    
+    // 檢查學生編號19的課程
+    const student19Lessons = lessons.filter(lesson => lesson.studentId === 19);
+    console.log('學生編號19的課程:', student19Lessons);
+  }, [lessons]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [topic, setTopic] = useState('');
@@ -188,13 +202,17 @@ export default function SchedulePage() {
       return;
     }
     
-    // 計算結束時間（預設1小時）
+    // 計算結束時間（預設1小時，格式為 HH:mm）
+    const pad = (n: number) => n.toString().padStart(2, '0');
     const [hours, minutes] = time.split(':').map(Number);
+    const startTime = `${pad(hours)}:${pad(minutes)}`;
     const endHours = hours + 1;
-    const endTime = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    const endTime = `${pad(endHours)}:${pad(minutes)}`;
     
     console.log('=== 調試資訊 ===');
     console.log('原始時間參數:', time);
+    console.log('startTime:', startTime);
+    console.log('endTime:', endTime);
     console.log('時間類型:', typeof time);
     console.log('時間長度:', time.length);
     console.log('時間字元:', Array.from(time).map(c => c.charCodeAt(0)));
@@ -205,7 +223,7 @@ export default function SchedulePage() {
     console.log('準備傳送的資料:', {
       student_id: draggedStudent.id,
       day_of_week: dayOfWeek,
-      start_time: time,
+      start_time: startTime,
       end_time: endTime,
       course_name: `${draggedStudent.name}的課程`
     });
@@ -214,7 +232,7 @@ export default function SchedulePage() {
     const scheduleData = {
       student_id: draggedStudent.id,
       day_of_week: dayOfWeek,
-      start_time: time,
+      start_time: startTime,
       end_time: endTime,
       course_name: `${draggedStudent.name}的課程`,
       teacher_name: null
@@ -439,29 +457,87 @@ export default function SchedulePage() {
   
   // 使用全局定義的 timeSlots
   
-  // 獲取指定日期和時間的課程
+  // 獲取指定日期和時間的課程（定期班邏輯）
   const getLessonsForTimeSlot = (date: Date, time: string): Lesson[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return lessons.filter(lesson => {
+    const dayOfWeek = date.getDay(); // 0=週日, 1=週一, ..., 6=週六
+    const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const currentDayName = dayNames[dayOfWeek];
+    
+    console.log(`=== 查詢時間段課程 ===`);
+    console.log(`查詢日期: ${dateStr}, 時間: ${time}, 星期: ${currentDayName}`);
+    console.log(`當前課程總數: ${lessons.length}`);
+    
+    const filteredLessons = lessons.filter(lesson => {
       try {
-        let lessonDate: string;
+        // 對於定期班，我們需要檢查：
+        // 1. 課程的星期幾是否匹配當前查詢的星期幾
+        // 2. 課程的開始時間是否匹配當前查詢的時間
         
-        if (typeof lesson.date === 'string') {
-          lessonDate = lesson.date.split('T')[0];
-        } else if (isValidDate(lesson.date)) {
-          lessonDate = format(lesson.date as Date, 'yyyy-MM-dd');
-        } else {
-          // 如果日期無效，跳過這個課程
-          console.warn('無效的課程日期:', lesson.date);
-          return false;
-        }
-        
-        return lessonDate === dateStr && lesson.startTime === time;
+                  // 檢查是否有定期班資訊
+          if (lesson.dayOfWeek) {
+            // 使用定期班邏輯
+            const matchesDay = lesson.dayOfWeek === currentDayName;
+            const matchesTime = lesson.startTime === time;
+            
+            // 記錄所有學生的定期班課程檢查
+            console.log(`學生${lesson.studentId}定期班課程檢查:`, {
+              lessonId: lesson.id,
+              studentId: lesson.studentId,
+              lessonDayOfWeek: lesson.dayOfWeek,
+              queryDayOfWeek: currentDayName,
+              lessonTime: lesson.startTime,
+              queryTime: time,
+              matchesDay,
+              matchesTime,
+              subject: lesson.subject,
+              fullLesson: lesson
+            });
+            
+            return matchesDay && matchesTime;
+          } else {
+            // 備用方案：使用日期匹配（適用於非定期班課程）
+            let lessonDate: string;
+            
+            if (typeof lesson.date === 'string') {
+              lessonDate = lesson.date.split('T')[0];
+            } else if (isValidDate(lesson.date)) {
+              lessonDate = format(lesson.date as Date, 'yyyy-MM-dd');
+            } else {
+              console.warn('無效的課程日期:', lesson.date);
+              return false;
+            }
+            
+            const matchesDate = lessonDate === dateStr;
+            const matchesTime = lesson.startTime === time;
+            
+            // 記錄所有學生的非定期班課程檢查
+            console.log(`學生${lesson.studentId}非定期班課程檢查:`, {
+              lessonId: lesson.id,
+              studentId: lesson.studentId,
+              lessonDate,
+              queryDate: dateStr,
+              lessonTime: lesson.startTime,
+              queryTime: time,
+              matchesDate,
+              matchesTime,
+              subject: lesson.subject
+            });
+            
+            return matchesDate && matchesTime;
+          }
       } catch (error) {
         console.error('處理課程日期時出錯:', error, lesson);
         return false;
       }
     });
+    
+    console.log(`找到 ${filteredLessons.length} 個課程在 ${dateStr} ${time}`);
+    if (filteredLessons.length > 0) {
+      console.log('找到的課程:', filteredLessons);
+    }
+    
+    return filteredLessons;
   };
   
   // 驗證日期是否有效
@@ -505,26 +581,75 @@ export default function SchedulePage() {
   // 獲取指定日期的課程
   const getLessonsForDate = (date: Date): Lesson[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return lessons.filter(lesson => {
+    const dayOfWeek = date.getDay(); // 0-6 (0是週日)
+    const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const currentDayName = dayNames[dayOfWeek];
+    
+    console.log(`=== 查詢日期課程 ===`);
+    console.log(`查詢日期: ${dateStr}, 星期: ${currentDayName}`);
+    console.log(`當前課程總數: ${lessons.length}`);
+    
+    const filteredLessons = lessons.filter(lesson => {
       try {
-        let lessonDate: string;
-        
-        if (typeof lesson.date === 'string') {
-          lessonDate = lesson.date.split('T')[0];
-        } else if (isValidDate(lesson.date)) {
-          lessonDate = format(lesson.date as Date, 'yyyy-MM-dd');
+        // 檢查是否有定期班資訊
+        if (lesson.dayOfWeek) {
+          // 使用定期班邏輯：檢查星期幾是否匹配
+          const matchesDay = lesson.dayOfWeek === currentDayName;
+          
+          // 特別檢查學生編號19的課程
+          if (lesson.studentId === 19) {
+            console.log(`學生19定期班課程檢查:`, {
+              lessonId: lesson.id,
+              lessonDayOfWeek: lesson.dayOfWeek,
+              queryDayOfWeek: currentDayName,
+              matchesDay,
+              subject: lesson.subject,
+              startTime: lesson.startTime
+            });
+          }
+          
+          return matchesDay;
         } else {
-          // 如果日期無效，跳過這個課程
-          console.warn('無效的課程日期:', lesson.date);
-          return false;
+          // 備用方案：使用日期匹配（適用於非定期班課程）
+          let lessonDate: string;
+          
+          if (typeof lesson.date === 'string') {
+            lessonDate = lesson.date.split('T')[0];
+          } else if (isValidDate(lesson.date)) {
+            lessonDate = format(lesson.date as Date, 'yyyy-MM-dd');
+          } else {
+            console.warn('無效的課程日期:', lesson.date);
+            return false;
+          }
+          
+          const matchesDate = lessonDate === dateStr;
+          
+          // 特別檢查學生編號19的課程
+          if (lesson.studentId === 19) {
+            console.log(`學生19非定期班課程檢查:`, {
+              lessonId: lesson.id,
+              lessonDate,
+              queryDate: dateStr,
+              matchesDate,
+              subject: lesson.subject,
+              startTime: lesson.startTime
+            });
+          }
+          
+          return matchesDate;
         }
-        
-        return lessonDate === dateStr;
       } catch (error) {
         console.error('處理課程日期時出錯:', error, lesson);
         return false;
       }
     });
+    
+    console.log(`找到 ${filteredLessons.length} 個課程在 ${dateStr}`);
+    if (filteredLessons.length > 0) {
+      console.log('找到的課程:', filteredLessons);
+    }
+    
+    return filteredLessons;
   };
 
   // 處理日期點擊
@@ -745,64 +870,105 @@ export default function SchedulePage() {
 
   const fetchLessons = async () => {
     try {
-      console.log('開始載入課表資料...');
+      console.log('=== 開始載入課程資料 ===');
       const response = await fetch('/api/schedules');
       if (response.ok) {
         const data = await response.json();
-        console.log('課表 API 回傳資料:', data);
+        console.log('從 API 獲取到的原始課程資料:', data);
+        console.log('原始資料筆數:', data.length);
         
-        // 將週期性課表轉換為具體日期的課程
+        // 檢查學生編號19的資料
+        const student19Data = data.filter((schedule: any) => schedule.student_id === 19);
+        console.log('學生編號19的排課資料:', student19Data);
+        
+        // 將週期性課表轉換為定期班課程（不需要生成具體日期）
         const formattedLessons: Lesson[] = [];
         const currentDate = new Date();
+        console.log('當前日期:', currentDate.toISOString());
         
-        // 為接下來的4週生成具體課程
-        for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
-          const weekStart = addWeeks(currentDate, weekOffset);
+        // 直接處理每個定期班課程，不生成多週的具體日期
+        data.forEach((schedule: any) => {
+          console.log(`處理排課資料:`, {
+            id: schedule.id,
+            student_id: schedule.student_id,
+            day_of_week: schedule.day_of_week,
+            start_time: schedule.start_time,
+            end_time: schedule.end_time,
+            subject: schedule.subject
+          });
           
-          data.forEach((schedule: any) => {
-            const dayMap: { [key: string]: number } = {
-              '星期日': 0, '星期一': 1, '星期二': 2, '星期三': 3,
-              '星期四': 4, '星期五': 5, '星期六': 6
-            };
-            
-            const dayOfWeek = dayMap[schedule.day_of_week];
-            if (dayOfWeek !== undefined) {
-              const lessonDate = addDays(weekStart, dayOfWeek);
-              
-              // 處理時間格式
-              const extractTime = (timeStr: string): string => {
-                if (!timeStr) return '09:00';
-                try {
-                  // 格式: "1970-01-01T15:15:00.000Z" -> "15:15"
-                  const timePart = timeStr.split('T')[1];
-                  if (timePart) {
+          // 處理時間格式 - 直接使用 HH:mm 格式
+          const extractTime = (timeStr: string): string => {
+            if (!timeStr) return '09:00';
+            try {
+              // 如果已經是 HH:mm 格式，直接返回
+              if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
+                return timeStr;
+              }
+              // 如果是 ISO 格式，轉換為 HH:mm
+              if (timeStr.includes('T')) {
+                const timePart = timeStr.split('T')[1];
+                if (timePart) {
+                  // 處理時區問題：如果是 UTC 時間，需要轉換為本地時間
+                  if (timePart.includes('Z') || timePart.includes('+') || timePart.includes('-')) {
+                    // 對於 "1970-01-01T16:00:00.000Z" 這種格式，直接提取時間部分
+                    // 因為這是固定的時間，不是實際的日期時間
+                    const timeOnly = timePart.split('.')[0]; // 移除毫秒部分
+                    return timeOnly.slice(0, 5); // 返回 "16:00"
+                  } else {
                     return timePart.slice(0, 5); // 取 HH:mm 部分
                   }
-                  return '09:00';
-                } catch {
-                  return '09:00';
                 }
-              };
-              
-              const startTime = extractTime(schedule.start_time);
-              const endTime = extractTime(schedule.end_time);
-              
-              formattedLessons.push({
-                id: schedule.id + weekOffset * 1000, // 為每週的課程生成唯一ID
-                studentId: schedule.student_id,
-                date: lessonDate,
-                startTime,
-                endTime,
-                subject: schedule.course_name || schedule.subject || '課程',
-                notes: '',
-                status: 'scheduled' as const
-              });
+              }
+              return '09:00';
+            } catch {
+              return '09:00';
             }
+          };
+          
+          const startTime = extractTime(schedule.start_time);
+          const endTime = extractTime(schedule.end_time);
+          console.log(`時間轉換: ${schedule.start_time} -> ${startTime}, ${schedule.end_time} -> ${endTime}`);
+          
+          // 記錄所有學生的時間轉換詳細資訊
+          console.log(`學生${schedule.student_id}時間轉換詳細:`, {
+            studentId: schedule.student_id,
+            studentName: schedule.student_name || '未知學生',
+            originalStartTime: schedule.start_time,
+            originalEndTime: schedule.end_time,
+            convertedStartTime: startTime,
+            convertedEndTime: endTime,
+            dayOfWeek: schedule.day_of_week
           });
-        }
+          
+          const lesson = {
+            id: schedule.id, // 使用原始ID，不需要為每週生成唯一ID
+            studentId: schedule.student_id,
+            date: currentDate, // 使用當前日期作為佔位符，實際顯示時會根據星期幾匹配
+            startTime,
+            endTime,
+            subject: schedule.course_name || schedule.subject || '課程',
+            notes: '',
+            status: 'scheduled' as const,
+            // 保存原始的定期班資訊
+            dayOfWeek: schedule.day_of_week,
+            originalSchedule: schedule
+          };
+          
+          console.log(`新增定期班課程:`, lesson);
+          formattedLessons.push(lesson);
+        });
         
-        console.log('轉換後的課程資料:', formattedLessons);
+        console.log('=== 轉換後的課程資料 ===');
+        console.log('總課程數:', formattedLessons.length);
+        console.log('所有課程:', formattedLessons);
+        
+        // 檢查學生編號19的轉換後資料
+        const student19Lessons = formattedLessons.filter(lesson => lesson.studentId === 19);
+        console.log('學生編號19的轉換後課程:', student19Lessons);
+        
         setLessons(formattedLessons);
+        console.log('=== 課程資料載入完成 ===');
       } else {
         console.error('課表 API 回應錯誤:', response.status, response.statusText);
       }
@@ -813,7 +979,10 @@ export default function SchedulePage() {
 
   // 初始載入資料
   useEffect(() => {
-    console.log('=== useEffect 執行 ===');
+    console.log('=== SchedulePage 組件初始化 ===');
+    console.log('當前日期:', new Date().toISOString());
+    console.log('當前視圖:', view);
+    
     const loadData = async () => {
       console.log('開始載入資料...');
       setLoading(true);
@@ -918,7 +1087,12 @@ export default function SchedulePage() {
                   bgcolor: 'primary.light',
                   borderRadius: 0.5,
                   fontSize: '0.75rem',
-                  color: 'primary.main'
+                  color: 'primary.contrastText',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    transition: 'transform 0.2s',
+                    boxShadow: 1
+                  }
                 }}>
                   <Box sx={{ fontWeight: 'bold' }}>
                     {studentInfo.name}：{studentInfo.classType} - {studentInfo.levelType}
@@ -944,7 +1118,7 @@ export default function SchedulePage() {
     const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays: WeekDay[] = [];
     
-    // 中文星期對照表
+    // 中文星期對照表 - 修正順序以配合 startOfWeek({ weekStartsOn: 1 })
     const chineseWeekdays = ['日', '一', '二', '三', '四', '五', '六'];
     
     for (let i = 0; i < 7; i++) {
@@ -954,7 +1128,7 @@ export default function SchedulePage() {
       
       weekDays.push({
         date,
-        dayName: `星期${chineseWeekday}`,
+        dayName: `${format(date, 'M月d日')}(${chineseWeekday})`,
         formattedDate: `${format(date, 'MM/dd')} (星期${chineseWeekday})`
       });
     }
@@ -1004,9 +1178,23 @@ export default function SchedulePage() {
           zIndex: 10,
           bgcolor: 'background.default'
         }}>
-          <Box sx={{ p: 1, textAlign: 'center', fontWeight: 'bold' }}>時間</Box>
+          <Box sx={{ 
+            p: 1, 
+            textAlign: 'center', 
+            fontWeight: 'bold',
+            borderRight: '1px solid',
+            borderColor: 'divider'
+          }}>
+            時間
+          </Box>
           {weekDays.map((weekDay, index) => (
-            <Box key={index} sx={{ p: 1, textAlign: 'center', fontWeight: 'bold' }}>
+            <Box key={index} sx={{ 
+              p: 1, 
+              textAlign: 'center', 
+              fontWeight: 'bold',
+              borderRight: index < 6 ? '1px solid' : 'none',
+              borderColor: 'divider'
+            }}>
               {weekDay.dayName}
             </Box>
           ))}
@@ -1026,6 +1214,7 @@ export default function SchedulePage() {
                   p: 1, 
                   textAlign: 'center',
                   borderBottom: '1px solid',
+                  borderRight: '1px solid',
                   borderColor: 'divider',
                   bgcolor: 'background.default',
                   position: 'sticky',

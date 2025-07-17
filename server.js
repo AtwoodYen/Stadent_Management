@@ -1757,6 +1757,9 @@ app.delete('/api/lessons/:id', async (req, res, next) => {
 // [READ] 取得所有課表
 app.get('/api/schedules', async (req, res, next) => {
     try {
+        logger.info('=== GET /api/schedules 開始 ===');
+        logger.info(`請求參數: ${JSON.stringify(req.query)}`);
+        
         const { student_id, day_of_week, date_range } = req.query;
         let query = `
             SELECT 
@@ -1775,18 +1778,59 @@ app.get('/api/schedules', async (req, res, next) => {
         if (student_id) {
             query += ' AND ss.student_id = @student_id';
             request.input('student_id', sql.Int, student_id);
+            logger.info(`添加學生ID過濾: ${student_id}`);
         }
         
         if (day_of_week) {
             query += ' AND ss.day_of_week = @day_of_week';
             request.input('day_of_week', sql.NVarChar, day_of_week);
+            logger.info(`添加星期過濾: ${day_of_week}`);
         }
         
         query += ' ORDER BY ss.day_of_week, ss.start_time, s.chinese_name';
         
+        logger.info(`執行SQL查詢: ${query}`);
         const result = await request.query(query);
+        
+        logger.info(`查詢結果筆數: ${result.recordset.length}`);
+        
+        // 詳細記錄每個課程的資料
+        result.recordset.forEach((record, index) => {
+            logger.info(`課程 ${index + 1}:`, {
+                id: record.id,
+                student_id: record.student_id,
+                student_name: record.student_name,
+                day_of_week: record.day_of_week,
+                start_time: record.start_time,
+                end_time: record.end_time,
+                start_time_type: typeof record.start_time,
+                end_time_type: typeof record.end_time,
+                subject: record.subject
+            });
+        });
+        
+        // 特別檢查學生19的資料
+        const student19Records = result.recordset.filter(r => r.student_id === 19);
+        if (student19Records.length > 0) {
+            logger.info('=== 學生19的課程資料 ===');
+            student19Records.forEach((record, index) => {
+                logger.info(`學生19課程 ${index + 1}:`, {
+                    id: record.id,
+                    day_of_week: record.day_of_week,
+                    start_time: record.start_time,
+                    end_time: record.end_time,
+                    start_time_type: typeof record.start_time,
+                    end_time_type: typeof record.end_time,
+                    subject: record.subject
+                });
+            });
+        }
+        
+        logger.info('=== GET /api/schedules 完成 ===');
         res.json(result.recordset);
     } catch (err) {
+        logger.error(`GET /api/schedules 錯誤: ${err.message}`);
+        logger.error(`錯誤堆疊: ${err.stack}`);
         next(err);
     }
 });
@@ -1916,16 +1960,15 @@ app.post(
             const result = await pool.request()
                 .input('student_id', sql.Int, student_id)
                 .input('day_of_week', sql.NVarChar, day_of_week)
-                .input('start_time', sql.Time, start_time)
-                .input('end_time', sql.Time, end_time || null)
-                .input('course_name', sql.NVarChar, course_name || null)
-                .input('teacher_name', sql.NVarChar, teacher_name || null)
+                .input('start_time', sql.VarChar, start_time)
+                .input('end_time', sql.VarChar, end_time || null)
+                .input('subject', sql.NVarChar, course_name || null)
                 .query(`
                     INSERT INTO student_schedules (
-                        student_id, day_of_week, start_time, end_time, course_name, teacher_name
+                        student_id, day_of_week, start_time, end_time, subject
                     ) 
                     VALUES (
-                        @student_id, @day_of_week, @start_time, @end_time, @course_name, @teacher_name
+                        @student_id, @day_of_week, @start_time, @end_time, @subject
                     );
                     SELECT SCOPE_IDENTITY() as id;
                 `);
@@ -1967,15 +2010,14 @@ app.put(
                 .input('id', sql.Int, id)
                 .input('student_id', sql.Int, student_id)
                 .input('day_of_week', sql.NVarChar, day_of_week)
-                .input('start_time', sql.Time, start_time)
-                .input('end_time', sql.Time, end_time || null)
-                .input('course_name', sql.NVarChar, course_name || null)
-                .input('teacher_name', sql.NVarChar, teacher_name || null)
+                .input('start_time', sql.VarChar, start_time)
+                .input('end_time', sql.VarChar, end_time || null)
+                .input('subject', sql.NVarChar, course_name || null)
                 .query(`
                     UPDATE student_schedules 
                     SET student_id = @student_id, day_of_week = @day_of_week, 
                         start_time = @start_time, end_time = @end_time, 
-                        course_name = @course_name, teacher_name = @teacher_name, updated_at = GETDATE()
+                        subject = @subject, updated_at = GETDATE()
                     WHERE id = @id AND is_active = 1;
                     SELECT * FROM student_schedules WHERE id = @id AND is_active = 1;
                 `);

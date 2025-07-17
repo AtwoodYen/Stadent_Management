@@ -89,9 +89,6 @@ const StudentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 新增：分頁選單狀態
-  const [activeTab, setActiveTab] = useState<'students' | 'stats'>('students');
-  
   // 編輯相關狀態
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -101,6 +98,9 @@ const StudentsPage: React.FC = () => {
   const [passwordError, setPasswordError] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // 頁籤狀態
+  const [activeTab, setActiveTab] = useState<'students' | 'stats'>('students');
   
   // 統計資料狀態
   const [studentStats, setStudentStats] = useState<any>(null);
@@ -286,6 +286,21 @@ const StudentsPage: React.FC = () => {
     count: students.filter(s => s.grade === grade).length
   })).filter(stat => stat.count > 0); // 只顯示有學生的年級
 
+  // 定義年級排序順序
+  const getGradeOrder = (grade: string): number => {
+    const gradeOrderMap: Record<string, number> = {
+      // 國小
+      '小一': 1, '小二': 2, '小三': 3, '小四': 4, '小五': 5, '小六': 6,
+      // 國中
+      '國一': 7, '國二': 8, '國三': 9,
+      // 高中
+      '高一': 10, '高二': 11, '高三': 12,
+      // 大學
+      '大一': 13, '大二': 14, '大三': 15, '大四': 16
+    };
+    return gradeOrderMap[grade] || 99; // 未知年級排最後
+  };
+
   // 排序學生資料
   const sortStudents = (students: Student[]) => {
     return [...students].sort((a, b) => {
@@ -309,6 +324,13 @@ const StudentsPage: React.FC = () => {
       if (sortConfig.key === 'level_type') {
         const aOrder = getLevelOrder(aValue);
         const bOrder = getLevelOrder(bValue);
+        return sortConfig.direction === 'asc' ? aOrder - bOrder : bOrder - aOrder;
+      }
+
+      // 特殊處理：年級排序
+      if (sortConfig.key === 'grade') {
+        const aOrder = getGradeOrder(aValue);
+        const bOrder = getGradeOrder(bValue);
         return sortConfig.direction === 'asc' ? aOrder - bOrder : bOrder - aOrder;
       }
 
@@ -587,7 +609,7 @@ const StudentsPage: React.FC = () => {
 
       {/* 主要容器 */}
       <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>     
-        {/* 標題與分頁按鈕同一行 */}
+        {/* 標題與頁籤按鈕同一行 */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', letterSpacing: 2 }}>
             學生管理
@@ -597,28 +619,29 @@ const StudentsPage: React.FC = () => {
               variant={activeTab === 'students' ? 'contained' : 'outlined'}
               onClick={() => setActiveTab('students')}
               sx={{
-                backgroundColor: activeTab === 'students' ? 'primary.main' : '#e0e0e0',
-                color: activeTab === 'students' ? 'white' : '#000000',
+                backgroundColor: activeTab === 'students' ? 'primary.main' : 'transparent',
+                color: activeTab === 'students' ? 'white' : 'white',
+                borderColor: 'white',
                 '&:hover': {
-                  backgroundColor: activeTab === 'students' ? 'primary.dark' : '#d0d0d0'
+                  backgroundColor: activeTab === 'students' ? 'primary.dark' : 'rgba(255, 255, 255, 0.1)'
                 }
               }}
             >
               📋 學生列表
             </Button>
-
             <Button
-              variant={activeTab ==='stats' ? 'contained' : 'outlined'}
+              variant={activeTab === 'stats' ? 'contained' : 'outlined'}
               onClick={() => setActiveTab('stats')}
               sx={{
-                backgroundColor: activeTab === 'stats' ? 'primary.main' : '#e0e0e0',
-                color: activeTab === 'stats' ? 'white' : '#000000',
+                backgroundColor: activeTab === 'stats' ? 'primary.main' : 'transparent',
+                color: activeTab === 'stats' ? 'white' : 'white',
+                borderColor: 'white',
                 '&:hover': {
-                  backgroundColor: activeTab === 'stats' ? 'primary.dark' : '#d0d0d0'
+                  backgroundColor: activeTab === 'stats' ? 'primary.dark' : 'rgba(255, 255, 255, 0.1)'
                 }
               }}
             >
-              📊 學生統計
+              📊 統計資料
             </Button>
           </Box>
         </Box>

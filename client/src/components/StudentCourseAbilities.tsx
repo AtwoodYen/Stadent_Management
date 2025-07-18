@@ -22,6 +22,7 @@ import {
   Stack
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import StudentAPCSScores from './StudentAPCSScores';
 
 interface ClassAbility {
   id: number;
@@ -410,7 +411,7 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
 
       <Stack direction="row" spacing={1.5}>
         {/* 左側：班別程度能力 */}
-        <Box sx={{ width: '35.00%' }}>
+        <Box sx={{ width: '30%' }}>
           <Card>
             <CardContent sx={{ p: 1.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
@@ -512,8 +513,8 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
           </Card>
         </Box>
 
-        {/* 右側：課程進度 */}
-        <Box sx={{ width: '40.00%' }}>
+        {/* 中間：課程進度 */}
+        <Box sx={{ width: '35%' }}>
           <Card>
             <CardContent sx={{ p: 1.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
@@ -608,6 +609,11 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
               )}
             </CardContent>
           </Card>
+        </Box>
+
+        {/* 右側：APCS成績 */}
+        <Box sx={{ width: '35%' }}>
+          <StudentAPCSScores studentId={studentId} />
         </Box>
       </Stack>
     </Box>

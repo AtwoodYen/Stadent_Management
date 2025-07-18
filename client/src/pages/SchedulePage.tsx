@@ -1196,10 +1196,16 @@ export default function SchedulePage() {
                   sx={{
                     mt: 0.5,
                     p: 0.5,
-                    bgcolor: 'primary.light',
+                    bgcolor: (() => {
+                      const student = activeStudents.find(s => s.id === l.studentId);
+                      return student && isStudentPaused(student) ? 'grey.400' : 'primary.light';
+                    })(),
                     borderRadius: 1,
                     fontSize: '0.7rem',
-                    color: 'primary.contrastText',
+                    color: (() => {
+                      const student = activeStudents.find(s => s.id === l.studentId);
+                      return student && isStudentPaused(student) ? 'grey.700' : 'primary.contrastText';
+                    })(),
                     cursor: 'grab',
                     minHeight: '28px',
                     display: 'flex',
@@ -1210,7 +1216,10 @@ export default function SchedulePage() {
                       transform: 'scale(1.02)',
                       transition: 'all 0.2s ease',
                       boxShadow: 2,
-                      bgcolor: 'primary.main',
+                      bgcolor: (() => {
+                        const student = activeStudents.find(s => s.id === l.studentId);
+                        return student && isStudentPaused(student) ? 'grey.500' : 'primary.main';
+                      })(),
                       cursor: 'grabbing'
                     },
                     '&:active': {
@@ -1474,10 +1483,16 @@ export default function SchedulePage() {
                           sx={{
                             mb: 0.5,
                             p: 0.75,
-                            bgcolor: 'primary.light',
+                            bgcolor: (() => {
+                              const student = activeStudents.find(s => s.id === lesson.studentId);
+                              return student && isStudentPaused(student) ? 'grey.400' : 'primary.light';
+                            })(),
                             borderRadius: 1,
                             fontSize: '0.7rem',
-                            color: 'primary.contrastText',
+                            color: (() => {
+                              const student = activeStudents.find(s => s.id === lesson.studentId);
+                              return student && isStudentPaused(student) ? 'grey.700' : 'primary.contrastText';
+                            })(),
                             cursor: 'grab',
                             minHeight: '32px',
                             display: 'flex',
@@ -1488,7 +1503,10 @@ export default function SchedulePage() {
                               transform: 'scale(1.02)',
                               transition: 'all 0.2s ease',
                               boxShadow: 2,
-                              bgcolor: 'primary.main',
+                              bgcolor: (() => {
+                                const student = activeStudents.find(s => s.id === lesson.studentId);
+                                return student && isStudentPaused(student) ? 'grey.500' : 'primary.main';
+                              })(),
                               cursor: 'grabbing'
                             },
                             '&:active': {
@@ -1592,10 +1610,16 @@ export default function SchedulePage() {
                   sx={{
                     mb: 0.5,
                     p: 0.75,
-                    bgcolor: 'primary.light',
+                    bgcolor: (() => {
+                      const student = activeStudents.find(s => s.id === l.studentId);
+                      return student && isStudentPaused(student) ? 'grey.400' : 'primary.light';
+                    })(),
                     borderRadius: 1,
                     fontSize: '0.7rem',
-                    color: 'primary.main',
+                    color: (() => {
+                      const student = activeStudents.find(s => s.id === l.studentId);
+                      return student && isStudentPaused(student) ? 'grey.700' : 'primary.main';
+                    })(),
                     cursor: 'grab',
                     minHeight: '40px',
                     display: 'flex',
@@ -1606,8 +1630,14 @@ export default function SchedulePage() {
                       transform: 'scale(1.02)',
                       transition: 'all 0.2s ease',
                       boxShadow: 2,
-                      bgcolor: 'primary.main',
-                      color: 'primary.contrastText',
+                      bgcolor: (() => {
+                        const student = activeStudents.find(s => s.id === l.studentId);
+                        return student && isStudentPaused(student) ? 'grey.500' : 'primary.main';
+                      })(),
+                      color: (() => {
+                        const student = activeStudents.find(s => s.id === l.studentId);
+                        return student && isStudentPaused(student) ? 'grey.800' : 'primary.contrastText';
+                      })(),
                       cursor: 'grabbing'
                     },
                     '&:active': {

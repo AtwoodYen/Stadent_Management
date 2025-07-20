@@ -1534,6 +1534,54 @@ app.post(
 	}
 );
 
+// [UPDATE] 更新課程排序順序
+app.put('/api/courses/reorder', async (req, res, next) => {
+	try {
+			const { courses } = req.body;
+			
+			if (!Array.isArray(courses)) {
+					return res.status(400).json({ error: '課程排序資料格式錯誤' });
+			}
+
+			// 開始交易
+			const transaction = new sql.Transaction(pool);
+			await transaction.begin();
+
+			try {
+					// 批次更新所有課程的排序順序
+					for (const course of courses) {
+							if (!course.id || typeof course.sort_order !== 'number') {
+									throw new Error('課程資料格式錯誤');
+							}
+
+							await transaction.request()
+									.input('id', sql.Int, course.id)
+									.input('sort_order', sql.Int, course.sort_order)
+									.query(`
+											UPDATE courses 
+											SET sort_order = @sort_order, updated_at = GETDATE()
+											WHERE id = @id AND is_active = 1
+									`);
+					}
+
+					// 提交交易
+					await transaction.commit();
+					
+					logger.info(`課程排序已更新，共 ${courses.length} 筆課程`);
+					res.json({ message: '課程排序已成功更新', updatedCount: courses.length });
+					
+			} catch (err) {
+					// 回滾交易
+					await transaction.rollback();
+					throw err;
+			}
+			
+	} catch (err) {
+			logger.error(`更新課程排序失敗: ${err.message}`);
+			res.status(500).json({ error: '更新課程排序失敗', details: err.message });
+	}
+});
+
 // [UPDATE] 更新一筆現有課程
 app.put(
 	'/api/courses/:id',
@@ -1594,54 +1642,6 @@ app.delete('/api/courses/:id', async (req, res, next) => {
 			res.status(204).send();
 	} catch (err) {
 			next(err);
-	}
-});
-
-// [UPDATE] 更新課程排序順序
-app.put('/api/courses/reorder', async (req, res, next) => {
-	try {
-			const { courses } = req.body;
-			
-			if (!Array.isArray(courses)) {
-					return res.status(400).json({ error: '課程排序資料格式錯誤' });
-			}
-
-			// 開始交易
-			const transaction = new sql.Transaction(pool);
-			await transaction.begin();
-
-			try {
-					// 批次更新所有課程的排序順序
-					for (const course of courses) {
-							if (!course.id || typeof course.sort_order !== 'number') {
-									throw new Error('課程資料格式錯誤');
-							}
-
-							await transaction.request()
-									.input('id', sql.Int, course.id)
-									.input('sort_order', sql.Int, course.sort_order)
-									.query(`
-											UPDATE courses 
-											SET sort_order = @sort_order, updated_at = GETDATE()
-											WHERE id = @id AND is_active = 1
-									`);
-					}
-
-					// 提交交易
-					await transaction.commit();
-					
-					logger.info(`課程排序已更新，共 ${courses.length} 筆課程`);
-					res.json({ message: '課程排序已成功更新', updatedCount: courses.length });
-					
-			} catch (err) {
-					// 回滾交易
-					await transaction.rollback();
-					throw err;
-			}
-			
-	} catch (err) {
-			logger.error(`更新課程排序失敗: ${err.message}`);
-			res.status(500).json({ error: '更新課程排序失敗', details: err.message });
 	}
 });
 

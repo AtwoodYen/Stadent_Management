@@ -655,7 +655,8 @@ app.post(
 							chinese_name, english_name, student_phone, student_email, student_line,
 							father_name, father_phone, father_line,
 							mother_name, mother_phone, mother_line,
-							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer
+							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer,
+							university, major
 					} = req.body;
 					
 					const result = await pool.request()
@@ -679,18 +680,20 @@ app.post(
 							.input('notes', sql.NVarChar, notes || null)
 							.input('class_schedule_type', sql.NVarChar, class_schedule_type || '常態班')
 							.input('referrer', sql.NVarChar, referrer || null)
+							.input('university', sql.NVarChar, university || null)
+							.input('major', sql.NVarChar, major || null)
 							.query(`
 									INSERT INTO students (
 											chinese_name, english_name, student_phone, student_email, student_line,
 											father_name, father_phone, father_line,
 											mother_name, mother_phone, mother_line,
-											school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer
+											school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer, university, major
 									) 
 									VALUES (
 											@chinese_name, @english_name, @student_phone, @student_email, @student_line,
 											@father_name, @father_phone, @father_line,
 											@mother_name, @mother_phone, @mother_line,
-											@school, @grade, @gender, @level_type, @class_type, @enrollment_status, @notes, @class_schedule_type, @referrer
+											@school, @grade, @gender, @level_type, @class_type, @enrollment_status, @notes, @class_schedule_type, @referrer, @university, @major
 									);
 									SELECT * FROM students WHERE id = SCOPE_IDENTITY() AND is_active = 1;
 							`);
@@ -729,7 +732,8 @@ app.put(
 							chinese_name, english_name, student_phone, student_email, student_line,
 							father_name, father_phone, father_line,
 							mother_name, mother_phone, mother_line,
-							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer
+							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer,
+							university, major
 					} = req.body;
 					
 					const result = await pool.request()
@@ -754,6 +758,8 @@ app.put(
 							.input('notes', sql.NVarChar, notes || null)
 							.input('class_schedule_type', sql.NVarChar, class_schedule_type || '常態班')
 							.input('referrer', sql.NVarChar, referrer || null)
+							.input('university', sql.NVarChar, university || null)
+							.input('major', sql.NVarChar, major || null)
 							.query(`
 									UPDATE students 
 									SET chinese_name = @chinese_name, english_name = @english_name, 
@@ -761,7 +767,7 @@ app.put(
 											father_name = @father_name, father_phone = @father_phone, father_line = @father_line,
 											mother_name = @mother_name, mother_phone = @mother_phone, mother_line = @mother_line,
 											school = @school, grade = @grade, gender = @gender, 
-											level_type = @level_type, class_type = @class_type, enrollment_status = @enrollment_status, notes = @notes, class_schedule_type = @class_schedule_type, referrer = @referrer, updated_at = GETDATE()
+											level_type = @level_type, class_type = @class_type, enrollment_status = @enrollment_status, notes = @notes, class_schedule_type = @class_schedule_type, referrer = @referrer, university = @university, major = @major, updated_at = GETDATE()
 									WHERE id = @id AND is_active = 1;
 									SELECT * FROM students WHERE id = @id AND is_active = 1;
 							`);
@@ -1488,7 +1494,7 @@ app.post(
 	// --- 驗證規則 ---
 	body('name').notEmpty().withMessage('課程名稱為必填'),
 	body('category').notEmpty().withMessage('課程分類為必填'),
-	body('level').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的難度等級'),
+	body('level').isIn(['初級', '中級', '高級']).withMessage('無效的難度等級'),
 	body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
 	body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
 	body('description').optional(),
@@ -1534,7 +1540,7 @@ app.put(
 	// --- 驗證規則 ---
 	body('name').notEmpty().withMessage('課程名稱為必填'),
 	body('category').notEmpty().withMessage('課程分類為必填'),
-	body('level').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的難度等級'),
+	body('level').isIn(['初級', '中級', '高級']).withMessage('無效的難度等級'),
 	body('duration_minutes').isInt({ gt: 0 }).withMessage('課程時長必須是正整數'),
 	body('price').isFloat({ min: 0 }).withMessage('價格必須是非負數'),
 	body('description').optional(),
@@ -3254,7 +3260,7 @@ app.post(
 	'/api/teachers/:id/courses',
 	// --- 驗證規則 ---
 	body('courseCategory').notEmpty().withMessage('課程分類為必填'),
-	body('maxLevel').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的課程難度'),
+	body('maxLevel').isIn(['初級', '中級', '高級']).withMessage('無效的課程難度'),
 	body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
 	// --- 路由處理器 ---
 	async (req, res, next) => {
@@ -3317,7 +3323,7 @@ app.put(
 	'/api/teachers/:teacherId/courses/:courseId',
 	// --- 驗證規則 ---
 	body('courseCategory').notEmpty().withMessage('課程分類為必填'),
-	body('maxLevel').isIn(['新手', '入門', '中階', '高階', '精英']).withMessage('無效的課程難度'),
+	body('maxLevel').isIn(['初級', '中級', '高級']).withMessage('無效的課程難度'),
 	body('isPreferred').isBoolean().withMessage('是否主力課程必須是布林值'),
 	// --- 路由處理器 ---
 	async (req, res, next) => {
@@ -4019,8 +4025,344 @@ app.delete('/api/users/:id', async (req, res, next) => {
     }
 });
 
+// APCS成績相關API
+// 獲取學生的APCS成績記錄
+app.get('/api/students/:studentId/apcs-scores', async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        
+        const result = await pool.request()
+            .input('studentId', sql.Int, studentId)
+            .query(`
+                SELECT 
+                    id, student_id, exam_year, exam_month,
+                    reading_score, reading_level,
+                    programming_level, programming_score, programming_level_achieved,
+                    created_at, updated_at
+                FROM apcs_scores 
+                WHERE student_id = @studentId AND is_active = 1
+                ORDER BY exam_year DESC, exam_month DESC
+            `);
+        
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('獲取APCS成績記錄失敗:', error);
+        res.status(500).json({ error: '獲取APCS成績記錄失敗' });
+    }
+});
 
+// 新增APCS成績記錄
+app.post('/api/students/:studentId/apcs-scores', async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const { 
+            exam_year, exam_month, 
+            reading_score, programming_level, programming_score 
+        } = req.body;
 
+        // 驗證輸入
+        if (!exam_year || !exam_month) {
+            return res.status(400).json({ error: '考試年份和月份為必填欄位' });
+        }
+
+        if (exam_month && ![1, 3, 6, 7, 10, 11].includes(exam_month)) {
+            return res.status(400).json({ error: '考試月份必須是 1, 3, 6, 7, 10, 11 其中之一' });
+        }
+
+        // 計算程式識讀級數
+        let reading_level = null;
+        if (reading_score !== null && reading_score !== undefined) {
+            if (reading_score >= 0 && reading_score <= 29) reading_level = 1;
+            else if (reading_score >= 30 && reading_score <= 49) reading_level = 2;
+            else if (reading_score >= 50 && reading_score <= 69) reading_level = 3;
+            else if (reading_score >= 70 && reading_score <= 89) reading_level = 4;
+            else if (reading_score >= 90 && reading_score <= 100) reading_level = 5;
+        }
+
+        // 計算程式實作級數
+        let programming_level_achieved = null;
+        if (programming_score !== null && programming_score !== undefined && programming_level) {
+            if (programming_level === '初級') {
+                if (programming_score >= 0 && programming_score <= 149) programming_level_achieved = 1;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 2;
+            } else if (programming_level === '中級') {
+                if (programming_score >= 0 && programming_score <= 99) programming_level_achieved = 1;
+                else if (programming_score >= 100 && programming_score <= 149) programming_level_achieved = 2;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 3;
+            } else if (programming_level === '中高級') {
+                if (programming_score >= 0 && programming_score <= 99) programming_level_achieved = 1;
+                else if (programming_score >= 100 && programming_score <= 149) programming_level_achieved = 3;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 4;
+            } else if (programming_level === '高級') {
+                if (programming_score >= 0 && programming_score <= 99) programming_level_achieved = 1;
+                else if (programming_score >= 100 && programming_score <= 149) programming_level_achieved = 4;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 5;
+            }
+        }
+
+        const result = await pool.request()
+            .input('studentId', sql.Int, studentId)
+            .input('examYear', sql.Int, exam_year)
+            .input('examMonth', sql.Int, exam_month)
+            .input('readingScore', sql.Int, reading_score)
+            .input('readingLevel', sql.Int, reading_level)
+            .input('programmingLevel', sql.NVarChar, programming_level)
+            .input('programmingScore', sql.Int, programming_score)
+            .input('programmingLevelAchieved', sql.Int, programming_level_achieved)
+            .query(`
+                INSERT INTO apcs_scores 
+                (student_id, exam_year, exam_month, reading_score, reading_level, 
+                 programming_level, programming_score, programming_level_achieved)
+                VALUES 
+                (@studentId, @examYear, @examMonth, @readingScore, @readingLevel,
+                 @programmingLevel, @programmingScore, @programmingLevelAchieved);
+                
+                SELECT * FROM apcs_scores WHERE id = SCOPE_IDENTITY();
+            `);
+
+        res.json(result.recordset[0]);
+    } catch (error) {
+        console.error('新增APCS成績記錄失敗:', error);
+        if (error.number === 2627) { // 唯一約束違反
+            res.status(400).json({ error: '該學生在此年月的成績記錄已存在' });
+        } else {
+            res.status(500).json({ error: '新增APCS成績記錄失敗' });
+        }
+    }
+});
+
+// 更新APCS成績記錄
+app.put('/api/students/:studentId/apcs-scores/:scoreId', async (req, res) => {
+    try {
+        const { studentId, scoreId } = req.params;
+        const { 
+            exam_year, exam_month, 
+            reading_score, programming_level, programming_score 
+        } = req.body;
+
+        // 計算程式識讀級數
+        let reading_level = null;
+        if (reading_score !== null && reading_score !== undefined) {
+            if (reading_score >= 0 && reading_score <= 29) reading_level = 1;
+            else if (reading_score >= 30 && reading_score <= 49) reading_level = 2;
+            else if (reading_score >= 50 && reading_score <= 69) reading_level = 3;
+            else if (reading_score >= 70 && reading_score <= 89) reading_level = 4;
+            else if (reading_score >= 90 && reading_score <= 100) reading_level = 5;
+        }
+
+        // 計算程式實作級數
+        let programming_level_achieved = null;
+        if (programming_score !== null && programming_score !== undefined && programming_level) {
+            if (programming_level === '初級') {
+                if (programming_score >= 0 && programming_score <= 149) programming_level_achieved = 1;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 2;
+            } else if (programming_level === '中級') {
+                if (programming_score >= 0 && programming_score <= 99) programming_level_achieved = 1;
+                else if (programming_score >= 100 && programming_score <= 149) programming_level_achieved = 2;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 3;
+            } else if (programming_level === '中高級') {
+                if (programming_score >= 0 && programming_score <= 99) programming_level_achieved = 1;
+                else if (programming_score >= 100 && programming_score <= 149) programming_level_achieved = 3;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 4;
+            } else if (programming_level === '高級') {
+                if (programming_score >= 0 && programming_score <= 99) programming_level_achieved = 1;
+                else if (programming_score >= 100 && programming_score <= 149) programming_level_achieved = 4;
+                else if (programming_score >= 150 && programming_score <= 300) programming_level_achieved = 5;
+            }
+        }
+
+        const result = await pool.request()
+            .input('scoreId', sql.Int, scoreId)
+            .input('studentId', sql.Int, studentId)
+            .input('examYear', sql.Int, exam_year)
+            .input('examMonth', sql.Int, exam_month)
+            .input('readingScore', sql.Int, reading_score)
+            .input('readingLevel', sql.Int, reading_level)
+            .input('programmingLevel', sql.NVarChar, programming_level)
+            .input('programmingScore', sql.Int, programming_score)
+            .input('programmingLevelAchieved', sql.Int, programming_level_achieved)
+            .query(`
+                UPDATE apcs_scores 
+                SET exam_year = @examYear, exam_month = @examMonth,
+                    reading_score = @readingScore, reading_level = @readingLevel,
+                    programming_level = @programmingLevel, programming_score = @programmingScore,
+                    programming_level_achieved = @programmingLevelAchieved,
+                    updated_at = GETDATE()
+                WHERE id = @scoreId AND student_id = @studentId AND is_active = 1;
+                
+                SELECT * FROM apcs_scores WHERE id = @scoreId;
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: '找不到指定的APCS成績記錄' });
+        }
+
+        res.json(result.recordset[0]);
+    } catch (error) {
+        console.error('更新APCS成績記錄失敗:', error);
+        res.status(500).json({ error: '更新APCS成績記錄失敗' });
+    }
+});
+
+// 刪除APCS成績記錄
+app.delete('/api/students/:studentId/apcs-scores/:scoreId', async (req, res) => {
+    try {
+        const { studentId, scoreId } = req.params;
+
+        const result = await pool.request()
+            .input('scoreId', sql.Int, scoreId)
+            .input('studentId', sql.Int, studentId)
+            .query(`
+                UPDATE apcs_scores 
+                SET is_active = 0, updated_at = GETDATE()
+                WHERE id = @scoreId AND student_id = @studentId AND is_active = 1;
+            `);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: '找不到指定的APCS成績記錄' });
+        }
+
+        res.json({ message: 'APCS成績記錄已刪除' });
+    } catch (error) {
+        console.error('刪除APCS成績記錄失敗:', error);
+        res.status(500).json({ error: '刪除APCS成績記錄失敗' });
+    }
+});
+
+// 獲取指定月份可報名的程式實作等級
+app.get('/api/apcs/programming-levels/:month', (req, res) => {
+    try {
+        const { month } = req.params;
+        const monthInt = parseInt(month);
+
+        let availableLevels = [];
+        switch (monthInt) {
+            case 1:
+                availableLevels = ['初級', '中級'];
+                break;
+            case 3:
+                availableLevels = ['初級', '中高級', '高級'];
+                break;
+            case 6:
+                availableLevels = ['初級', '中級'];
+                break;
+            case 7:
+                availableLevels = ['初級', '中級', '中高級'];
+                break;
+            case 10:
+                availableLevels = ['初級', '中級'];
+                break;
+            case 11:
+                availableLevels = ['中級', '中高級', '高級'];
+                break;
+            default:
+                return res.status(400).json({ error: '無效的月份' });
+        }
+
+        res.json(availableLevels);
+    } catch (error) {
+        console.error('獲取程式實作等級失敗:', error);
+        res.status(500).json({ error: '獲取程式實作等級失敗' });
+    }
+});
+
+// 大學相關API
+// 獲取所有大學列表
+app.get('/api/universities', async (req, res) => {
+    try {
+        const result = await pool.request()
+            .query(`
+                SELECT university_name 
+                FROM universities 
+                WHERE is_active = 1 
+                ORDER BY university_name
+            `);
+        
+        const universities = result.recordset.map(row => row.university_name);
+        res.json(universities);
+    } catch (error) {
+        console.error('獲取大學列表失敗:', error);
+        res.status(500).json({ error: '獲取大學列表失敗' });
+    }
+});
+
+// 新增大學
+app.post('/api/universities', async (req, res) => {
+    try {
+        const { university_name } = req.body;
+        
+        if (!university_name || university_name.trim() === '') {
+            return res.status(400).json({ error: '大學名稱不能為空' });
+        }
+
+        const result = await pool.request()
+            .input('universityName', sql.NVarChar, university_name.trim())
+            .query(`
+                INSERT INTO universities (university_name)
+                VALUES (@universityName);
+                
+                SELECT university_name FROM universities WHERE id = SCOPE_IDENTITY();
+            `);
+
+        res.json(result.recordset[0]);
+    } catch (error) {
+        console.error('新增大學失敗:', error);
+        if (error.number === 2627) { // 唯一約束違反
+            res.status(400).json({ error: '該大學名稱已存在' });
+        } else {
+            res.status(500).json({ error: '新增大學失敗' });
+        }
+    }
+});
+
+// 科系相關API
+// 獲取所有科系列表
+app.get('/api/majors', async (req, res) => {
+    try {
+        const result = await pool.request()
+            .query(`
+                SELECT major_name 
+                FROM majors 
+                WHERE is_active = 1 
+                ORDER BY major_name
+            `);
+        
+        const majors = result.recordset.map(row => row.major_name);
+        res.json(majors);
+    } catch (error) {
+        console.error('獲取科系列表失敗:', error);
+        res.status(500).json({ error: '獲取科系列表失敗' });
+    }
+});
+
+// 新增科系
+app.post('/api/majors', async (req, res) => {
+    try {
+        const { major_name } = req.body;
+        
+        if (!major_name || major_name.trim() === '') {
+            return res.status(400).json({ error: '科系名稱不能為空' });
+        }
+
+        const result = await pool.request()
+            .input('majorName', sql.NVarChar, major_name.trim())
+            .query(`
+                INSERT INTO majors (major_name)
+                VALUES (@majorName);
+                
+                SELECT major_name FROM majors WHERE id = SCOPE_IDENTITY();
+            `);
+
+        res.json(result.recordset[0]);
+    } catch (error) {
+        console.error('新增科系失敗:', error);
+        if (error.number === 2627) { // 唯一約束違反
+            res.status(400).json({ error: '該科系名稱已存在' });
+        } else {
+            res.status(500).json({ error: '新增科系失敗' });
+        }
+    }
+});
 
 // --- 集中化的錯誤處理中介軟體 ---
 app.use((err, req, res, next) => {

@@ -54,6 +54,8 @@ interface Student {
   is_active: boolean;
   class_schedule_type: string; // 新增：常態班/短期班
   referrer?: string; // 新增：介紹人
+  university?: string; // 新增：錄取大學
+  major?: string; // 新增：就讀科系
 }
 
 interface ClassType {
@@ -70,14 +72,14 @@ interface SortConfig {
 
 const StudentsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [studentsPerPage, setStudentsPerPage] = useState(10);
+  const [studentsPerPage, setStudentsPerPage] = useState(50);
   const [sortOptions, setSortOptions] = useState({
     school: '',
     grade: '',
     level: '',
     gender: '',
     classType: '',
-    enrollmentStatus: '',
+    enrollmentStatus: '進行中',
     classScheduleType: '' // 新增
   });
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -829,6 +831,8 @@ const StudentsPage: React.FC = () => {
                         { key: 'class_schedule_type', label: '排程類型' },
                         { key: 'enrollment_status', label: '就讀狀態' },
                         { key: 'referrer', label: '介紹人' },
+                        { key: 'university', label: '錄取大學' },
+                        { key: 'major', label: '就讀科系' },
                         { key: 'actions', label: '操作' },
                       ].map(({ key, label }) => (
                         <TableCell key={key}>
@@ -894,6 +898,8 @@ const StudentsPage: React.FC = () => {
                         <TableCell>{student.class_schedule_type}</TableCell>
                         <TableCell>{student.enrollment_status}</TableCell>
                         <TableCell>{student.referrer || '-'}</TableCell>
+                        <TableCell>{student.university || '-'}</TableCell>
+                        <TableCell>{student.major || '-'}</TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1}>
                             <Button

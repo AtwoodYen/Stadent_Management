@@ -48,6 +48,8 @@ interface Student {
   updated_at?: string;
   class_schedule_type?: string; // 新增
   referrer?: string; // 新增：介紹人
+  university?: string; // 新增：錄取大學
+  major?: string; // 新增：就讀科系
 }
 
 interface ClassType {
@@ -258,6 +260,17 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                             'transparent'
               }}
             />
+          </FormRow>
+        </Box>
+
+        {/* 第四行：錄取大學、就讀科系 */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, mb: 1 }}>
+          <FormRow label="錄取大學" labelWidth={80}>
+            <DisplayText value={student.university || ''} />
+          </FormRow>
+          
+          <FormRow label="就讀科系" labelWidth={80}>
+            <DisplayText value={student.major || ''} />
           </FormRow>
         </Box>
       </Box>

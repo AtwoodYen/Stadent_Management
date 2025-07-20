@@ -119,8 +119,8 @@ const TeacherCoursesManagementPage: React.FC = () => {
     direction: 'asc'
   });
 
-  const levels = ['新手', '入門', '中階', '高階', '精英'];
-  const levelOrder = { '新手': 1, '入門': 2, '中階': 3, '高階': 4, '精英': 5 };
+  const levels = ['初級', '中級', '高級'];
+  const levelOrder = { '初級': 1, '中級': 2, '高級': 3 };
 
   // 載入所有資料
   useEffect(() => {
@@ -201,7 +201,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
       setFormData({
         teacherId: '',
         courseCategory: '',
-        maxLevel: '新手',
+        maxLevel: '初級',
         isPreferred: false
       });
     }
@@ -215,7 +215,7 @@ const TeacherCoursesManagementPage: React.FC = () => {
     setFormData({
       teacherId: '',
       courseCategory: '',
-      maxLevel: '新手',
+              maxLevel: '初級',
       isPreferred: false
     });
   };

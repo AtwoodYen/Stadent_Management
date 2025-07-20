@@ -39,6 +39,8 @@ interface Student {
   notes: string;
   class_schedule_type?: string; // 新增
   referrer?: string; // 新增：介紹人
+  university?: string; // 新增：錄取大學
+  major?: string; // 新增：就讀科系
 }
 
 interface ClassType {
@@ -81,12 +83,16 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
     enrollment_status: '進行中',
     notes: '',
     class_schedule_type: '常態班', // 新增
-    referrer: '' // 新增：介紹人
+    referrer: '', // 新增：介紹人
+    university: '', // 新增：錄取大學
+    major: '' // 新增：就讀科系
   });
 
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [schools, setSchools] = useState<string[]>([]);
   const [referrers, setReferrers] = useState<string[]>([]);
+  const [universities, setUniversities] = useState<string[]>([]);
+  const [majors, setMajors] = useState<string[]>([]);
   const [classTypesLoading, setClassTypesLoading] = useState(true);
 
   // 自定義 Alert 狀態
@@ -171,6 +177,44 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
     fetchReferrers();
   }, []);
 
+  // 載入大學資料
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await fetch('/api/universities');
+        if (response.ok) {
+          const data = await response.json();
+          setUniversities(data);
+        } else {
+          console.error('無法載入大學資料');
+        }
+      } catch (error) {
+        console.error('載入大學資料時發生錯誤:', error);
+      }
+    };
+
+    fetchUniversities();
+  }, []);
+
+  // 載入科系資料
+  useEffect(() => {
+    const fetchMajors = async () => {
+      try {
+        const response = await fetch('/api/majors');
+        if (response.ok) {
+          const data = await response.json();
+          setMajors(data);
+        } else {
+          console.error('無法載入科系資料');
+        }
+      } catch (error) {
+        console.error('載入科系資料時發生錯誤:', error);
+      }
+    };
+
+    fetchMajors();
+  }, []);
+
   useEffect(() => {
     if (student) {
       // 編輯現有學生
@@ -194,7 +238,9 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
         enrollment_status: student.enrollment_status || '進行中',
         notes: student.notes || '',
         class_schedule_type: student.class_schedule_type || '常態班', // 新增
-        referrer: student.referrer || '' // 新增：介紹人
+        referrer: student.referrer || '', // 新增：介紹人
+        university: student.university || '', // 新增：錄取大學
+        major: student.major || '' // 新增：就讀科系
       });
     } else {
       // 新增學生，重置表單資料
@@ -227,7 +273,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // 建立錯誤訊息陣列
@@ -275,8 +321,58 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
       showAlert('請輸入有效的學生信箱格式', 'warning', '信箱格式錯誤');
       return;
     }
-    
-    onSave(formData);
+
+          try {
+        // 檢查並新增新的大學
+        if (formData.university && formData.university.trim() && !universities.includes(formData.university.trim())) {
+          try {
+            const response = await fetch('/api/universities', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ university_name: formData.university.trim() }),
+            });
+            
+            if (response.ok) {
+              // 新增成功，更新本地大學列表
+              setUniversities(prev => [...prev, formData.university!.trim()]);
+            } else {
+              console.warn('新增大學失敗，但繼續處理表單');
+            }
+          } catch (error) {
+            console.error('新增大學時發生錯誤:', error);
+          }
+        }
+
+        // 檢查並新增新的科系
+        if (formData.major && formData.major.trim() && !majors.includes(formData.major.trim())) {
+          try {
+            const response = await fetch('/api/majors', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ major_name: formData.major.trim() }),
+            });
+            
+            if (response.ok) {
+              // 新增成功，更新本地科系列表
+              setMajors(prev => [...prev, formData.major!.trim()]);
+            } else {
+              console.warn('新增科系失敗，但繼續處理表單');
+            }
+          } catch (error) {
+            console.error('新增科系時發生錯誤:', error);
+          }
+        }
+
+        // 提交表單
+        onSave(formData);
+    } catch (error) {
+      console.error('處理表單時發生錯誤:', error);
+      showAlert('處理表單時發生錯誤，請重試', 'error', '錯誤');
+    }
   };
 
   return (
@@ -610,6 +706,97 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
                     {...params}
                     size="small"
                     placeholder="請輸入或選擇介紹人"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: '40px',
+                        fontSize: '14px'
+                      }
+                    }}
+                  />
+                )}
+                sx={{
+                  '& .MuiAutocomplete-input': {
+                    padding: '8px 12px !important'
+                  }
+                }}
+              />
+            </FormControl>
+          </Box>
+        </Box>
+
+        {/* 基本資料：第三行 - 大學和科系 */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, width: 'fit-content' }}>
+          <Box sx={{ width: '200px' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel
+                sx={{
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  '&.Mui-focused': {
+                    transform: 'translate(14px, -9px) scale(0.75)'
+                  }
+                }}
+              >
+                錄取大學
+              </InputLabel>
+              <Autocomplete
+                options={universities}
+                value={formData.university}
+                onChange={(event, newValue) => handleChange('university', newValue || '')}
+                onInputChange={(event, newInputValue) => {
+                  if (!universities.includes(newInputValue)) {
+                    handleChange('university', newInputValue);
+                  }
+                }}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="請輸入或選擇大學"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: '40px',
+                        fontSize: '14px'
+                      }
+                    }}
+                  />
+                )}
+                sx={{
+                  '& .MuiAutocomplete-input': {
+                    padding: '8px 12px !important'
+                  }
+                }}
+              />
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ width: '200px' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel
+                sx={{
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  '&.Mui-focused': {
+                    transform: 'translate(14px, -9px) scale(0.75)'
+                  }
+                }}
+              >
+                就讀科系
+              </InputLabel>
+              <Autocomplete
+                options={majors}
+                value={formData.major}
+                onChange={(event, newValue) => handleChange('major', newValue || '')}
+                onInputChange={(event, newInputValue) => {
+                  if (!majors.includes(newInputValue)) {
+                    handleChange('major', newInputValue);
+                  }
+                }}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="請輸入或選擇科系"
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         height: '40px',

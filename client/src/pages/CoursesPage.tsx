@@ -106,7 +106,15 @@ const SortableTableRow: React.FC<{
           <IconButton
             size="small"
             {...listeners}
-            sx={{ cursor: 'grab', '&:active': { cursor: 'grabbing' } }}
+            sx={{ 
+              cursor: 'grab', 
+              '&:active': { cursor: 'grabbing' },
+              '&:hover': { cursor: 'grab' }
+            }}
+            onClick={(e) => {
+              console.log('拖拽圖示被點擊');
+              e.stopPropagation();
+            }}
           >
             <DragIndicatorIcon />
           </IconButton>
@@ -256,20 +264,28 @@ const CoursesPage: React.FC = () => {
 
   // 處理拖拽結束
   const handleDragEnd = async (event: DragEndEvent) => {
+    console.log('拖拽結束事件觸發:', event);
     const { active, over } = event;
+    console.log('active.id:', active.id, 'over?.id:', over?.id);
 
     if (active.id !== over?.id) {
+      console.log('開始重新排序課程');
       setCourses((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over?.id);
+        
+        console.log('oldIndex:', oldIndex, 'newIndex:', newIndex);
 
         const newItems = arrayMove(items, oldIndex, newIndex);
+        console.log('重新排序後的課程:', newItems.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order })));
         
         // 保存新的排序到後端
         saveCourseOrder(newItems);
         
         return newItems;
       });
+    } else {
+      console.log('拖拽位置沒有改變，跳過排序');
     }
   };
 

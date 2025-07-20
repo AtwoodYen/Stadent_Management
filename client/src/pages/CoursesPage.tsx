@@ -276,10 +276,14 @@ const CoursesPage: React.FC = () => {
   // 保存課程排序到後端
   const saveCourseOrder = async (orderedCourses: Course[]) => {
     try {
+      console.log('開始保存課程排序:', orderedCourses.length, '筆課程');
+      
       const orderData = orderedCourses.map((course, index) => ({
         id: course.id,
         sort_order: index + 1
       }));
+
+      console.log('排序資料:', orderData);
 
       const response = await fetch('/api/courses/reorder', {
         method: 'PUT',
@@ -290,10 +294,20 @@ const CoursesPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        console.error('Failed to save course order');
+        const errorData = await response.json();
+        console.error('保存課程排序失敗:', response.status, errorData);
+        throw new Error(`保存課程排序失敗: ${response.status} ${response.statusText}`);
       }
+
+      const result = await response.json();
+      console.log('課程排序保存成功:', result);
+      
+      // 重新載入課程資料以確保顯示正確的排序
+      await fetchCourses();
+      
     } catch (err) {
-      console.error('Error saving course order:', err);
+      console.error('保存課程排序錯誤:', err);
+      // 可以考慮在這裡顯示錯誤訊息給用戶
     }
   };
 

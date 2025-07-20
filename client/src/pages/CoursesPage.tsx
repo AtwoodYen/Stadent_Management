@@ -262,14 +262,19 @@ const CoursesPage: React.FC = () => {
 
 
 
+  // 防抖機制，避免重複執行
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+
   // 處理拖拽結束
   const handleDragEnd = async (event: DragEndEvent) => {
     console.log('拖拽結束事件觸發:', event);
     const { active, over } = event;
     console.log('active.id:', active.id, 'over?.id:', over?.id);
 
-    if (active.id !== over?.id) {
+    if (active.id !== over?.id && !isSavingOrder) {
       console.log('開始重新排序課程');
+      setIsSavingOrder(true);
+      
       setCourses((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over?.id);
@@ -280,12 +285,14 @@ const CoursesPage: React.FC = () => {
         console.log('重新排序後的課程:', newItems.map(c => ({ id: c.id, name: c.name, sort_order: c.sort_order })));
         
         // 保存新的排序到後端
-        saveCourseOrder(newItems);
+        saveCourseOrder(newItems).finally(() => {
+          setIsSavingOrder(false);
+        });
         
         return newItems;
       });
     } else {
-      console.log('拖拽位置沒有改變，跳過排序');
+      console.log('拖拽位置沒有改變或正在保存中，跳過排序');
     }
   };
 
@@ -318,12 +325,18 @@ const CoursesPage: React.FC = () => {
       const result = await response.json();
       console.log('課程排序保存成功:', result);
       
-      // 重新載入課程資料以確保顯示正確的排序
-      await fetchCourses();
+      // 不重新載入資料，直接更新本地狀態的 sort_order
+      setCourses(prevCourses => 
+        prevCourses.map(course => {
+          const updatedCourse = orderData.find(od => od.id === course.id);
+          return updatedCourse ? { ...course, sort_order: updatedCourse.sort_order } : course;
+        })
+      );
       
     } catch (err) {
       console.error('保存課程排序錯誤:', err);
-      // 可以考慮在這裡顯示錯誤訊息給用戶
+      // 如果保存失敗，重新載入資料以恢復正確狀態
+      await fetchCourses();
     }
   };
 
@@ -697,6 +710,26 @@ const CoursesPage: React.FC = () => {
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
+          {isSavingOrder && (
+            <Box sx={{ 
+              position: 'fixed', 
+              top: '50%', 
+              left: '50%', 
+              transform: 'translate(-50%, -50%)',
+              zIndex: 9999,
+              bgcolor: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              px: 3,
+              py: 2,
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <CircularProgress size={20} sx={{ color: 'white' }} />
+              <Typography>正在保存排序...</Typography>
+            </Box>
+          )}
           <TableContainer component={Paper}>
             <Table size="small">
               <TableHead>

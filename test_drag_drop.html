@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖拽測試</title>
+    <style>
+        .draggable-item {
+            padding: 10px;
+            margin: 5px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            cursor: grab;
+            user-select: none;
+        }
+        .draggable-item:active {
+            cursor: grabbing;
+        }
+        .dragging {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>拖拽測試</h1>
+    <div id="container">
+        <div class="draggable-item" draggable="true" data-id="1">項目 1</div>
+        <div class="draggable-item" draggable="true" data-id="2">項目 2</div>
+        <div class="draggable-item" draggable="true" data-id="3">項目 3</div>
+        <div class="draggable-item" draggable="true" data-id="4">項目 4</div>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        let draggedItem = null;
+
+        // 拖拽開始
+        container.addEventListener('dragstart', (e) => {
+            console.log('拖拽開始:', e.target.dataset.id);
+            draggedItem = e.target;
+            e.target.classList.add('dragging');
+        });
+
+        // 拖拽結束
+        container.addEventListener('dragend', (e) => {
+            console.log('拖拽結束:', e.target.dataset.id);
+            e.target.classList.remove('dragging');
+            draggedItem = null;
+        });
+
+        // 拖拽經過
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        // 拖拽進入
+        container.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+        });
+
+        // 放置
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('.draggable-item');
+            
+            if (draggedItem && target && draggedItem !== target) {
+                console.log('放置:', draggedItem.dataset.id, '到', target.dataset.id);
+                
+                // 重新排序
+                const items = Array.from(container.children);
+                const draggedIndex = items.indexOf(draggedItem);
+                const targetIndex = items.indexOf(target);
+                
+                if (draggedIndex < targetIndex) {
+                    target.parentNode.insertBefore(draggedItem, target.nextSibling);
+                } else {
+                    target.parentNode.insertBefore(draggedItem, target);
+                }
+                
+                console.log('排序完成');
+            }
+        });
+    </script>
+</body>
+</html> 

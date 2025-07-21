@@ -514,7 +514,7 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
         </Box>
 
         {/* 中間：課程進度 */}
-        <Box sx={{ width: '35%' }}>
+        <Box sx={{ width: '32%' }}>
           <Card>
             <CardContent sx={{ p: 1.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
@@ -581,7 +581,7 @@ const StudentCourseAbilities: React.FC<StudentCourseAbilitiesProps> = ({ student
                               ) : null}
                             </Select>
                           </FormControl>
-                          <FormControl size="small" sx={{ width: '30%' }}>
+                          <FormControl size="small" sx={{ width: '25%' }}>
                             <Select
                               value={progress.ability_level}
                               onChange={(e) => handleUpdateCourseProgress(progress.id, { ability_level: e.target.value })}

@@ -1255,8 +1255,8 @@ const StudentsPage: React.FC = () => {
           slotProps={{
             paper: {
               sx: {
-                maxWidth: '1104px',
-                width: '93vw',
+                maxWidth: '1250px',
+                width: '95vw',
               }
             }
           }}

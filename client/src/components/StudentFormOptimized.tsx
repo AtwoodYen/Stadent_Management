@@ -381,7 +381,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
         component="form"
         onSubmit={handleSubmit}
         sx={{
-          maxWidth: 1000,
+          maxWidth: 1250,
           mx: 'auto',
           p: 3,
           bgcolor: 'white',
@@ -467,7 +467,7 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
           
-          <Box sx={{ width: '120px' }}>
+          <Box sx={{ width: '160px' }}>
             <FormControl fullWidth size="small">
               <InputLabel
                 sx={{
@@ -575,6 +575,50 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
                 <MenuItem value="男">男</MenuItem>
                 <MenuItem value="女">女</MenuItem>
               </Select>
+            </FormControl>
+          </Box>
+          
+          <Box sx={{ width: '200px' }}>
+            <FormControl fullWidth size="small">
+              <InputLabel
+                sx={{
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  '&.Mui-focused': {
+                    transform: 'translate(14px, -9px) scale(0.75)'
+                  }
+                }}
+              >
+                錄取大學
+              </InputLabel>
+              <Autocomplete
+                options={universities}
+                value={formData.university}
+                onChange={(event, newValue) => handleChange('university', newValue || '')}
+                onInputChange={(event, newInputValue) => {
+                  if (!universities.includes(newInputValue)) {
+                    handleChange('university', newInputValue);
+                  }
+                }}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="請輸入或選擇大學"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: '40px',
+                        fontSize: '14px'
+                      }
+                    }}
+                  />
+                )}
+                sx={{
+                  '& .MuiAutocomplete-input': {
+                    padding: '8px 12px !important'
+                  }
+                }}
+              />
             </FormControl>
           </Box>
         </Box>
@@ -722,53 +766,6 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
               />
             </FormControl>
           </Box>
-        </Box>
-
-        {/* 基本資料：第三行 - 大學和科系 */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, width: 'fit-content' }}>
-          <Box sx={{ width: '200px' }}>
-            <FormControl fullWidth size="small">
-              <InputLabel
-                sx={{
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                  '&.Mui-focused': {
-                    transform: 'translate(14px, -9px) scale(0.75)'
-                  }
-                }}
-              >
-                錄取大學
-              </InputLabel>
-              <Autocomplete
-                options={universities}
-                value={formData.university}
-                onChange={(event, newValue) => handleChange('university', newValue || '')}
-                onInputChange={(event, newInputValue) => {
-                  if (!universities.includes(newInputValue)) {
-                    handleChange('university', newInputValue);
-                  }
-                }}
-                freeSolo
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    size="small"
-                    placeholder="請輸入或選擇大學"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        height: '40px',
-                        fontSize: '14px'
-                      }
-                    }}
-                  />
-                )}
-                sx={{
-                  '& .MuiAutocomplete-input': {
-                    padding: '8px 12px !important'
-                  }
-                }}
-              />
-            </FormControl>
-          </Box>
           
           <Box sx={{ width: '200px' }}>
             <FormControl fullWidth size="small">
@@ -814,6 +811,8 @@ const StudentFormOptimized: React.FC<StudentFormOptimizedProps> = ({
             </FormControl>
           </Box>
         </Box>
+
+
 
         {/* 課程程度管理區域 */}
         {student?.id && (

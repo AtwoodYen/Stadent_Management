@@ -626,6 +626,56 @@ app.get('/api/students/:id', async (req, res, next) => {
 	}
 });
 
+// [CHECK] 檢查學生是否已存在
+app.post('/api/students/check-duplicate', async (req, res, next) => {
+	try {
+		const { chinese_name, school, studentId } = req.body;
+		
+		if (!chinese_name || !school) {
+			return res.status(400).json({ error: '中文姓名和學校為必填' });
+		}
+
+		let query = `
+			SELECT id, chinese_name, school, grade, enrollment_status 
+			FROM students 
+			WHERE chinese_name = @chinese_name 
+			AND school = @school 
+			AND is_active = 1
+		`;
+		
+		const request = pool.request()
+			.input('chinese_name', sql.NVarChar, chinese_name)
+			.input('school', sql.NVarChar, school);
+
+		// 如果是更新操作，排除當前學生
+		if (studentId) {
+			query += ' AND id != @studentId';
+			request.input('studentId', sql.Int, studentId);
+		}
+
+		const result = await request.query(query);
+		
+		if (result.recordset.length > 0) {
+			const existingStudent = result.recordset[0];
+			return res.status(409).json({
+				error: '學生資料已存在',
+				message: `已存在相同姓名「${chinese_name}」和學校「${school}」的學生資料`,
+				existingStudent: {
+					id: existingStudent.id,
+					chinese_name: existingStudent.chinese_name,
+					school: existingStudent.school,
+					grade: existingStudent.grade,
+					enrollment_status: existingStudent.enrollment_status
+				}
+			});
+		}
+
+		res.json({ message: '學生資料不存在，可以新增' });
+	} catch (err) {
+		next(err);
+	}
+});
+
 // [CREATE] 新增一位學生
 app.post(
 	'/api/students',
@@ -658,6 +708,33 @@ app.post(
 							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer,
 							university, major
 					} = req.body;
+
+					// 檢查學生是否已存在
+					const checkResult = await pool.request()
+							.input('chinese_name', sql.NVarChar, chinese_name)
+							.input('school', sql.NVarChar, school)
+							.query(`
+									SELECT id, chinese_name, school, grade, enrollment_status 
+									FROM students 
+									WHERE chinese_name = @chinese_name 
+									AND school = @school 
+									AND is_active = 1
+							`);
+
+					if (checkResult.recordset.length > 0) {
+							const existingStudent = checkResult.recordset[0];
+							return res.status(409).json({
+									error: '學生資料已存在',
+									message: `已存在相同姓名「${chinese_name}」和學校「${school}」的學生資料`,
+									existingStudent: {
+											id: existingStudent.id,
+											chinese_name: existingStudent.chinese_name,
+											school: existingStudent.school,
+											grade: existingStudent.grade,
+											enrollment_status: existingStudent.enrollment_status
+									}
+							});
+					}
 					
 					const result = await pool.request()
 							.input('chinese_name', sql.NVarChar, chinese_name)
@@ -735,6 +812,35 @@ app.put(
 							school, grade, gender, level_type, class_type, enrollment_status, notes, class_schedule_type, referrer,
 							university, major
 					} = req.body;
+
+					// 檢查學生是否已存在（排除當前學生）
+					const checkResult = await pool.request()
+							.input('chinese_name', sql.NVarChar, chinese_name)
+							.input('school', sql.NVarChar, school)
+							.input('id', sql.Int, id)
+							.query(`
+									SELECT id, chinese_name, school, grade, enrollment_status 
+									FROM students 
+									WHERE chinese_name = @chinese_name 
+									AND school = @school 
+									AND id != @id
+									AND is_active = 1
+							`);
+
+					if (checkResult.recordset.length > 0) {
+							const existingStudent = checkResult.recordset[0];
+							return res.status(409).json({
+									error: '學生資料已存在',
+									message: `已存在相同姓名「${chinese_name}」和學校「${school}」的學生資料`,
+									existingStudent: {
+											id: existingStudent.id,
+											chinese_name: existingStudent.chinese_name,
+											school: existingStudent.school,
+											grade: existingStudent.grade,
+											enrollment_status: existingStudent.enrollment_status
+									}
+							});
+					}
 					
 					const result = await pool.request()
 							.input('id', sql.Int, id)

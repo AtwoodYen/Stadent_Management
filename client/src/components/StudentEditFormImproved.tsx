@@ -120,11 +120,64 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // 檢查學生是否重複
+  const checkDuplicateStudent = async (chinese_name: string, school: string, studentId?: number) => {
+    try {
+      const response = await fetch('/api/students/check-duplicate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chinese_name,
+          school,
+          studentId
+        }),
+      });
+
+      if (response.status === 409) {
+        const errorData = await response.json();
+        return {
+          isDuplicate: true,
+          message: errorData.message,
+          existingStudent: errorData.existingStudent
+        };
+      }
+
+      return { isDuplicate: false };
+    } catch (error) {
+      console.error('檢查重複學生時發生錯誤:', error);
+      return { isDuplicate: false };
+    }
+  };
+
+  // 提交表單
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.chinese_name?.trim()) {
       alert('請填寫中文姓名');
+      return;
+    }
+
+    if (!formData.school?.trim()) {
+      alert('請填寫學校');
+      return;
+    }
+    
+    // 檢查學生是否重複
+    const duplicateCheck = await checkDuplicateStudent(
+      formData.chinese_name.trim(), 
+      formData.school.trim(), 
+      student?.id
+    );
+
+    if (duplicateCheck.isDuplicate) {
+      const confirmMessage = `${duplicateCheck.message}\n\n是否要查看現有學生資料？`;
+      if (confirm(confirmMessage)) {
+        // 這裡可以導航到現有學生資料頁面或顯示詳細資訊
+        alert(`現有學生資料：\nID: ${duplicateCheck.existingStudent?.id}\n姓名: ${duplicateCheck.existingStudent?.chinese_name}\n學校: ${duplicateCheck.existingStudent?.school}\n年級: ${duplicateCheck.existingStudent?.grade}\n狀態: ${duplicateCheck.existingStudent?.enrollment_status}`);
+      }
       return;
     }
     
@@ -166,8 +219,8 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
           </Box>
 
           {/* 第二行：學校和年級 */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, mb: 1 }}>
-            <FormRow label="學校" required labelWidth={80}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr', gap: 3, mb: 1 }}>
+            <FormRow label="學校" required labelWidth={100}>
               <Autocomplete
                 options={schools}
                 value={formData.school}
@@ -191,7 +244,7 @@ const StudentEditFormImproved: React.FC<StudentEditFormImprovedProps> = ({
               />
             </FormRow>
             
-            <FormRow label="年級" required labelWidth={80}>
+            <FormRow label="年級" required labelWidth={60}>
               <Select
                 size="small"
                 value={formData.grade}

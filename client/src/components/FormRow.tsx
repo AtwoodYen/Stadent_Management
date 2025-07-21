@@ -10,6 +10,7 @@ interface FormRowProps {
   gap?: number;
   mb?: number;
   sx?: SxProps<Theme>;
+  gridTemplateColumns?: string;
 }
 
 const FormRow: React.FC<FormRowProps> = ({
@@ -19,13 +20,14 @@ const FormRow: React.FC<FormRowProps> = ({
   labelWidth = 100,
   gap = 1,
   mb = 1,
-  sx = {}
+  sx = {},
+  gridTemplateColumns
 }) => {
   return (
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: `${typeof labelWidth === 'number' ? labelWidth + 'px' : labelWidth} 1fr`,
+        gridTemplateColumns: gridTemplateColumns || `${typeof labelWidth === 'number' ? labelWidth + 'px' : labelWidth} 1fr`,
         gap,
         alignItems: 'center',
         mb,
